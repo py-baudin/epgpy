@@ -43,3 +43,4 @@ plt.legend(labels=[f'{t2} ms' for t2 in T2], title='T2 values')
 plt.show()
 
 ```
+![plot](docs/readme_mse_example.png)
