@@ -1,6 +1,8 @@
 # epgpy
 A python library for simulating NRM signals using the Extended Phase Graph (EPG) formalism.
 
+Disclaimer : this is a research project, with no guaranty of the validity of the generated results. 
+
 
 ## Example usage
 
