@@ -2,7 +2,7 @@
 
 ## Description
 
-A python library for simulating NRM signals using the Extended Phase Graph (EPG) formalism.
+A python library for simulating NMR signals using the Extended Phase Graph (EPG) formalism.
 
 Its aims are:
 
