@@ -15,18 +15,19 @@ Its aims are:
 A number of extensions are, or will be, implemented:
 
 - Arbitrary 3D gradients
-- anisotropic diffusion
+- Anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
-- (TODO) Differentiability (e.g., for sequence optimization)
-- (TODO) Operator merging for faster simulations
+- (soon) Differentiability (e.g., for sequence optimization)
+- (soon) GPU compatible (via `cupy`)
+- (soon) General operator merging for faster simulations
 
-Please look into the `examples` folder for concrete uses of these extensions.
+Please look into the `examples` folder for concrete uses of the code.
 
 Disclaimer : this is a research project, and the authors give no guaranty on the validity of the generated results. 
 
 ## Example usage
 
-Create an multi-spin echo NMR sequence using EPG operators, and simulate the resulting signal.
+Simulate a multi-spin-echo NMR sequence using EPG operators:
 
 ```python
 from epgpy import operators, functions
@@ -35,7 +36,7 @@ FA = 120 # flip angle (degrees)
 ESP = 10 # echo spacing (ms)
 Nrf = 20 # num. rf
 
-# relaxation times
+# relaxation times (multiple T2 values are simulated at once)
 T1 = 150 # ms
 T2 = [30, 40, 50] # ms
 
