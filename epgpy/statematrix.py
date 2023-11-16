@@ -128,6 +128,19 @@ class StateMatrix:
     def nstate(self):
         """return number of phase states"""
         return (self._collection.shape[-1] - 1) // 2
+    
+    @property
+    def kdim(self):
+        """number of coords dimensions"""
+        return 1 if self.coords is None else self.coords.shape[-1]    
+    
+    @property
+    def i0(self):
+        """ index/indices of F0 state(s) """
+        if self.kdim < 4:
+            return self.nstate
+        xp = common.get_array_module(self.states)
+        return xp.all(xp.isclose(self.coords[..., :3], 0), axis=-1)    
 
     @property
     def F(self):
@@ -136,7 +149,10 @@ class StateMatrix:
 
     @property
     def F0(self):
-        return self.states[..., self.nstate, 0]
+        if self.kdim < 4:
+            return self.states[..., self.nstate, 0]
+        # select states with k==0
+        return self.states[..., 0] * self.i0
 
     @property
     def Z(self):
@@ -145,25 +161,30 @@ class StateMatrix:
 
     @property
     def Z0(self):
-        return self.states[..., self.nstate, 2]
-
-    @property
-    def kdim(self):
-        """number of coords dimensions"""
-        return 1 if self.coords is None else self.coords.shape[-1]
+        if self.kdim < 4:
+            return self.states[..., self.nstate, 2]
+        # select states with k==0
+        return self.states[..., 2] * self.i0
 
     @property
     def k(self):
         """wavenumbers (only first 3 dimensions)"""
         coords = _setup_coords(self.nstate, 1) if self.coords is None else self.coords
         return coords[..., :3] * self.kvalue
-
+    
     @property
     def t(self):
         """time-accumulated dephasing (4th dimension)"""
         if self.kdim < 4:
             return 0
         return self.coords[..., 3] * self.tvalue
+    
+    @property
+    def t0(self):
+        """0-th state / time-accumulated dephasing (4th dimension)"""
+        if self.kdim < 4:
+            return 0
+        return self.coords[..., 3] * self.i0 * self.tvalue    
 
     @property
     def ktvalue(self):

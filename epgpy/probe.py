@@ -8,7 +8,7 @@ class Probe(operator.EmptyOperator):
     """Does nothing, holds callback function to record data"""
 
     # StateMatrix attributes accessible in 'eval'
-    SM_LOCALS = ["nstate", "ndim", "kdim", "states", "F", "F0", "Z", "Z0", "k", "t"]
+    SM_LOCALS = ["nstate", "ndim", "kdim", "states", "coords", "F", "F0", "Z", "Z0", "k", "t", "t0"]
 
     # phase compensation value, used by the simulate function
     phase = 0
