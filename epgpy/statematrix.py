@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from . import common, arraycollection
+from . import common, arraycollection, utils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -278,6 +278,10 @@ class StateMatrix:
         """expend state matrix to n-dimensions"""
         self._collection.reduce(ndim + 1, remove_index=-1)
 
+    def check(self):
+        return utils.check_states(self.states)
+            
+
     def setup_coords(self, kdim):
         if self.coords is not None:
             # resize
@@ -294,6 +298,8 @@ class StateMatrix:
         else:
             coords = _setup_coords(self.nstate, kdim)
         self._collection.set("coords", coords)
+
+
 
 
 # private functions
