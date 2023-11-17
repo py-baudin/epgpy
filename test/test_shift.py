@@ -139,7 +139,6 @@ def test_S_class():
 
     # int 1d shift
     shift1d = S(-2)
-    assert shift1d.method == "int-1d"
     assert shift1d.nshift == 2
     assert shift1d.k == -2
     assert shift1d.shape == (1,)
@@ -151,15 +150,9 @@ def test_S_class():
     sm2 = S(-1)(sm1)
     assert np.allclose(sm2.states, [[[0, 0, 0], [1, 1, 0], [0, 0, 0]]])
 
-    with pytest.raises(ValueError):
-        S(1.2, method="int-1d")
-    with pytest.raises(ValueError):
-        S([1, -1], method="int-1d")
-
     # int-nd
     sm0 = SM([1, 1, 0])
     shiftnd = S([1, 0, 0])
-    assert shiftnd.method == "int-nd"
     assert np.allclose(shiftnd.k, [[1, 0, 0]])
     assert shiftnd.shape == (1,)
     sm1 = shiftnd(sm0)
@@ -169,7 +162,6 @@ def test_S_class():
 
     # multi-dim
     shiftnd = S([[1, 0, 0], [2, 0, 0]])
-    assert shiftnd.method == "int-nd"
     assert shiftnd.shape == (2,)
     sm1 = shiftnd(sm0)
     assert sm1.shape == (2,)  # shape broadcasting
@@ -183,12 +175,10 @@ def test_S_class():
     shift2 = S([0, -2, 1])
     sm1 = shift2(shift1(sm0))
     assert np.allclose(sm1.k, [[-1, 2, -1], [0, 0, 0], [1, -2, 1]])
-    with pytest.raises(RuntimeError):
-        shift1(sm1)
+    assert np.allclose(shift1(sm1).k, [[-2, 2, -1], [0, 0, 0], [2, -2, 1]])
 
     # float nd
     shiftndf = S([1.2, 0, -0.3])
-    assert shiftndf.method == "float-nd"
     assert shiftndf.shape == (1,)
     assert shiftndf.kdim == 3
     with pytest.raises(AttributeError):
@@ -206,9 +196,7 @@ def test_S_class():
     assert np.allclose(sm1.k, [[-1.2, 0, 0.3], [0, 0, 0], [1.2, 0, -0.3]])
     sm1 = shift3(shift2(shift1(sm0)))  # [1, 0., 0] + [0, -2, 1] + [0.2, 0, -0.3]
     assert np.allclose(sm1.k, [[-1.2, 2, -0.7], [0, 0, 0], [1.2, -2, 0.7]])
-
-    with pytest.raises(RuntimeError):
-        shift1(sm1)
+    assert np.allclose(shift1(sm1).k, [[-2.2, 2, -0.7], [0, 0, 0], [2.2, -2, 0.7]])
 
     #
     # time accumulation

@@ -15,7 +15,6 @@ class S(operator.Operator):
         self,
         k,
         *,
-        method=None,
         nmax=None,
         kgrid=None,
         prune=1e-8,
@@ -28,16 +27,23 @@ class S(operator.Operator):
             k: int, float (or array of)
                 Units: rad/m
                 Phase shifts increments or decrements
-        """
+        """ 
+        # check k
+        if np.allclose(k, 0):
+            raise TypeError("Cannot have k == 0")
 
-        # cast k and method
-        self.k, self.method = get_shift_method(k, method)
+        if not isinstance(k, int):
+            k = np.atleast_2d(k)
+            if not k.shape[-1] in [1, 2, 3, 4]:
+                raise ValueError(f"k.shape[-1] must belong to [1, 2, 3, 4]")
+    
+        self.k = k
         self.nmax = nmax
         self.prune = prune
         self.kgrid = kgrid
 
         if not name:  # default name
-            fmt = "" if method == "int-1d" else ".2f"
+            fmt = "" if isinstance(k, int) else ".2f"
             name = common.repr_operator("S", ["k"], [k], [fmt])
 
         # init parent class
@@ -64,8 +70,10 @@ class S(operator.Operator):
 
     def _apply(self, sm):
         """Shift states"""
+        # check shift method
+        method, shift = get_shift_method(self.k, sm.coords)
 
-        if self.method == "int-1d":
+        if method == "int-1d":
             # basic 1d shift
             if sm.coords is not None:
                 raise RuntimeError("Cannot use int-1d method on this state-matrix")
@@ -75,15 +83,16 @@ class S(operator.Operator):
             sm.resize(min(sm.nstate + 1, nmax))
 
             # shift states (inplace)
-            sm.states = shift1d(sm.states, self.k, inplace=True)
+            sm.states = shift1d(sm.states, shift, inplace=True)
 
-        elif self.method == "int-nd":
+        elif method == "int-nd":
             # int nd-shift
-            shift = self.k
-            if sm.coords is None or sm.kdim < self.kdim:
-                sm.setup_coords(self.kdim)
-            elif self.kdim < sm.kdim:
-                diff = sm.kdim - self.kdim
+            kdim = shift.shape[-1]
+            if sm.coords is None or sm.kdim < kdim:
+                sm.setup_coords(kdim)
+                
+            elif kdim < sm.kdim:
+                diff = sm.kdim - kdim
                 shift = np.pad(shift, [(0, 0)] * self.ndim + [(0, diff)])
 
             # apply (not inplace)
@@ -97,13 +106,13 @@ class S(operator.Operator):
             sm.resize(nstate)
             sm.states, sm.coords = states, coords
 
-        elif self.method == "float-nd":
+        elif method == "float-nd":
             # float nd-shift-merge
-            shift = self.k
-            if sm.coords is None or sm.kdim < self.kdim:
-                sm.setup_coords(self.kdim)
-            elif self.kdim < sm.kdim:
-                diff = sm.kdim - self.kdim
+            kdim = shift.shape[-1]
+            if sm.coords is None or sm.kdim < kdim:
+                sm.setup_coords(kdim)
+            elif kdim < sm.kdim:
+                diff = sm.kdim - kdim
                 shift = np.pad(shift, [(0, 0)] * self.ndim + [(0, diff)])
 
             # kgrid
@@ -174,43 +183,43 @@ class C(S):
 
 #
 # functions
-
-
-def get_shift_method(k, method=None):
-    """get and check shift method"""
-    if np.allclose(k, 0):
-        raise TypeError("Cannot have k == 0")
-
-    k_arr = np.atleast_2d(k)
-    if not k_arr.shape[-1] in [1, 2, 3, 4]:
-        raise ValueError(f"k.shape[-1] must belong to [1, 2, 3, 4]")
-
-    if method is None:
-        # use k value
+def get_shift_method(k, coords):
+    method = None
+    if coords is None:
+        shift = k
         if isinstance(k, int):
-            k = int(k)
-            method = "int-1d"
-        elif np.issubdtype(k_arr.dtype, np.integer):
-            k = k_arr.astype(int)  # flooring
-            method = "int-nd"
-        elif np.issubdtype(k_arr.dtype, np.floating):
-            k = k_arr.astype(float)
-            method = "float-nd"
+            method = 'int-1d'
+        elif isinstance(k.flat[0], np.integer):
+            method = 'int-nd'
+        elif isinstance(k.flat[0], np.floating):
+            method = 'float-nd'
+
+    elif np.issubdtype(coords.dtype, np.integer):
+        # coords is int
+        kdim = coords.shape[-1]
+        if isinstance(k, int):
+            shift = np.array([[int(k)] + [0] * (kdim - 1)])
+            method = 'int-nd'
+        elif isinstance(k.flat[0], np.integer):
+            shift = k
+            method = 'int-nd'
+        elif isinstance(k.flat[0], np.floating):
+            shift = k
+            method = 'float-nd'
+
+    elif np.issubdtype(coords.dtype, np.floating):
+        # coords is float
+        method = 'float-nd'
+        kdim = coords.shape[-1]
+        if isinstance(k, int):
+           shift = np.array([[int(k)] + [0] * (kdim - 1)])
         else:
-            raise ValueError(f"Invalid k value: {k}")
+            shift = k
 
-    elif method == "int-1d":
-        if not isinstance(k, int):
-            raise ValueError(f"k must be an int, not: {type(k)}")
-        k = int(k)
-    elif method == "int-3d":
-        k = k_arr.astype(int)
-    elif method == "float-3d":
-        k = k_arr.astype(float)
-    else:
-        raise ValueError(f"Unknown method: {method}")
+    if not method:
+        raise ValueError('Unknown shift method')
+    return method, shift
 
-    return k, method
 
 
 def get_nmax(shifts):
@@ -272,7 +281,7 @@ def shiftnd(states, indices, shift, *, nmax=None, prune=True, tol=1e-8):
     xp = common.get_array_module()
 
     sm = common.asarray(states)
-    indices = common.asarray(indices)
+    indices = common.asarray(indices, dtype=int)
     shift = common.expand_dims(common.asarray(shift), -2)
 
     # initial number of states
@@ -282,9 +291,7 @@ def shiftnd(states, indices, shift, *, nmax=None, prune=True, tol=1e-8):
     kL = indices + 0 * shift
     k1T = kL + shift
     k2T = kL - shift
-    k2, idx = xp.unique(
-        xp.concatenate([kL, k1T, k2T], axis=-2), axis=-2, return_inverse=True
-    )
+    k2, idx = unique_1d(xp.concatenate([kL, k1T, k2T], axis=-2), axis=-2)
     idxL, idxT = idx[:n1], idx[n1 : 2 * n1]
     keepL, keepT = slice(None), slice(None)
 
@@ -317,6 +324,10 @@ def shiftnd(states, indices, shift, *, nmax=None, prune=True, tol=1e-8):
         nonzero[(k2.shape[-2] - 1) // 2] = True  # keep 0
         sm2 = sm2[..., nonzero, :]
         k2 = k2[..., nonzero, :]
+
+    if k2.shape[-2] % 2 == 0:
+        # should not happen
+        raise ValueError(f"Asymmetrical state matrix")
 
     return sm2, k2
 
@@ -361,9 +372,7 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     q1T = xp.around(k1T / grid).astype(int)
     q2T = -q1T[..., ::-1, :]
 
-    q2, idx = xp.unique(
-        xp.concatenate([qL, q1T, q2T], axis=-2), axis=-2, return_inverse=True
-    )
+    q2, idx = unique_1d(xp.concatenate([qL, q1T, q2T], axis=-2), axis=-2)
     idxL, idx1T, idx2T = idx[:n1], idx[n1 : 2 * n1], idx[2 * n1 :]
 
     # init new state matrix
@@ -412,3 +421,45 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
         raise ValueError(f"Asymmetrical state matrix")
 
     return sm2, k2
+
+
+# def unique_1d(array, axis=0):
+#     """ numpy unique"""
+#     xp = common.get_array_module(array)
+#     return xp.unique(array, axis=axis, return_inverse=True)
+
+def unique_1d(values, axis=0):
+    """ faster unique, using python dictionary """
+
+    if not np.issubdtype(values.dtype, np.integer):
+        raise ValueError('This function only works with integer arrays')
+    
+    xp = common.get_array_module(values)
+    values = xp.moveaxis(values, axis, 0)
+    shape = values.shape[1:]
+    values = values.reshape(len(values), -1)
+
+    # keep unique rows
+    unique_set = {}
+    
+    # make rows into tuples
+    # inverse = [unique_set.setdefault(tuple(row), len(unique_set)) for row in values.tolist()]
+    
+    # "hash" rows (faster)
+    unique_set = {}
+    vrange = np.ptp(values) + 1
+    hash = np.dot(values - values.min(), [vrange**i for i in range(values.shape[1])])
+    inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
+
+    # build `unique` array from inverse 
+    inverse = xp.array(inverse)
+    unique = np.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
+    unique[inverse] = values
+
+    # sort and return
+    order = xp.lexsort(unique.T[::-1])
+    unique = unique[order]
+    unique = xp.moveaxis(unique.reshape((-1,) + shape), 0, axis)
+    inverse = xp.argsort(order)[inverse]
+
+    return unique, inverse
