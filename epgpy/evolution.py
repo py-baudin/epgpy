@@ -230,7 +230,7 @@ def evolution_d_T1(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE1 = tau / T1**2
+    dE1 = tau / T1 ** 2
     decay[..., 0, 0] = 0
     decay[..., 1, 1] = 0
     decay[..., 2, 2] *= dE1
@@ -244,7 +244,7 @@ def evolution_d_T2(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE2 = tau / T2**2
+    dE2 = tau / T2 ** 2
     decay[..., 0, 0] *= dE2
     decay[..., 1, 1] *= dE2
     decay[..., 2, 2] = 0
@@ -285,7 +285,7 @@ def evolution_d2_T1(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE1 = tau / T1**3 * (tau / T1 - 2)
+    dE1 = tau / T1 ** 3 * (tau / T1 - 2)
     decay[..., 0, 0] = 0
     decay[..., 1, 1] = 0
     decay[..., 2, 2] *= dE1
@@ -298,7 +298,7 @@ def evolution_d2_T2(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE2 = tau / T2**3 * (tau / T2 - 2)
+    dE2 = tau / T2 ** 3 * (tau / T2 - 2)
     decay[..., 0, 0] *= dE2
     decay[..., 1, 1] *= dE2
     decay[..., 2, 2] = 0
@@ -324,7 +324,7 @@ def evolution_d2_tau_T1(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE1 = (1 - tau / T1) / T1**2
+    dE1 = (1 - tau / T1) / T1 ** 2
     decay[..., 0, 0] *= 0
     decay[..., 1, 1] *= 0
     decay[..., 2, 2] *= dE1
@@ -337,7 +337,7 @@ def evolution_d2_tau_T2(tau, T1, T2, g):
     tau, T1, T2, g = common.expand_arrays(tau, T1, T2, g)
     decay, recovery = _evolution(tau, T1, T2, g)
 
-    dE2 = (1 + tau * (-1 / T2 + 2j * xp.pi * g)) / T2**2
+    dE2 = (1 + tau * (-1 / T2 + 2j * xp.pi * g)) / T2 ** 2
     decay[..., 0, 0] *= dE2
     decay[..., 1, 1] *= xp.conj(dE2)
     decay[..., 2, 2] *= 0

@@ -22,9 +22,9 @@ def test_crlb():
         exp = np.exp(t * (-p[1] + 1j * p[2]))
         return np.stack(
             [
-                np.stack([-(t**2) * np.cos(t * p[0]), t * 0, t * 0], axis=1),
-                np.stack([t * 0, t**2 * exp, -1j * t**2 * exp], axis=1),
-                np.stack([t * 0, -1j * t**2 * exp, -(t**2) * exp], axis=1),
+                np.stack([-(t ** 2) * np.cos(t * p[0]), t * 0, t * 0], axis=1),
+                np.stack([t * 0, t ** 2 * exp, -1j * t ** 2 * exp], axis=1),
+                np.stack([t * 0, -1j * t ** 2 * exp, -(t ** 2) * exp], axis=1),
             ],
             axis=2,
         )

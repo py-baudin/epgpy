@@ -124,10 +124,10 @@ def plot_epg(
                     zcolor = cm2d(
                         kvals[1, cx], kvals[1, cy], xmax=kmax[cx], ymax=kmax[cy]
                     )
-                falpha = fmag**alpha_pow
-                zalpha = zmag**alpha_pow
-                flinewidth = width_factor * fmag**width_pow
-                zlinewidth = width_factor * zmag**width_pow
+                falpha = fmag ** alpha_pow
+                zalpha = zmag ** alpha_pow
+                flinewidth = width_factor * fmag ** width_pow
+                zlinewidth = width_factor * zmag ** width_pow
 
                 if i >= sm.nstate and zmag > 1e-5:
                     # z states

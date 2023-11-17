@@ -115,13 +115,13 @@ def test_D_class():
     shift1 = operators.S(1)
     shift2 = operators.S(-1)
     sm1 = shift2(d1(shift1(sm0)))
-    att = np.exp(-sm1.kvalue**2 * d1.tau * d1.D * 1e-9)
+    att = np.exp(-sm1.kvalue ** 2 * d1.tau * d1.D * 1e-9)
     assert np.isclose(sm1.F0, att)
 
     # diffusion gradient
     d2 = diffusion.D(1, 1e-3, k=1)  # tau=1ms, D=1e-3 mm2/s, k=1
     sm1 = shift2(d2(shift1(sm0)))
-    att = np.exp(-sm1.kvalue**2 * (1 / 4 + 1 / 12) * d1.tau * d1.D * 1e-9)
+    att = np.exp(-sm1.kvalue ** 2 * (1 / 4 + 1 / 12) * d1.tau * d1.D * 1e-9)
     assert np.isclose(sm1.F0, att)
 
     # spin echo experiment
@@ -140,7 +140,7 @@ def test_D_class():
     # expected attenuation
     D = d1.D * 1e-9  # diffusion in m^2/ms
     k = sm.kvalue
-    att = np.exp(-2 / 3 * k**2 * d1.tau * D) * np.exp(-2 * k**2 * d2.tau * D)
+    att = np.exp(-2 / 3 * k ** 2 * d1.tau * D) * np.exp(-2 * k ** 2 * d2.tau * D)
     assert np.isclose(sm.F0, att)
 
     #
@@ -163,7 +163,7 @@ def test_D_class():
     # expected attenuation
     k = sm.kvalue
     D = 1e-9  # diffusion in m^2/ms
-    att = np.exp(-2 / 3 * k**2 * d1.tau * D) * np.exp(-2 * k**2 * d2.tau * D)
+    att = np.exp(-2 / 3 * k ** 2 * d1.tau * D) * np.exp(-2 * k ** 2 * d2.tau * D)
     assert np.isclose(sm.F0, att)
 
     # 2d anisotropic diffusion

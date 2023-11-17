@@ -9,9 +9,10 @@ gamma_23Na = 11.262 * 1e3  # kHz/T
 
 
 def check_states(states):
-    """ check state matrix validity """
+    """check state matrix validity"""
     xp = get_array_module(states)
-    return xp.allclose(states, states[..., ::-1, [1, 0, 2]].conj()) 
+    return xp.allclose(states, states[..., ::-1, [1, 0, 2]].conj())
+
 
 # axes
 def Axes(*names):

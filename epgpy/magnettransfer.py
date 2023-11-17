@@ -39,9 +39,9 @@ def saturation_rate(duration, rf, G, *, gamma=utils.gamma_1H):
     """
     if np.isscalar(rf):
         # hard pulse
-        integral = duration * rf**2
+        integral = duration * rf ** 2
     else:
-        integral = np.trapz(rf**2, dx=duration / (len(rf) - 1))
+        integral = np.trapz(rf ** 2, dx=duration / (len(rf) - 1))
 
     W = np.pi * (1e-3 * 2 * np.pi * gamma) ** 2 * (1e-3 * G) * integral / duration
     return W * 1e-3
@@ -73,10 +73,10 @@ def absorption_rate(T2, lineshape, offres=0):
     x = 2 * np.pi * T2 * offres
 
     if lineshape == "gaussian":
-        G = T2 / (np.pi * 2) ** 0.5 * np.exp(-(x**2) / 2)
+        G = T2 / (np.pi * 2) ** 0.5 * np.exp(-(x ** 2) / 2)
 
     elif lineshape == "lorentzian":
-        G = T2 / np.pi * 1 / (1 + x**2)
+        G = T2 / np.pi * 1 / (1 + x ** 2)
 
     elif lineshape == "super-lorentzian":
         u = np.linspace(0, 1, 1000).reshape([1] * x.ndim + [-1])
@@ -85,16 +85,16 @@ def absorption_rate(T2, lineshape, offres=0):
         # valid data points
         g = (
             1
-            / np.abs(3 * u**2 - 1)
-            * np.exp(-2 * (x[valid][..., NAX] / (3 * u**2 - 1)) ** 2)
+            / np.abs(3 * u ** 2 - 1)
+            * np.exp(-2 * (x[valid][..., NAX] / (3 * u ** 2 - 1)) ** 2)
         )
         G[valid] = T2 * (2 / np.pi) ** 0.5 * np.trapz(g, u, axis=-1)
         # extrapolated data points
         bounds = 2 * np.pi * T2 * np.array([1, 3, 5, 7, 9, 11])
         gref = (
             1
-            / np.abs(3 * u**2 - 1)
-            * np.exp(-2 * (bounds[..., NAX] / (3 * u**2 - 1)) ** 2)
+            / np.abs(3 * u ** 2 - 1)
+            * np.exp(-2 * (bounds[..., NAX] / (3 * u ** 2 - 1)) ** 2)
         )
         Gref = T2 * (2 / np.pi) ** 0.5 * np.trapz(gref, u, axis=-1)
         G[~valid] = cubic_interp1d(

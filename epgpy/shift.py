@@ -27,7 +27,7 @@ class S(operator.Operator):
             k: int, float (or array of)
                 Units: rad/m
                 Phase shifts increments or decrements
-        """ 
+        """
         # check k
         if np.allclose(k, 0):
             raise TypeError("Cannot have k == 0")
@@ -36,7 +36,7 @@ class S(operator.Operator):
             k = np.atleast_2d(k)
             if not k.shape[-1] in [1, 2, 3, 4]:
                 raise ValueError(f"k.shape[-1] must belong to [1, 2, 3, 4]")
-    
+
         self.k = k
         self.nmax = nmax
         self.prune = prune
@@ -90,7 +90,7 @@ class S(operator.Operator):
             kdim = shift.shape[-1]
             if sm.coords is None or sm.kdim < kdim:
                 sm.setup_coords(kdim)
-                
+
             elif kdim < sm.kdim:
                 diff = sm.kdim - kdim
                 shift = np.pad(shift, [(0, 0)] * self.ndim + [(0, diff)])
@@ -188,38 +188,37 @@ def get_shift_method(k, coords):
     if coords is None:
         shift = k
         if isinstance(k, int):
-            method = 'int-1d'
+            method = "int-1d"
         elif isinstance(k.flat[0], np.integer):
-            method = 'int-nd'
+            method = "int-nd"
         elif isinstance(k.flat[0], np.floating):
-            method = 'float-nd'
+            method = "float-nd"
 
     elif np.issubdtype(coords.dtype, np.integer):
         # coords is int
         kdim = coords.shape[-1]
         if isinstance(k, int):
             shift = np.array([[int(k)] + [0] * (kdim - 1)])
-            method = 'int-nd'
+            method = "int-nd"
         elif isinstance(k.flat[0], np.integer):
             shift = k
-            method = 'int-nd'
+            method = "int-nd"
         elif isinstance(k.flat[0], np.floating):
             shift = k
-            method = 'float-nd'
+            method = "float-nd"
 
     elif np.issubdtype(coords.dtype, np.floating):
         # coords is float
-        method = 'float-nd'
+        method = "float-nd"
         kdim = coords.shape[-1]
         if isinstance(k, int):
-           shift = np.array([[int(k)] + [0] * (kdim - 1)])
+            shift = np.array([[int(k)] + [0] * (kdim - 1)])
         else:
             shift = k
 
     if not method:
-        raise ValueError('Unknown shift method')
+        raise ValueError("Unknown shift method")
     return method, shift
-
 
 
 def get_nmax(shifts):
@@ -428,12 +427,13 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
 #     xp = common.get_array_module(array)
 #     return xp.unique(array, axis=axis, return_inverse=True)
 
+
 def unique_1d(values, axis=0):
-    """ faster unique, using python dictionary """
+    """faster unique, using python dictionary"""
 
     if not np.issubdtype(values.dtype, np.integer):
-        raise ValueError('This function only works with integer arrays')
-    
+        raise ValueError("This function only works with integer arrays")
+
     xp = common.get_array_module(values)
     values = xp.moveaxis(values, axis, 0)
     shape = values.shape[1:]
@@ -441,17 +441,17 @@ def unique_1d(values, axis=0):
 
     # keep unique rows
     unique_set = {}
-    
+
     # make rows into tuples
     # inverse = [unique_set.setdefault(tuple(row), len(unique_set)) for row in values.tolist()]
-    
+
     # "hash" rows (faster)
     unique_set = {}
     vrange = np.ptp(values) + 1
-    hash = np.dot(values - values.min(), [vrange**i for i in range(values.shape[1])])
+    hash = np.dot(values - values.min(), [vrange ** i for i in range(values.shape[1])])
     inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
 
-    # build `unique` array from inverse 
+    # build `unique` array from inverse
     inverse = xp.array(inverse)
     unique = np.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
     unique[inverse] = values
