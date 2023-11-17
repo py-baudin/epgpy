@@ -32,7 +32,8 @@ class R(linalgebra.ScalarOp):
         self.r0 = r0
 
         # match duration and tau if `duration` is `True`
-        self._duration = self.tau if duration is True else duration
+        self._duration = duration
+        duration = self.tau if duration is True else duration
 
         # coefficients
         coeff, coeff0 = evolution_operator(rT, rL, r0)
@@ -71,7 +72,8 @@ class E(linalgebra.ScalarOp):
         self.g = g
 
         # match duration and tau if `duration` is `True`
-        self._duration = self.tau if duration is True else duration
+        self._duration = duration
+        duration = self.tau if duration is True else duration
 
         # coefficients
         coeff, coeff0 = relaxation_operator(tau, T1, T2, g)
@@ -107,7 +109,8 @@ class P(linalgebra.ScalarOp):
         self.g = g
 
         # match duration and tau if `duration` is `True`
-        self._duration = self.tau if duration is True else duration
+        self._duration = duration
+        duration = self.tau if duration is True else duration
 
         # coefficients
         coeff, coeff0 = precession_operator(tau, g)
