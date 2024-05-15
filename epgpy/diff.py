@@ -3,7 +3,7 @@ import itertools
 import abc
 import logging
 import numpy as np
-from . import statematrix, operator, evolution, common
+from . import operator, common, probe
 
 LOGGER = logging.getLogger(__name__)
 
@@ -329,7 +329,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
 # Probe operators for Jacobian/Hessian
 
-class Jacobian(operators.Probe):
+class Jacobian(probe.Probe):
     """simplified probe operator for getting 1st derivatives"""
 
     def __init__(self, variables, *, probe="F0"):
@@ -360,7 +360,7 @@ class Jacobian(operators.Probe):
         return common.asnumpy(arrays)  # copy
 
 
-class Hessian(operators.Probe):
+class Hessian(probe.Probe):
     """simplified probe operator for getting 2nd derivatives"""
 
     def __init__(self, variables1, variables2=None, *, probe="F0"):
