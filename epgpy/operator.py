@@ -80,9 +80,9 @@ class Operator(abc.ABC):
     def __mul__(self, other):
         """return MultiOperator operator"""
         return Operator.from_list([self, other])
-
-    def __call__(self, sm, *, inplace=False):
-        """apply operator"""
+    
+    def prepare(self, sm, inplace=False):
+        """ check, resize and copy state matrix"""
 
         if not isinstance(sm, statematrix.StateMatrix):
             # check type
@@ -93,7 +93,8 @@ class Operator(abc.ABC):
             raise ValueError(
                 f"Incompatible StateMatrix and operator shapes: {sm.shape}, {self.shape}"
             )
-
+        
+        # make new state matrix ?
         if not inplace or not sm.writeable:
             sm = sm.copy()
 
@@ -101,9 +102,20 @@ class Operator(abc.ABC):
             # check ndims
             sm.expand(self.ndim)
 
+        return sm    
+
+    def __call__(self, sm, *, inplace=False):
+        """apply operator"""
+
+        # check and resize state matrix
+        sm = self.prepare(sm, inplace=inplace)
+
         # apply
         sm = self._apply(sm)
         return sm
+    
+
+        
 
 
 #
