@@ -3,6 +3,65 @@ import itertools
 import numpy as np
 from epgpy import statematrix, common, transition, shift
 
+def test_arraycollection_class():
+    coll = statematrix.ArrayCollection()
+    
+    def array(*shape):
+        return np.arange(np.prod(shape)).reshape(shape)
+
+    coll.set('arr1', array(2, 3))
+    assert 'arr1' in coll
+
+    assert coll.shape == (2, 3)
+    assert coll.get('arr1').shape == (2, 3)
+
+    # fixed axis
+    coll.set('arr2', array(3, 4), layout=(..., 4))
+    assert coll.shape == (2, 3)
+    assert coll.get('arr1').shape == (2, 3)
+    assert coll.get('arr2').shape == (2, 3, 4)
+
+    with pytest.raises(ValueError):
+        coll.set('arr2', array(3, 5))
+
+    # free axis
+    coll.set('arr3', array(2, 1, 5), layout=(..., None))
+    assert coll.shape == (2, 3)
+    assert coll.get('arr1').shape == (2, 3)
+    assert coll.get('arr2').shape == (2, 3, 4)
+    assert coll.get('arr3').shape == (2, 3, 5)
+
+    coll.set('arr3', array(2, 1, 6))
+    assert coll.get('arr3').shape == (2, 3, 6)
+
+    # shared axis
+    coll.set('arr4', array(2, 1, 4), layout=(..., 'ax'))
+    coll.set('arr5', array(4, 3), layout=('ax', ...))
+    assert coll.get('arr1').shape == (2, 3)
+    assert coll.get('arr4').shape == (2, 3, 4)
+    assert coll.get('arr5').shape == (4, 2, 3)
+
+    with pytest.raises(ValueError):
+        coll.set('arr5', array(5, 3))
+
+    # resize
+    coll.resize('ax', 6)    
+    assert coll.get('arr4').shape == (2, 3, 6)
+    assert coll.get('arr5').shape == (6, 2, 3)
+
+    # expand
+    coll.set('arr6', array(5, 1, 1))
+    assert coll.shape == (5, 2, 3)
+    assert coll.get('arr1').shape == (5, 2, 3)
+    
+    # pop
+    coll.pop('arr6')
+    assert not 'arr6' in coll
+    assert coll.shape == (2, 3)
+    assert coll.get('arr1').shape == (2, 3)
+
+    
+
 
 def test_state_matrix_class():
     sm = statematrix.StateMatrix(init=[0, 0, 1])

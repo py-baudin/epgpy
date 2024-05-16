@@ -7,11 +7,6 @@ from . import operator, common, probe
 
 LOGGER = logging.getLogger(__name__)
 
-""" TODO
-- refactor derive1/2
-
-"""
-
 
 class DiffOperator(operator.Operator, abc.ABC):
     """ Differential Operator
@@ -25,12 +20,12 @@ class DiffOperator(operator.Operator, abc.ABC):
 
 
     @abc.abstractmethod
-    def _derive1(self, param, sm):
+    def _derive1(self, sm, param):
         """ TO IMPLEMENT """
         pass
 
     @abc.abstractmethod
-    def _derive2(self, params, sm):
+    def _derive2(self, sm, params):
         """ TO IMPLEMENT """
         pass
 
@@ -75,18 +70,19 @@ class DiffOperator(operator.Operator, abc.ABC):
             + list(self.coeffs1.get(v2, []))
         }
 
-    def derive1(self, param, sm):
+    def derive1(self, sm, param):
         """apply 1st order differential operator w/r to parameter `param` """
         sm = self.prepare(sm, inplace=False)
-        sm_d1 = self._derive1(param, sm)
-        sm_d1._equilibrium *= 0  # remove equilibrium
+        sm_d1 = self._derive1(sm, param)
+        breakpoint()
+        sm_d1.equilibrium *= 0  # remove equilibrium
         return sm_d1
 
-    def derive2(self, params, sm):
+    def derive2(self, sm, params):
         """apply 2nd order differential operator w/r to parameters pair `params` """
         sm = self.prepare(sm, inplace=False)
-        sm_d2 = self._derive2(params, sm)
-        sm_d2._equilibrium *= 0  # remove equilibrium
+        sm_d2 = self._derive2(sm, params)
+        sm_d2.equilibrium *= 0  # remove equilibrium
         return sm_d2
 
     def __call__(self, sm, *, inplace=False):
@@ -135,7 +131,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         # 1st order derivatives
         # {var1: {param1: dparam1/dvar1, param2: dparam2/dvar1}, var2: ...}
-        parameters = set(self.parameters)
+        parameters = set(self.PARAMETERS)
 
         if isinstance(order1, str):
             # single variable
@@ -242,7 +238,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         # apply operator to previous 1st-order partials
         order1_previous = {var: self(order1[var]) for var in order1}
         # apply derived opertors to previous element
-        order1_partials = {param: self.derive1(param, sm) for param in parameters}
+        order1_partials = {param: self.derive1(sm, param) for param in parameters}
         # combine_partials partial derivatives
         order1_current = combine_partials(self.coeffs1, order1_partials)
         # if inplace:
@@ -276,14 +272,14 @@ class DiffOperator(operator.Operator, abc.ABC):
             if {v1, v2} <= set(self.coeffs1)
         }
         pairs = {pair for pairs in gradient2.values() for pair in pairs}
-        order2_partials = {pair: self.derive2(pair, sm) for pair in pairs}
+        order2_partials = {pair: self.derive2(sm, pair) for pair in pairs}
         order2_current = combine_partials(gradient2, order2_partials)
 
         # add non-zero 2nd order parameter derivatives (generally none)
         order2_params = {param for pair in self.coeffs2 for param in self.coeffs2[pair]}
         order2_params = combine_partials(
             {frozenset(pair): self.coeffs2[pair] for pair in self.coeffs2},
-            {param: self.derive1(param, sm) for param in order2_params},
+            {param: self.derive1(sm, param) for param in order2_params},
         )
 
         # cross derivatives
@@ -303,7 +299,7 @@ class DiffOperator(operator.Operator, abc.ABC):
                 for v1 in variables_current
                 if frozenset((v1, v2)) in order2_pairs
             }
-            _partials = {param: self.derive1(param, order1[v2]) for param in parameters}
+            _partials = {param: self.derive1(order1[v2], param) for param in parameters}
             _cross12 = combine_partials(gradient12, _partials)
             # repeat if it's twice the same variable
             _cross11 = {pair: _cross12[pair] for pair in _cross12 if len(pair) == 1}

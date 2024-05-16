@@ -1,118 +1,127 @@
 """ unittest for epgpy.diff """
 import pytest
 import numpy as np
-from epgpy import core, diff, common
+from epgpy import statematrix, diff
 
 
 def test_parse_partials():
-    class Op:
-        parameters = ["x", "y"]
 
-        def __repr__(self):
-            return "op"
+    class Op(diff.DiffOperator):
+        PARAMETERS = ["x", "y"]
+        def _apply(self, sm): pass
+        def _derive1(self, *args): pass
+        def _derive2(self, sm, params): pass
+        def __repr__(self): return "op"
 
+    # dummy operator
     op = Op()
 
-    partials1, partials2 = diff._parse_partials(op)
-    assert not partials1 and not partials2
+    coeffs1, coeffs2 = op._parse_partials()
+    assert not coeffs1 and not coeffs2
 
-    partials1, partials2 = diff._parse_partials(op, gradient=True)
-    assert not partials2
-    assert partials1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
+    coeffs1, coeffs2 = op._parse_partials(order1=True)
+    assert not coeffs2
+    assert coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
 
-    partials1, partials2 = diff._parse_partials(op, gradient="x")
-    assert not partials2
-    assert partials1 == {(op, "x"): {"x": 1}}
+    coeffs1, coeffs2 = op._parse_partials(order1="x")
+    assert not coeffs2
+    assert coeffs1 == {(op, "x"): {"x": 1}}
 
-    partials1, partials2 = diff._parse_partials(op, gradient={"z": {"x": 2, "y": 3}})
-    assert not partials2
-    assert partials1 == {"z": {"x": 2, "y": 3}}
-
-    with pytest.raises(ValueError):
-        diff._parse_partials(op, gradient="unknown")
+    coeffs1, coeffs2 = op._parse_partials(order1={"z": {"x": 2, "y": 3}})
+    assert not coeffs2
+    assert coeffs1 == {"z": {"x": 2, "y": 3}}
 
     with pytest.raises(ValueError):
-        diff._parse_partials(op, gradient={"z": {"unknown": 1}})
+        op._parse_partials(order1="unknown")
 
-    partials1, partials2 = diff._parse_partials(op, hessian=True)
-    assert partials1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
-    assert partials2 == {
+    with pytest.raises(ValueError):
+        op._parse_partials(order1={"z": {"unknown": 1}})
+
+    coeffs1, coeffs2 = op._parse_partials(order2=True)
+    assert coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
+    assert coeffs2 == {
         ((op, "x"), (op, "x")): {},
         ((op, "x"), (op, "y")): {},
         ((op, "y"), (op, "y")): {},
     }
 
-    partials1, partials2 = diff._parse_partials(op, hessian="x")
-    assert partials1 == {(op, "x"): {"x": 1}}
-    assert partials2 == {((op, "x"), (op, "x")): {}}
+    coeffs1, coeffs2 = op._parse_partials(order2="x")
+    assert coeffs1 == {(op, "x"): {"x": 1}}
+    assert coeffs2 == {((op, "x"), (op, "x")): {}}
 
-    partials1, partials2 = diff._parse_partials(
-        op,
-        gradient={"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}},
-        hessian={("foo", "bar"): {"x": 2, "y": 3}},
+    coeffs1, coeffs2 = op._parse_partials(
+        order1={"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}},
+        order2={("foo", "bar"): {"x": 2, "y": 3}},
     )
-    assert partials1 == {"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}}
-    assert partials2 == {("foo", "bar"): {"x": 2, "y": 3}}
+    assert coeffs1 == {"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}}
+    assert coeffs2 == {("foo", "bar"): {"x": 2, "y": 3}}
 
     with pytest.raises(ValueError):
-        diff._parse_partials(op, hessian={("foo", "bar"): {"x": 2, "y": 3}})
+        op._parse_partials(order2={("foo", "bar"): {"x": 2, "y": 3}})
 
 
-def test_diffoperator_class():
-    class MyOp(diff.DiffOperator):
-        """dummy operator"""
+def test_order12():
+    """ Test order 1 and 2 partials"""
 
-        parameters = ["x", "y"]
-
-        def _apply(self, sm):
-            return sm
-
-        def _derive1(self, variable, sm):
-            coeff = {"x": 2, "y": 3}[variable]
-            return coeff * sm
-
-        def _derive2(self, pair, sm):
+    class Op(diff.DiffOperator):
+        PARAMETERS = ["x", "y"]
+        def _apply(self, sm): return sm
+        def _derive1(self, sm, param):
+            op1 = {'x': 2, 'y': 3}[param]
+            return op1 * sm
+        def _derive2(self, sm, pair): 
             pair = tuple(sorted(pair))
-            coeff = {("x", "x"): 4, ("x", "y"): 5, ("y", "y"): 6}[pair]
-            return coeff * sm
+            op2 = {("x", "x"): 4, ("x", "y"): 5, ("y", "y"): 6}[pair]
+            return op2 * sm
 
-    op = MyOp(gradient=True)
-    assert op.partials1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
-    assert not op.partials2
-    assert op.diff1 == {"x", "y"}
+    # order 1
+    op = Op(order1=True)
+    assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
+    assert not op.coeffs2
+    assert op.parameters_order1 == {"x", "y"}
 
-    sm0 = core.StateMatrix([[[0, 0, 1]], [[1, 1, 0]], [[1 + 1j, 1 - 1j, 0]]])
+    # nd state matrix
+    sm0 = statematrix.StateMatrix([[[0, 0, 1]], [[1, 1, 0]], [[1 + 1j, 1 - 1j, 0]]])
+    # apply operator
     sm = op(sm0)
-    assert np.allclose(sm.states, sm0.states)
-    assert {(op, "x"), (op, "y")} == set(sm.gradient)
-    assert np.allclose(sm.gradient[(op, "x")], 2 * sm0.states)
-    assert np.allclose(sm.gradient[(op, "y")], 3 * sm0.states)
+    assert np.allclose(sm.states, sm0.states) # sm is unchanged
+    assert {(op, "x"), (op, "y")} == set(sm.order1) # order1 partials were computed
+    assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
+    assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
 
-    op = MyOp(hessian=True)
-    assert op.partials1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
-    assert op.partials2 == {
+    # order 2
+    op = Op(order2=True)
+    # order 1 is filled by default
+    assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}} 
+    assert op.coeffs2 == {
         ((op, "x"), (op, "x")): {},
         ((op, "x"), (op, "y")): {},
         ((op, "y"), (op, "y")): {},
     }
-    assert op.diff1 == {"x", "y"}
-    assert op.diff2 == {"x", "y"}
-
+    assert op.parameters_order1 == {"x", "y"}
+    assert op.parameters_order2 == {"x", "y"}
+    # apply operator
     sm = op(sm0)
-    assert np.allclose(sm.states, sm0.states)
-    assert {(op, "x"), (op, "y")} == set(sm.gradient)
-    assert np.allclose(sm.gradient[(op, "x")], 2 * sm0.states)
-    assert np.allclose(sm.gradient[(op, "y")], 3 * sm0.states)
-    assert np.allclose(sm.hessian[(op, "x"), (op, "x")], 4 * sm0.states)
-    assert np.allclose(sm.hessian[(op, "x"), (op, "y")], 5 * sm0.states)
-    assert np.allclose(sm.hessian[(op, "y"), (op, "y")], 6 * sm0.states)
+    assert np.allclose(sm.states, sm0.states) # sm is unchanged
+    # order1 partials were computed
+    assert {(op, "x"), (op, "y")} == set(sm.order1)
+    # order2 partials were computed
+    assert {((op, "x"), (op, "x")), ((op, "x"), (op, "y")), ((op, "y"), (op, "y"))} == set(sm.order2)
+    assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
+    assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
+    assert np.allclose(sm.order2[(op, "x"), (op, "x")], 4 * sm0.states)
+    assert np.allclose(sm.order2[(op, "x"), (op, "y")], 5 * sm0.states)
+    assert np.allclose(sm.order2[(op, "y"), (op, "y")], 6 * sm0.states)
 
-    # custom combination of partial derivatives
-    op = MyOp(gradient={"a": {"x": 0.1, "y": 0.2}}, hessian={("a", "a"): {"x": 0.3}})
+    # Arbitrary variable `a`
+    op = Op(order1={"a": {"x": 0.1, "y": 0.2}}, order2={("a", "a"): {"x": 0.3}})
+    assert op.parameters_order1 == {'x', 'y'}
+    assert op.parameters_order2 == {'x'}
+    # apply operator
     sm = op(sm0)
-    assert np.allclose(sm.gradient["a"], (0.1 * 2 + 0.2 * 3) * sm0.states)
+    assert np.allclose(sm.order1["a"], (0.1 * 2 + 0.2 * 3) * sm0.states)
     assert np.allclose(
-        sm.hessian[("a", "a")],
+        sm.order2[("a", "a")],
         (4 * 0.1 ** 2 + 2 * 5 * 0.1 * 0.2 + 6 * 0.2 ** 2 + 0.3 * 2) * sm0.states,
     )
 
@@ -126,36 +135,36 @@ def test_diff_E_class():
     T2 = 1e2
     g = 1e-1
 
-    E = diff.E(tau, T1, T2, g=g, gradient=True)
+    E = diff.E(tau, T1, T2, g=g, order1=True)
     sm = E._apply(sm0.copy())
 
-    # gradient w/r tau
-    E_tau = diff.E(tau + 1e-8, T1, T2, g=g, gradient=True)
+    # order1 w/r tau
+    E_tau = diff.E(tau + 1e-8, T1, T2, g=g, order1=True)
     fdiff = (E_tau._apply(sm0.copy()).states - sm.states) * 1e8
     sm_tau = E._derive1("tau", sm0.copy())
     assert np.allclose(sm_tau.states, fdiff)
 
-    # gradient w/r T1
-    E_T1 = diff.E(tau, T1 + 1e-8, T2, g=g, gradient=True)
+    # order1 w/r T1
+    E_T1 = diff.E(tau, T1 + 1e-8, T2, g=g, order1=True)
     fdiff = (E_T1._apply(sm0.copy()).states - sm.states) * 1e8
     sm_T1 = E._derive1("T1", sm0.copy())
     assert np.allclose(sm_T1.states, fdiff)
 
-    # gradient w/r T2
-    E_T2 = diff.E(tau, T1, T2 + 1e-8, g=g, gradient=True)
+    # order1 w/r T2
+    E_T2 = diff.E(tau, T1, T2 + 1e-8, g=g, order1=True)
     fdiff = (E_T2._apply(sm0.copy()).states - sm.states) * 1e8
     sm_T2 = E._derive1("T2", sm0.copy())
     assert np.allclose(sm_T2.states, fdiff)
 
-    # gradient w/r g
-    E_g = diff.E(tau, T1, T2, g=g + 1e-8, gradient=True)
+    # order1 w/r g
+    E_g = diff.E(tau, T1, T2, g=g + 1e-8, order1=True)
     fdiff = (E_g._apply(sm0.copy()).states - sm.states) * 1e8
     sm_g = E._derive1("g", sm0.copy())
     assert np.allclose(sm_g.states, fdiff)
 
     #
     # 2nd order
-    E = diff.E(tau, T1, T2, g=g, hessian=True)
+    E = diff.E(tau, T1, T2, g=g, order2=True)
 
     fdiff = (E_tau._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
     assert np.allclose(E._derive2(("tau", "tau"), sm0.copy()).states, fdiff)
@@ -195,27 +204,27 @@ def test_diff_E_class():
 
 
 def test_diff_T_class():
-    T = diff.T(90, 90, gradient=True)
+    T = diff.T(90, 90, order1=True)
 
     # init state
     # sm0 = core.StateMatrix([[1 + 1j, 0, 0], [0, 0, 1], [0, 1 - 1j, 0]])
     sm0 = core.StateMatrix([[[0, 0, 1]], [[1, 1, 0]], [[1 + 1j, 1 - 1j, 0]]])
     sm = T._apply(sm0.copy())
 
-    # gradient w/r alpha
-    T_alpha = diff.T(90 + 1e-8, 90, gradient=True)
+    # order1 w/r alpha
+    T_alpha = diff.T(90 + 1e-8, 90, order1=True)
     fdiff = (T_alpha._apply(sm0.copy()).states - sm.states) * 1e8
     dsm_alpha = T._derive1("alpha", sm0.copy())
     assert np.allclose(dsm_alpha.states, fdiff)
 
-    # gradient w/r phi
-    T_phi = diff.T(90, 90 + 1e-8, gradient=True)
+    # order1 w/r phi
+    T_phi = diff.T(90, 90 + 1e-8, order1=True)
     fdiff = (T_phi._apply(sm0.copy()).states - sm.states) * 1e8
     dsm_phi = T._derive1("phi", sm0.copy())
     assert np.allclose(dsm_phi.states, fdiff)
 
     # 2nd derivatives
-    T = diff.T(90, 90, hessian=True)
+    T = diff.T(90, 90, order2=True)
     fdiff2 = (T_alpha._derive1("alpha", sm0.copy()).states - dsm_alpha.states) * 1e8
     assert np.allclose(fdiff2, T._derive2(("alpha", "alpha"), sm0.copy()).states)
 
@@ -231,8 +240,8 @@ def test_diff_T_class():
 
 def test_diff_chain():
     excit = diff.T(90, 90, name="excit")
-    refoc = diff.T(150, 0, gradient="alpha", name="refoc")
-    relax = diff.E(5, 1e3, 35, gradient="T2", name="relax")
+    refoc = diff.T(150, 0, order1="alpha", name="refoc")
+    relax = diff.E(5, 1e3, 35, order1="T2", name="relax")
     grad = diff.S(1, name="grad")
     necho = 5
     spinecho = [excit] + [grad, relax, refoc, grad, relax] * necho
@@ -263,11 +272,11 @@ def test_diff_chain():
     # compare to finite difference
     key_T2 = (relax, "T2")
     assert np.allclose(
-        (sm_T2.states - sm.states) * 1e8, sm.gradient[key_T2].states, atol=1e-7
+        (sm_T2.states - sm.states) * 1e8, sm.order1[key_T2].states, atol=1e-7
     )
     key_alpha = (refoc, "alpha")
     assert np.allclose(
-        (sm_alpha.states - sm.states) * 1e8, sm.gradient[key_alpha].states, atol=1e-7
+        (sm_alpha.states - sm.states) * 1e8, sm.order1[key_alpha].states, atol=1e-7
     )
 
     # using simulate
@@ -279,8 +288,8 @@ def test_diff_chain():
         probe=probe,
     )
     assert np.allclose(signal[-1], sm.F0)
-    assert np.allclose(gradT2[-1], sm.gradient[key_T2].F0)
-    assert np.allclose(gradalpha[-1], sm.gradient[key_alpha].F0)
+    assert np.allclose(gradT2[-1], sm.order1[key_T2].F0)
+    assert np.allclose(gradalpha[-1], sm.order1[key_alpha].F0)
 
 
 def test_diff2_chain():
@@ -288,15 +297,15 @@ def test_diff2_chain():
     alpha, phi = 20, 90
     tau, T1, T2 = 5, 1e3, 30
 
-    pulse = diff.T(alpha, phi, name="pulse", gradient=True, hessian="alpha")
-    relax = diff.E(tau, T1, T2, name="relax", hessian="T2")
+    pulse = diff.T(alpha, phi, name="pulse", order1=True, order2="alpha")
+    relax = diff.E(tau, T1, T2, name="relax", order2="T2")
     grad = diff.S(1, name="grad")
     necho = 5
     seq = [pulse, relax, grad] * necho
 
     # finite difference operators
-    _pulse = diff.T(alpha + 1e-8, phi, gradient="alpha")
-    _relax = diff.E(tau, T1, T2 + 1e-8, gradient="T2")
+    _pulse = diff.T(alpha + 1e-8, phi, order1="alpha")
+    _relax = diff.E(tau, T1, T2 + 1e-8, order1="T2")
 
     # simulate
     sm = core.StateMatrix([0, 0, 1])
@@ -309,59 +318,59 @@ def test_diff2_chain():
 
     # alpha: compare to finite difference
     fdiff1 = (sm_alpha.states - sm.states) * 1e8
-    assert np.allclose(fdiff1, sm.gradient[(pulse, "alpha")])
+    assert np.allclose(fdiff1, sm.order1[(pulse, "alpha")])
 
     fdiff2 = (
-        sm_alpha.gradient[(_pulse, "alpha")].states
-        - sm.gradient[(pulse, "alpha")].states
+        sm_alpha.order1[(_pulse, "alpha")].states
+        - sm.order1[(pulse, "alpha")].states
     ) * 1e8
-    assert np.allclose(fdiff2, sm.hessian[((pulse, "alpha"), (pulse, "alpha"))].states)
-    F0_alpha_alpha = sm.hessian[((pulse, "alpha"), (pulse, "alpha"))].F0
+    assert np.allclose(fdiff2, sm.order2[((pulse, "alpha"), (pulse, "alpha"))].states)
+    F0_alpha_alpha = sm.order2[((pulse, "alpha"), (pulse, "alpha"))].F0
 
     # T2: compare to finite difference
     fdiff1 = (sm_T2.states - sm.states) * 1e8
-    assert np.allclose(fdiff1, sm.gradient[(relax, "T2")])
+    assert np.allclose(fdiff1, sm.order1[(relax, "T2")])
 
     fdiff2 = (
-        sm_T2.gradient[(_relax, "T2")].states - sm.gradient[(relax, "T2")].states
+        sm_T2.order1[(_relax, "T2")].states - sm.order1[(relax, "T2")].states
     ) * 1e8
-    assert np.allclose(fdiff2, sm.hessian[((relax, "T2"), (relax, "T2"))].states)
-    F0_T2_T2 = sm.hessian[((relax, "T2"), (relax, "T2"))].F0
+    assert np.allclose(fdiff2, sm.order2[((relax, "T2"), (relax, "T2"))].states)
+    F0_T2_T2 = sm.order2[((relax, "T2"), (relax, "T2"))].F0
 
     # T2/alpha
     fdiff2 = (
-        sm_T2.gradient[(pulse, "alpha")].states - sm.gradient[(pulse, "alpha")].states
+        sm_T2.order1[(pulse, "alpha")].states - sm.order1[(pulse, "alpha")].states
     ) * 1e8
-    assert np.allclose(fdiff2, sm.hessian[((relax, "T2"), (pulse, "alpha"))].states)
-    assert np.allclose(fdiff2, sm.hessian[((pulse, "alpha"), (relax, "T2"))].states)
+    assert np.allclose(fdiff2, sm.order2[((relax, "T2"), (pulse, "alpha"))].states)
+    assert np.allclose(fdiff2, sm.order2[((pulse, "alpha"), (relax, "T2"))].states)
     # alpha/T2
     fdiff2 = (
-        sm_alpha.gradient[(relax, "T2")].states - sm.gradient[(relax, "T2")].states
+        sm_alpha.order1[(relax, "T2")].states - sm.order1[(relax, "T2")].states
     ) * 1e8
-    assert np.allclose(fdiff2, sm.hessian[((relax, "T2"), (pulse, "alpha"))].states)
-    F0_alpha_T2 = sm.hessian[((pulse, "alpha"), (relax, "T2"))].F0
+    assert np.allclose(fdiff2, sm.order2[((relax, "T2"), (pulse, "alpha"))].states)
+    F0_alpha_T2 = sm.order2[((pulse, "alpha"), (relax, "T2"))].F0
 
     # using simulate
     probe = [
-        lambda sm: sm.hessian[((pulse, "alpha"), (pulse, "alpha"))].F0,
-        lambda sm: sm.hessian[((pulse, "alpha"), (relax, "T2"))].F0,
-        lambda sm: sm.hessian[((relax, "T2"), (relax, "T2"))].F0,
+        lambda sm: sm.order2[((pulse, "alpha"), (pulse, "alpha"))].F0,
+        lambda sm: sm.order2[((pulse, "alpha"), (relax, "T2"))].F0,
+        lambda sm: sm.order2[((relax, "T2"), (relax, "T2"))].F0,
     ]
-    hessian = core.simulate(
+    order2 = core.simulate(
         seq + [core.ADC],
         probe=probe,
         squeeze=False,  # tmp
     )
-    assert np.isclose(hessian[0], F0_alpha_alpha)
-    assert np.isclose(hessian[1], F0_alpha_T2)
-    assert np.isclose(hessian[2], F0_T2_T2)
+    assert np.isclose(order2[0], F0_alpha_alpha)
+    assert np.isclose(order2[1], F0_alpha_T2)
+    assert np.isclose(order2[2], F0_T2_T2)
 
 
 def test_A_combine():
     """test combining B operators"""
-    E = diff.E(5, 1e2, 5e2, g=1e-1, gradient="T2", name="E")
-    Ta = diff.T(15, 90, gradient={"b1": {"alpha": 15}, "phi": {"phi": 1}}, name="Ta")
-    Tb = diff.T(20, 90, gradient={"b1": {"alpha": 20}, "phi": {"phi": 1}}, name="Tb")
+    E = diff.E(5, 1e2, 5e2, g=1e-1, order1="T2", name="E")
+    Ta = diff.T(15, 90, order1={"b1": {"alpha": 15}, "phi": {"phi": 1}}, name="Ta")
+    Tb = diff.T(20, 90, order1={"b1": {"alpha": 20}, "phi": {"phi": 1}}, name="Tb")
 
     assert E.diff1 == {"T2"}
     assert Ta.diff1 == {"alpha", "phi"}
@@ -384,17 +393,17 @@ def test_A_combine():
 
     sm2 = core.StateMatrix([1, 1, 0])
     sm2 = combined(sm2)
-    # assert set(sm2.gradient) == combined.diff1
-    assert set(sm2.gradient) == set(combined.partials1)
+    # assert set(sm2.order1) == combined.diff1
+    assert set(sm2.order1) == set(combined.coeffs1)
 
     assert np.allclose(sm1.states, sm2.states)
-    for partial in combined.partials1:
-        assert np.allclose(sm1.gradient[partial].states, sm2.gradient[partial])
+    for partial in combined.coeffs1:
+        assert np.allclose(sm1.order1[partial].states, sm2.order1[partial])
 
     # 2nd order combine
-    E = diff.E(5, 1e2, 5e2, g=1e-1, hessian="T2", name="E")
-    Ta = diff.T(15, 90, hessian=True, name="Ta")
-    Tb = diff.T(20, 90, hessian=True, name="Tb")
+    E = diff.E(5, 1e2, 5e2, g=1e-1, order2="T2", name="E")
+    Ta = diff.T(15, 90, order2=True, name="Ta")
+    Tb = diff.T(20, 90, order2=True, name="Tb")
 
     assert E.diff2 == {"T2"}
     assert E.auto_cross_derivatives
@@ -423,18 +432,18 @@ def test_A_combine():
     sm2 = core.StateMatrix([1, 1, 0])
     sm2 = combined(sm2)
 
-    assert set(sm2.gradient) == set(sm1.gradient)
-    for var in sm1.gradient:
-        assert np.allclose(sm1.gradient[var].states, sm2.gradient[var].states)
+    assert set(sm2.order1) == set(sm1.order1)
+    for var in sm1.order1:
+        assert np.allclose(sm1.order1[var].states, sm2.order1[var].states)
 
-    assert set(sm2.hessian) == set(sm1.hessian)
-    for pair in sm1.hessian:
-        assert np.allclose(sm1.hessian[pair].states, sm2.hessian[pair].states)
+    assert set(sm2.order2) == set(sm1.order2)
+    for pair in sm1.order2:
+        assert np.allclose(sm1.order2[pair].states, sm2.order2[pair].states)
 
 
 def test_combine_2():
-    E = diff.E(10, 1e3, 35, hessian=["T1", "T2"], name="E")
-    T = diff.T(150, 0, hessian=["alpha"], name="T")
+    E = diff.E(10, 1e3, 35, order2=["T1", "T2"], name="E")
+    T = diff.T(150, 0, order2=["alpha"], name="T")
 
     sm0 = core.StateMatrix([1, 1, 0])
     sm1 = E(T(E(sm0)))
@@ -443,13 +452,13 @@ def test_combine_2():
     sm2 = combined(sm0)
 
     assert np.allclose(sm1.states, sm2.states)
-    assert set(sm1.gradient) == set(sm2.gradient)
-    for var in sm1.gradient:
-        assert np.allclose(sm1.gradient[var], sm2.gradient[var])
-    assert set(sm1.hessian) == set(sm2.hessian)
-    pairs = list(sm1.hessian)
-    for var in sm1.hessian:
-        assert np.allclose(sm1.hessian[var], sm2.hessian[var])
+    assert set(sm1.order1) == set(sm2.order1)
+    for var in sm1.order1:
+        assert np.allclose(sm1.order1[var], sm2.order1[var])
+    assert set(sm1.order2) == set(sm2.order2)
+    pairs = list(sm1.order2)
+    for var in sm1.order2:
+        assert np.allclose(sm1.order2[var], sm2.order2[var])
 
     # repeat combined
     sm1 = E(T(E(sm0)))
@@ -460,20 +469,20 @@ def test_combine_2():
     sm2 = combined2(sm0)
 
     assert np.allclose(sm1.states, sm2.states)
-    assert set(sm1.gradient) == set(sm2.gradient)
-    for var in sm1.gradient:
-        assert np.allclose(sm1.gradient[var], sm2.gradient[var])
-    assert set(sm1.hessian) == set(sm2.hessian)
-    pairs = list(sm1.hessian)
-    for var in sm1.hessian:
-        assert np.allclose(sm1.hessian[var], sm2.hessian[var])
+    assert set(sm1.order1) == set(sm2.order1)
+    for var in sm1.order1:
+        assert np.allclose(sm1.order1[var], sm2.order1[var])
+    assert set(sm1.order2) == set(sm2.order2)
+    pairs = list(sm1.order2)
+    for var in sm1.order2:
+        assert np.allclose(sm1.order2[var], sm2.order2[var])
 
 
 def test_jacobian_class():
     # jacobian probe
     necho = 5
-    rf = diff.T(15, 90, gradient=["alpha"])
-    relax = diff.E(5, 1e3, 30, gradient=["T2"])
+    rf = diff.T(15, 90, order1=["alpha"])
+    relax = diff.E(5, 1e3, 30, order1=["T2"])
     shift = diff.S(1)
     adc = core.ADC
 
@@ -494,31 +503,31 @@ def test_jacobian_class():
 
     jac1, jac2, jac3 = core.simulate(seq, probe=probes)
     assert jac1.shape == (5, 1, 1)  # alpha
-    assert np.allclose(jac1[-1], sm.gradient[(rf, "alpha")].F0)
+    assert np.allclose(jac1[-1], sm.order1[(rf, "alpha")].F0)
 
     assert jac2.shape == (5, 2, 1)  # alpha, T2
-    assert np.allclose(jac2[-1, 0], sm.gradient[(rf, "alpha")].F0)
-    assert np.allclose(jac2[-1, 1], sm.gradient[(relax, "T2")].F0)
+    assert np.allclose(jac2[-1, 0], sm.order1[(rf, "alpha")].F0)
+    assert np.allclose(jac2[-1, 1], sm.order1[(relax, "T2")].F0)
 
     assert jac3.shape == (5, 2, 1)  # magnitude, alpha
     assert np.allclose(jac3[-1, 0], sm.F0)
-    assert np.allclose(jac3[-1, 1], sm.gradient[(rf, "alpha")].F0)
+    assert np.allclose(jac3[-1, 1], sm.order1[(rf, "alpha")].F0)
 
 
 def test_hessian_class():
-    # hessian probe
+    # order2 probe
     necho = 5
-    rf = diff.T(15, 90, hessian=["alpha"], name="T")
-    relax = diff.E(5, 1e3, 30, hessian=["T2"], name="E")
+    rf = diff.T(15, 90, order2=["alpha"], name="T")
+    relax = diff.E(5, 1e3, 30, order2=["T2"], name="E")
     shift = diff.S(1, name="S")
     adc = core.ADC
 
     seq = [rf, relax, shift, adc] * necho
 
     probes = [
-        diff.Hessian((rf, "alpha")),
-        diff.Hessian([(rf, "alpha"), (relax, "T2")]),
-        diff.Hessian(["magnitude", (rf, "alpha")], (relax, "T2")),
+        diff.order2((rf, "alpha")),
+        diff.order2([(rf, "alpha"), (relax, "T2")]),
+        diff.order2(["magnitude", (rf, "alpha")], (relax, "T2")),
     ]
 
     sm = core.StateMatrix()
@@ -531,35 +540,35 @@ def test_hessian_class():
     hes1, hes2, hes3 = core.simulate(seq, probe=probes, squeeze=False)
 
     assert hes1.shape == (necho, 1, 1, 1)  # alpha
-    assert np.allclose(hes1[-1, 0, 0], sm.hessian[((rf, "alpha"), (rf, "alpha"))].F0)
+    assert np.allclose(hes1[-1, 0, 0], sm.order2[((rf, "alpha"), (rf, "alpha"))].F0)
 
     assert hes2.shape == (necho, 2, 2, 1)  # alpha, T2
-    assert np.allclose(hes2[-1, 0, 0], sm.hessian[((rf, "alpha"), (rf, "alpha"))].F0)
-    assert np.allclose(hes2[-1, 0, 1], sm.hessian[((relax, "T2"), (rf, "alpha"))].F0)
-    assert np.allclose(hes2[-1, 1, 0], sm.hessian[((rf, "alpha"), (relax, "T2"))].F0)
-    assert np.allclose(hes2[-1, 1, 1], sm.hessian[((relax, "T2"), (relax, "T2"))].F0)
+    assert np.allclose(hes2[-1, 0, 0], sm.order2[((rf, "alpha"), (rf, "alpha"))].F0)
+    assert np.allclose(hes2[-1, 0, 1], sm.order2[((relax, "T2"), (rf, "alpha"))].F0)
+    assert np.allclose(hes2[-1, 1, 0], sm.order2[((rf, "alpha"), (relax, "T2"))].F0)
+    assert np.allclose(hes2[-1, 1, 1], sm.order2[((relax, "T2"), (relax, "T2"))].F0)
 
     assert hes3.shape == (necho, 2, 1, 1)  # (magnitude, alpha) x T2
-    assert np.allclose(hes3[-1, 0, 0], sm.gradient[(relax, "T2")].F0)  # magnitude
-    assert np.allclose(hes3[-1, 1, 0], sm.hessian[((rf, "alpha"), (relax, "T2"))].F0)
+    assert np.allclose(hes3[-1, 0, 0], sm.order1[(relax, "T2")].F0)  # magnitude
+    assert np.allclose(hes3[-1, 1, 0], sm.order2[((rf, "alpha"), (relax, "T2"))].F0)
 
 
 def test_partial_hessian():
-    # partial hessian
+    # partial order2
     necho = 2
     rf = diff.T(
         15,
         90,
-        gradient={"alpha": {"alpha": 1}},
-        hessian={("alpha", "T2"): {}, ("alpha", "T1"): {}},
+        order1={"alpha": {"alpha": 1}},
+        order2={("alpha", "T2"): {}, ("alpha", "T1"): {}},
         name="rf1",
     )
     relax = diff.E(
         5,
         1e3,
         30,
-        gradient={"T2": {"T2": 1}, "T1": {"T1": 1}},
-        hessian={("alpha", "T2"): {}, ("alpha", "T1"): {}},
+        order1={"T2": {"T2": 1}, "T1": {"T1": 1}},
+        order2={("alpha", "T2"): {}, ("alpha", "T1"): {}},
         name="relax1",
     )
     shift = diff.S(1, name="shift1")
@@ -571,23 +580,23 @@ def test_partial_hessian():
     for op in seq:
         sm = op(sm)
 
-    assert set(sm.hessian) == {
+    assert set(sm.order2) == {
         ("alpha", "T2"),
         ("alpha", "T1"),
         ("T1", "alpha"),
         ("T2", "alpha"),
     }
 
-    # full hessian
-    rf_ = diff.T(15, 90, hessian=True, name="rf2")
-    relax_ = diff.E(5, 1e3, 30, hessian=True, name="relax2")
+    # full order2
+    rf_ = diff.T(15, 90, order2=True, name="rf2")
+    relax_ = diff.E(5, 1e3, 30, order2=True, name="relax2")
     shift = diff.S(1, name="shift2")
     seq_ = [rf_, relax_, shift, adc] * necho
     sm2 = core.StateMatrix()
     for op in seq_:
         sm2 = op(sm2)
     assert np.allclose(
-        sm2.hessian[(rf_, "alpha"), (relax_, "T2")], sm.hessian[("alpha", "T2")]
+        sm2.order2[(rf_, "alpha"), (relax_, "T2")], sm.order2[("alpha", "T2")]
     )
 
     # finite diff
@@ -596,26 +605,26 @@ def test_partial_hessian():
     sm_ = core.StateMatrix()
     for op in seq_:
         sm_ = op(sm_)
-    fdiff = (sm_.gradient["T2"].F0 - sm.gradient["T2"].F0) * 1e8
-    assert np.allclose(fdiff, sm.hessian[("alpha", "T2")].F0)
+    fdiff = (sm_.order1["T2"].F0 - sm.order1["T2"].F0) * 1e8
+    assert np.allclose(fdiff, sm.order2[("alpha", "T2")].F0)
 
 
 def test_pruning():
     necho = 50
 
     shift = diff.S(1)
-    relax = diff.E(5, 50, 5, gradient=["T2"])
+    relax = diff.E(5, 50, 5, order1=["T2"])
     adc = core.ADC
 
     def rf(i):
-        hessian = "alpha" if i == 0 else None
-        return diff.T(5, i ** 2, hessian=hessian, name=f"T_{i:02}")
+        order2 = "alpha" if i == 0 else None
+        return diff.T(5, i ** 2, order2=order2, name=f"T_{i:02}")
 
     seq = [[rf(i), relax, adc, relax, shift] for i in range(necho)]
     variables = [(relax, "T2"), (seq[0][0], "alpha")]
 
     # no pruning
-    probe = [diff.Jacobian(variables), diff.Hessian(variables[1])]
+    probe = [diff.Jacobian(variables), diff.order2(variables[1])]
     jac1, hes1 = core.simulate(seq, probe=probe)
     assert jac1.shape == (necho, len(variables), 1)
 
