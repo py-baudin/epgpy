@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from . import common, utils  # arraycollection
+from . import common, utils, common  # arraycollection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -410,6 +410,7 @@ class ArrayCollection:
         self._namedaxes = {}
         # default shape
         self._default = (1,) if default is None else tuple(default)
+        self.xp = common.get_array_module()
 
     def __len__(self):
         return len(self._arrays)
@@ -470,7 +471,8 @@ class ArrayCollection:
 
     def set(self, name, array, *, layout=None):
         """layout = (..., None, 3, 'a')"""
-        array = np.array(array)  # copy array
+        xp = self.xp
+        array = xp.array(array)  # copy array
 
         if name in self._arrays:
             if layout is None:
@@ -547,6 +549,7 @@ class ArrayCollection:
 
     def resize(self, ax, size, *, constant=0):
         """resize named axis"""
+        xp = self.xp
         if not ax in self._namedaxes:
             raise ValueError(f"Unknown size: {ax}")
         diff = size - self._namedaxes[ax]
@@ -567,7 +570,7 @@ class ArrayCollection:
             elif diff > 0:  # padd
                 pad = [(0, 0) for _ in range(arr.ndim)]
                 pad[axis] = (diff // 2, (diff + 1) // 2)
-                arr = np.pad(arr, pad, constant_values=constant)
+                arr = xp.pad(arr, pad, constant_values=constant)
             self._arrays[name] = arr
         self._namedaxes[ax] = size
 
@@ -599,6 +602,7 @@ class ArrayCollection:
 
     def _broadcast_array(self, array, layout):
         """expand and broadcast array to shared shape"""
+        xp = self.xp
         self.check(array.shape, layout)
 
         # common shape
@@ -619,7 +623,7 @@ class ArrayCollection:
         shape[axis : axis + len(shared)] = shared
 
         if dims:
-            array = np.expand_dims(array, dims)
+            array = xp.expand_dims(array, dims)
         if tuple(shape) != array.shape:
-            array = np.broadcast_to(array, shape)
+            array = xp.broadcast_to(array, shape)
         return array
