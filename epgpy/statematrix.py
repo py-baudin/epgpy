@@ -1,7 +1,7 @@
 import logging
 
 import numpy as np
-from . import common, arraycollection, utils
+from . import common, utils  # arraycollection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class StateMatrix:
                 kgrid: grid size for shift operator
         """
         # self._collection = arraycollection.ArrayCollection(kdim=1)
-        self._collection = ArrayCollection()
+        self._collection = ArrayCollection(expand_axis=-1)
 
         if equilibrium is None:
             # use density
@@ -68,20 +68,22 @@ class StateMatrix:
             init = _format_states(init, check=check)
 
         # self._collection.set("states", init)
-        self._collection.set("states", init, layout=[..., None, 3])
-        
+        self._collection.set("states", init, layout=[..., "nstate", 3])
+
         # self._collection.set("equilibrium", equilibrium)
-        self._collection.set("equilibrium", equilibrium, layout=[..., 3])
+        self._collection.set("equilibrium", equilibrium, layout=[..., 1, 3])
         if coords is not None:
             # self._collection.set("coords", coords)
-            self._collection.set("coords", coords, layout=[..., None, None])
+            self._collection.set("coords", coords, layout=[..., "nstate", "kdim"])
         self.kvalue = kvalue
         self.tvalue = tvalue
 
         if nstate:
-            self._collection.resize_axis(2 * nstate + 1, -1)
+            # self._collection.resize_axis(2 * nstate + 1, -1)
+            self._collection.resize("nstate", 2 * nstate + 1)
         if shape:
-            self._collection.resize(tuple(shape) + (2 * self.nstate + 1,))
+            # self._collection.resize(tuple(shape) + (2 * self.nstate + 1,))
+            self._collection.broadcast(shape)
 
         # additional metadata (eg. kgrid, max_nstate)
         self.options = options
@@ -95,11 +97,12 @@ class StateMatrix:
     @states.setter
     def states(self, value):
         # self._collection.set("states", value)
-        self._collection.set("states", value, layout=[..., None, 3])
+        self._collection.set("states", value)
 
     @property
     def density(self):
-        return self.equilibrium[..., self.nstate, 2].real
+        # return self.equilibrium[..., self.nstate, 2].real
+        return self.equilibrium[..., 0, 2].real
 
     @property
     def equilibrium(self):
@@ -112,7 +115,7 @@ class StateMatrix:
 
     @coords.setter
     def coords(self, value):
-        self._collection.set("coords", value, [..., None, None])
+        self._collection.set("coords", value)
 
     @property
     def ndim(self):
@@ -276,15 +279,22 @@ class StateMatrix:
         """resize state matrix to nstate"""
         if nstate == self.nstate:
             return
-        self._collection.resize_axis(2 * nstate + 1, -1)
+        # self._collection.resize_axis(2 * nstate + 1, -1)
+        self._collection.resize("nstate", 2 * nstate + 1)
 
     def expand(self, ndim):
         """expend state matrix to n-dimensions"""
-        self._collection.expand(ndim + 1, insert_index=-1)
+        # self._collection.expand(ndim + 1, insert_index=-1)
+        diff = ndim - self._collection.ndim
+        if diff > 0:
+            self._collection.expand(diff)
 
     def reduce(self, ndim):
         """expend state matrix to n-dimensions"""
-        self._collection.reduce(ndim + 1, remove_index=-1)
+        # self._collection.reduce(ndim + 1, remove_index=-1)
+        diff = self._collection.ndim - ndim
+        if diff > 0:
+            self._collection.reduce(diff)
 
     def check(self):
         return utils.check_states(self.states)
@@ -305,7 +315,7 @@ class StateMatrix:
         else:
             coords = _setup_coords(self.nstate, kdim)
         # self._collection.set("coords", coords)
-        self._collection.set("coords", coords, layout=[..., None, None])
+        self._collection.set("coords", coords, layout=[..., "nstate", "kdim"])
 
 
 # private functions
@@ -366,95 +376,112 @@ def _setup_coords(nstate, kdim=1):
     return coords
 
 
+#
+# array collection
+
 
 class ArrayCollection:
-    """ Broadcastable arrays 
-    
-        Each array has a layout whose items define the broadcastable structure: 
-        Items:
-            None: free axis dimension 
-            <int>: fixed axis dimension 
-            Ellipsis: broadcastable axes
-            <str>: shared axis dimension 
-        
-        Example: 
-            # whole array is broadcast 
-            coll.set('arr1', arr1, [Ellipsis])
-            # last axis of arr2 is free
-            coll.set('arr2', arr2, [Ellipsis, None])
-            # first axis of arr3 is fixed with size==3
-            coll.set('arr3', arr3, [3, Ellipsis])
-            # first axis of arr4 and last axis of arr4 are shared
-            coll.set('arr4', arr4, ['ax', Ellipsis])
-            coll.set('arr5', arr5, [Ellipsis, 'ax'])
-    
+    """Broadcastable arrays
+
+    Each array has a layout whose items define the broadcastable structure:
+    Items:
+        None: free axis dimension
+        <int>: fixed axis dimension
+        Ellipsis: broadcastable axes
+        <str>: shared axis dimension
+
+    Example:
+        # whole array is broadcast
+        coll.set('arr1', arr1, [Ellipsis])
+        # last axis of arr2 is free
+        coll.set('arr2', arr2, [Ellipsis, None])
+        # first axis of arr3 is fixed with size==3
+        coll.set('arr3', arr3, [3, Ellipsis])
+        # first axis of arr4 and last axis of arr4 are shared
+        coll.set('arr4', arr4, ['ax', Ellipsis])
+        coll.set('arr5', arr5, [Ellipsis, 'ax'])
+
     """
-    def __init__(self, expand_axis=0):
+
+    def __init__(self, default=None, *, expand_axis=0):
         self._expand_axis = expand_axis
         self._layouts = {}
         self._arrays = {}
         self._namedaxes = {}
+        # default shape
+        self._default = (1,) if default is None else tuple(default)
 
     def __len__(self):
         return len(self._arrays)
-    
+
     def __repr__(self):
-        return f'ArrayCollection({len(self._arrays)})'
-    
+        return f"ArrayCollection({len(self._arrays)})"
+
     def __iter__(self):
         return iter(self._arrays)
-    
+
     def __contains__(self, name):
         return name in self._arrays
-    
+
     @property
     def ndim(self):
-        """ broadcast ndim """
-        arrays = [self._arrays[name] for name in self._arrays]
-        layouts = [self._layouts[name] for name in self._arrays]
-        ndims = [arr.ndim - len(ax) + 1 for ax, arr in zip(layouts, arrays)]
+        """broadcast ndim"""
+        layouts = [self._layouts[name] for name in self] + [(Ellipsis,)]
+        ndims = [self._arrays[name].ndim for name in self] + [len(self._default)]
+        ndims = [ndim - len(ax) + 1 for ax, ndim in zip(layouts, ndims)]
         return max(ndims + [0])
-        
+
+    @property
+    def expand_axis(self):
+        ax = self._expand_axis
+        return ax if ax >= 0 else self.ndim + ax + 1
+
     @property
     def shape(self):
-        """ broadcast shape """
-        arrays = [self._arrays[name] for name in self._arrays]
-        layouts = [self._layouts[name] for name in self._arrays]
+        """broadcast shape"""
+        layouts = [self._layouts[name] for name in self] + [(Ellipsis,)]
         indices = [list(layout).index(Ellipsis) for layout in layouts]
-        shapes = [arr.shape[idx: idx + arr.ndim - len(layout) + 1] for idx, layout, arr in zip(indices, layouts, arrays)]
+        shapes = [self._arrays[name].shape for name in self] + [self._default]
+        shapes = [
+            shape[idx : idx + len(shape) - len(layout) + 1]
+            for idx, layout, shape in zip(indices, layouts, shapes)
+        ]
         # expand shapes
-        insert = self._expand_axis
+        insert = self.expand_axis
         ndim = self.ndim
-        shapes = [shape[:insert] + (1,) * (ndim - len(shape)) + shape[insert:] for shape in shapes]
+        shapes = [
+            shape[:insert] + (1,) * (ndim - len(shape)) + shape[insert:]
+            for shape in shapes
+        ]
         # return broadcast shape
         return tuple(max(shape[i] for shape in shapes) for i in range(ndim))
 
     @property
     def axes(self):
-        """ dictionary of named axes"""
+        """dictionary of named axes"""
         return self._namedaxes
-    
+
     def get(self, name, default=None):
         if not name in self._arrays:
             return default
         layout = self._layouts[name]
-        array = self._arrays[name]        
+        array = self._arrays[name]
         return self._broadcast_array(array, layout)
-    
-    def set(self, name, array, *, layout=None):
-        """ layout = (..., None, 3, 'a') """
-        array = np.asarray(array)
 
-        if name in self._arrays: 
+    def set(self, name, array, *, layout=None):
+        """layout = (..., None, 3, 'a')"""
+        array = np.array(array)  # copy array
+
+        if name in self._arrays:
             if layout is None:
                 # keep existing layout
-                layout = self._layouts[name] 
+                layout = self._layouts[name]
             # self.pop(name)
         elif layout is None:
             layout = [Ellipsis]
 
-        self._check_array(array, layout)
-        self._arrays[name]= array
+        self.check(array.shape, layout)
+        self._arrays[name] = array
         self._layouts[name] = layout
 
     def pop(self, name, default=None):
@@ -462,18 +489,66 @@ class ArrayCollection:
             return default
         array = self._arrays.pop(name)
         for ax in self._layouts.pop(name):
-            if not  ax in self._namedaxes:
+            if not ax in self._namedaxes:
                 continue
-            if not any(ax in layout for layout in self._layouts.values()):
+            layouts = [self._layouts[name] for name in self]
+            if not any(ax in layout for layout in layouts):
                 self._namedaxes.pop(ax)
         return array
 
     # utilities
-        
+
+    def check(self, shape, layout=(...,)):
+        """check shape and layout"""
+        shape = tuple(shape)
+        axis, idx = None, 0
+        # check layout
+        for i, ax in enumerate(layout):
+            if ax is Ellipsis:
+                if axis is not None:
+                    raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+                axis = i
+                idx += len(shape) - len(layout) + 1
+            elif isinstance(ax, int):
+                if shape[idx] != ax:
+                    raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
+                idx += 1
+            elif isinstance(ax, str):
+                size = self._namedaxes.setdefault(ax, shape[idx])
+                if shape[idx] != size:
+                    raise ValueError(
+                        f"Invalid named axis dimension `{ax}` ({idx}) in array: {shape}"
+                    )
+                idx += 1
+            elif ax is None:
+                idx += 1
+        if axis is None:
+            raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+
+        # check shape
+        common = list(shape[axis : len(shape) - len(layout) + 1])
+        shared = self.shape
+        diff = len(shared) - len(common)
+
+        ax = self.expand_axis
+        if diff < 0:
+            common[ax : ax - diff] = []
+        elif diff > 0:
+            common = (
+                common[:ax]
+                + [
+                    1,
+                ]
+                * diff
+                + common[ax:]
+            )
+        if any(1 != d1 != d2 != 1 for d1, d2 in zip(common, shared)):
+            raise ValueError(f"Incompatible shape: {shape} and {shared}")
+
     def resize(self, ax, size, *, constant=0):
-        """ resize named axis """
+        """resize named axis"""
         if not ax in self._namedaxes:
-            raise ValueError(f'Unknown size: {ax}')
+            raise ValueError(f"Unknown size: {ax}")
         diff = size - self._namedaxes[ax]
         if diff == 0:
             return
@@ -485,66 +560,66 @@ class ArrayCollection:
             axis = layout.index(ax)
             if 0 <= layout.index(Ellipsis) < axis:
                 axis = arr.ndim - len(layout) + axis
-            if diff < 0: # crop
+            if diff < 0:  # crop
                 slices = [slice(None) for _ in range(arr.ndim)]
-                slices[axis] = slice(-diff//2, arr.shape[axis] - (-diff + 1)//2)
+                slices[axis] = slice(-diff // 2, arr.shape[axis] - (-diff + 1) // 2)
                 arr = arr[tuple(slices)]
-            elif diff > 0: # padd
+            elif diff > 0:  # padd
                 pad = [(0, 0) for _ in range(arr.ndim)]
                 pad[axis] = (diff // 2, (diff + 1) // 2)
                 arr = np.pad(arr, pad, constant_values=constant)
             self._arrays[name] = arr
         self._namedaxes[ax] = size
 
-    def expand(self, dims):
-        """add dimensions to all arrays"""
-        ...
-        
-    def reduce(self, dims):
-        """ remove dimension in all arrays """
-        ...
+    def expand(self, ndim):
+        """add dimensions to broadcast shape"""
+        shape = self._default
+        axis = self.expand_axis
+        ndim += self.ndim - len(shape)
+        shape = shape[axis:] + (1,) * ndim + shape[:axis]
+        self._default = tuple(shape)
+
+    def broadcast(self, shape):
+        """broadcast collection to shape"""
+        self.check(shape, [...])
+        self._default = shape
+
+    def reduce(self, ndim, *, axis=0):
+        """remove dimensions from default shape"""
+        shape = list(self._default)
+        axis = self._expand_axis
+        if axis >= 0:
+            shape[axis : axis + ndim] = []
+        else:
+            axis = len(shape) + axis + 1
+            shape[axis - ndim : axis + 1] = []
+        self._default = tuple(shape)
 
     # private
 
-    def _check_array(self, array, layout):
-        """return array expand indices and broadcast shape"""
-        axis, idx = None, 0
-        for i, ax in enumerate(layout):
-            if ax is Ellipsis: 
-                if axis is not None:
-                    raise ValueError(f'`layout` must contain one Ellipsis: {layout}')
-                axis = i
-                idx += array.ndim - len(layout) + 1
-            elif isinstance(ax, int):
-                if array.shape[idx] != ax:
-                    raise ValueError(f'Invalid axis dimension {idx} in array: {array.shape}')
-                idx += 1
-            elif isinstance(ax, str):
-                size = self._namedaxes.setdefault(ax, array.shape[idx])
-                if array.shape[idx] != size:
-                    raise ValueError(f'Invalid named axis dimension `{ax}` ({idx}) in array: {array.shape}')
-                idx += 1
-            elif ax is None:
-                idx += 1
-        if axis is None:
-            raise ValueError(f'`layout` must contain one Ellipsis: {layout}')
+    def _broadcast_array(self, array, layout):
+        """expand and broadcast array to shared shape"""
+        self.check(array.shape, layout)
 
         # common shape
         shared = self.shape
 
-        # expand array
-        diff = len(shared) - (array.ndim - len(layout) + 1) 
-        insert = axis + self._expand_axis
+        # expand dimensions
+        diff = len(shared) - (array.ndim - len(layout) + 1)
+        axis = layout.index(Ellipsis)
+        if self._expand_axis < 0:
+            insert = axis + self._expand_axis + array.ndim - len(layout) + 2
+        else:
+            insert = axis + self._expand_axis
         dims = tuple(insert + i for i in range(diff))
 
-        # broadcast_array
+        # broadcast shape
         shape = list(array.shape)
         shape[insert:insert] = [1] * diff
-        shape[axis: axis + len(shared)] = shared
-        return dims, shape
+        shape[axis : axis + len(shared)] = shared
 
-    def _broadcast_array(self, array, layout):
-        """ expand and broadcast array to shared shape"""
-        dims, shape = self._check_array(array, layout)
-        array = np.expand_dims(array, dims)
-        return np.broadcast_to(array, shape)
+        if dims:
+            array = np.expand_dims(array, dims)
+        if tuple(shape) != array.shape:
+            array = np.broadcast_to(array, shape)
+        return array
