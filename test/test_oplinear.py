@@ -1,12 +1,12 @@
 import numpy as np
 import pytest
-from epgpy import linalgebra, statematrix
+from epgpy import oplinear, statematrix
 
 StateMatrix = statematrix.StateMatrix
 
 
 def test_ScalarOp_class():
-    ScalarOp = linalgebra.ScalarOp
+    ScalarOp = oplinear.ScalarOp
 
     coeff = [1j, -1j, 0.5]
     op = ScalarOp(coeff)
@@ -74,8 +74,8 @@ def test_ScalarOp_class():
 
 
 def test_MatrixOp_class():
-    ScalarOp = linalgebra.ScalarOp
-    MatrixOp = linalgebra.MatrixOp
+    ScalarOp = oplinear.ScalarOp
+    MatrixOp = oplinear.MatrixOp
 
     mat = [[0, 1j, 0], [-1j, 0, 0], [0, 0, 1]]
     op = MatrixOp(mat)

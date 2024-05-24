@@ -1,9 +1,9 @@
 """ EPG Transition operator and functions"""
 import numpy as np
-from . import linalgebra, common
+from . import common, oplinear
 
 
-class T(linalgebra.MatrixOp):
+class T(oplinear.MatrixOp):
     """n-dimensional transition operator (instantaneous RF-pulse)"""
 
     def __init__(self, alpha, phi, *, axes=None, name=None, duration=None):
@@ -44,7 +44,7 @@ class Ty(T):
         T.__init__(self, alpha, 90, **kwargs)
 
 
-class Phi(linalgebra.MatrixOp):
+class Phi(oplinear.MatrixOp):
     """Add phase offset"""
 
     def __init__(self, phi, *, axes=None, name=None):

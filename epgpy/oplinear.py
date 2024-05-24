@@ -1,4 +1,4 @@
-""" Linear algebra operators and functions """
+""" Linear operators and functions """
 import abc
 import numpy as np
 from . import operator, common
@@ -6,7 +6,7 @@ from . import operator, common
 NAX = np.newaxis
 
 
-class LinearOp(operator.Operator, abc.ABC):
+class LinearOperator(operator.Operator, abc.ABC):
     """Base class for linear operators"""
 
     @abc.abstractmethod
@@ -14,7 +14,7 @@ class LinearOp(operator.Operator, abc.ABC):
         pass
 
 
-class ScalarOp(LinearOp):
+class ScalarOp(LinearOperator):
     """State-wise scalar multiplication operator"""
 
     def __init__(self, coeff, coeff0=None, *, axes=None, **kwargs):
@@ -69,7 +69,7 @@ class ScalarOp(LinearOp):
         return sm
 
 
-class MatrixOp(LinearOp):
+class MatrixOp(LinearOperator):
     """state-wise matrix multiplication operator"""
 
     def __init__(self, mat, mat0=None, *, axes=None, **kwargs):

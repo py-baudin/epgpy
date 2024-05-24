@@ -22,8 +22,8 @@ utilities:
 import logging
 import numpy as np
 
-from . import functions, operator, statematrix, common, utils
-from . import probe, evolution, transition, linalgebra
+from . import functions, operator, oplinear, statematrix, common, utils
+from . import probe, evolution, transition
 
 try:
     from scipy import optimize
@@ -204,13 +204,13 @@ def estimate_alpha(values, rf):
     phis = np.angle(values, deg=True)
 
     # total rotation
-    rotation_matrix = linalgebra.matrix_combine_multi(
+    rotation_matrix = oplinear.matrix_combine_multi(
         transition.rotation_operator(alphas, phis)
     )
     equilibrium = statematrix.StateMatrix([0, 0, 1])
 
     # apply rotation
-    sim = linalgebra.matrix_prod(rotation_matrix, equilibrium.states, inplace=False)
+    sim = oplinear.matrix_prod(rotation_matrix, equilibrium.states, inplace=False)
 
     # longitudinal phase coefficient, rescaled between -1 and +1
     absZ = np.mod(np.real(sim.flat[2]) + 1, 2) - 1
@@ -276,10 +276,10 @@ def estimate_rf(values, alpha):
         """cost function"""
         # create operator by combining rotational operators
         rotations = transition.rotation_operator(rf * alphas, phis)
-        rotation_matrix = linalgebra.matrix_combine_multi(rotations)
+        rotation_matrix = oplinear.matrix_combine_multi(rotations)
 
         # apply pulse on initial state matrix
-        sim = linalgebra.matrix_prod(rotation_matrix, equilibrium.states, inplace=False)
+        sim = oplinear.matrix_prod(rotation_matrix, equilibrium.states, inplace=False)
         sim = common.asnumpy(sim)
 
         cost = np.sum((np.abs(sim) - np.abs(target)) ** 2)

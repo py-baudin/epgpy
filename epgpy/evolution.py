@@ -2,10 +2,10 @@
 import numpy as np
 
 # from . import bloch, common
-from . import linalgebra, common
+from . import common, oplinear
 
 
-class R(linalgebra.ScalarOp):
+class R(oplinear.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, rT=0, rL=0, *, r0=None, axes=None, name=None, duration=None):
@@ -42,7 +42,7 @@ class R(linalgebra.ScalarOp):
         super().__init__(coeff, coeff0, axes=axes, name=name, duration=duration)
 
 
-class E(linalgebra.ScalarOp):
+class E(oplinear.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, tau, T1, T2, g=0, *, axes=None, name=None, duration=None):
@@ -81,7 +81,7 @@ class E(linalgebra.ScalarOp):
         super().__init__(coeff, coeff0, axes=axes, name=name, duration=duration)
 
 
-class P(linalgebra.ScalarOp):
+class P(oplinear.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, tau, g, *, axes=None, name=None, duration=None):

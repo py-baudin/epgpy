@@ -78,7 +78,9 @@ class StateMatrix:
         if nstate:
             self.arrays.resize("nstate", 2 * nstate + 1)
         if shape:
+            # broadcast and copy states
             self.arrays.broadcast(shape)
+            self.arrays.set('states', self.arrays.get('states'))
 
         # additional metadata (eg. kgrid, max_nstate)
         self.options = options
@@ -582,10 +584,9 @@ class ArrayCollection:
 
     def expand(self, ndim):
         """add dimensions to broadcast shape"""
-        shape = self._default
+        shape = list(self.shape)
         axis = self.expand_axis
-        ndim += self.ndim - len(shape)
-        shape = shape[axis:] + (1,) * ndim + shape[:axis]
+        shape[axis:axis] = [1] * ndim
         self._default = tuple(shape)
 
     def broadcast(self, shape):
@@ -595,13 +596,13 @@ class ArrayCollection:
 
     def reduce(self, ndim, *, axis=0):
         """remove dimensions from default shape"""
-        shape = list(self._default)
+        shape = list(self.shape)
         axis = self._expand_axis
         if axis >= 0:
-            shape[axis : axis + ndim] = []
+            shape[axis:axis + ndim] = []
         else:
             axis = len(shape) + axis + 1
-            shape[axis - ndim : axis + 1] = []
+            shape[axis - ndim: axis + 1] = []
         self._default = tuple(shape)
 
     # private
