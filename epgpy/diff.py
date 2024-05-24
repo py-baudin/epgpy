@@ -58,31 +58,25 @@ class DiffOperator(operator.Operator, abc.ABC):
     @property
     def parameters_order1(self):
         """Set of parameters used in 1st order derivatives"""
-        return {param for var in self.coeffs1 for param in self.coeffs1[var]}
+        return {param for params in self.coeffs1.values() for param in params}
 
     @property
     def parameters_order2(self):
         """Set of parameters used in 2nd order derivatives"""
-        return {
-            param
-            for v1, v2 in self.coeffs2
-            for param in list(self.coeffs1.get(v1, []))
-            + list(self.coeffs1.get(v2, []))
-        }
+        return {param for params in self.coeffs2.values() for param in params}
 
     def derive1(self, sm, param):
         """apply 1st order differential operator w/r to parameter `param` """
         sm = self.prepare(sm, inplace=False)
         sm_d1 = self._derive1(sm, param)
-        breakpoint()
-        sm_d1.equilibrium *= 0  # remove equilibrium
+        sm_d1.arrays.set('equilibrium', [[0, 0, 0]]) # remove equilibrium
         return sm_d1
 
     def derive2(self, sm, params):
         """apply 2nd order differential operator w/r to parameters pair `params` """
         sm = self.prepare(sm, inplace=False)
         sm_d2 = self._derive2(sm, params)
-        sm_d2.equilibrium *= 0  # remove equilibrium
+        sm_d2.arrays.set('equilibrium', [[0, 0, 0]]) # remove equilibrium
         return sm_d2
 
     def __call__(self, sm, *, inplace=False):
@@ -94,7 +88,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
         order1 = self._apply_order1(sm, order1) # inplace=inplace
 
-        # update state matrix (derivatives are not copied)
+        # apply operator
         sm = super().__call__(sm, inplace=inplace)
 
         # store derivatives

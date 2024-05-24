@@ -1,14 +1,13 @@
 import logging
 
 import numpy as np
-from . import common, utils, common  # arraycollection
+from . import common, utils, common
 
 LOGGER = logging.getLogger(__name__)
 
 """ todo
 
-- remove arraycollection
- - replace with functions to maintain ndims for:
+ - arraycollection
     - states (n1 x...x nstate x ndim)
     - kindices (n1 x...x nstate x kdim)
     - density (n1 x...x ndim)
@@ -50,8 +49,7 @@ class StateMatrix:
                 max_nstate: maximum number of phase-states
                 kgrid: grid size for shift operator
         """
-        # self._collection = arraycollection.ArrayCollection(kdim=1)
-        self._collection = ArrayCollection(expand_axis=-1)
+        self.arrays = ArrayCollection(expand_axis=-1)
 
         if equilibrium is None:
             # use density
@@ -67,23 +65,20 @@ class StateMatrix:
             # custom init
             init = _format_states(init, check=check)
 
-        # self._collection.set("states", init)
-        self._collection.set("states", init, layout=[..., "nstate", 3])
+        # self.arrays.set("states", init)
+        self.arrays.set("states", init, layout=[..., "nstate", 3])
 
-        # self._collection.set("equilibrium", equilibrium)
-        self._collection.set("equilibrium", equilibrium, layout=[..., 1, 3])
+        # self.arrays.set("equilibrium", equilibrium)
+        self.arrays.set("equilibrium", equilibrium, layout=[..., 1, 3])
         if coords is not None:
-            # self._collection.set("coords", coords)
-            self._collection.set("coords", coords, layout=[..., "nstate", "kdim"])
+            self.arrays.set("coords", coords, layout=[..., "nstate", "kdim"])
         self.kvalue = kvalue
         self.tvalue = tvalue
 
         if nstate:
-            # self._collection.resize_axis(2 * nstate + 1, -1)
-            self._collection.resize("nstate", 2 * nstate + 1)
+            self.arrays.resize("nstate", 2 * nstate + 1)
         if shape:
-            # self._collection.resize(tuple(shape) + (2 * self.nstate + 1,))
-            self._collection.broadcast(shape)
+            self.arrays.broadcast(shape)
 
         # additional metadata (eg. kgrid, max_nstate)
         self.options = options
@@ -92,42 +87,39 @@ class StateMatrix:
 
     @property
     def states(self):
-        return self._collection.get("states")
+        return self.arrays.get("states")
 
     @states.setter
     def states(self, value):
-        # self._collection.set("states", value)
-        self._collection.set("states", value)
+        # self.arrays.set("states", value)
+        self.arrays.set("states", value)
 
     @property
     def density(self):
-        # return self.equilibrium[..., self.nstate, 2].real
         return self.equilibrium[..., 0, 2].real
 
     @property
     def equilibrium(self):
         """equilibrium state matrix with compatible shape/nstate"""
-        return self._collection.get("equilibrium")
+        return self.arrays.get("equilibrium")
 
     @property
     def coords(self):
-        return self._collection.get("coords", None)
+        return self.arrays.get("coords", None)
 
     @coords.setter
     def coords(self, value):
-        self._collection.set("coords", value)
+        self.arrays.set("coords", value)
 
     @property
     def ndim(self):
         """return number of dimensions of phase array"""
-        # return self.states.ndim - 2
         return len(self.shape)
 
     @property
     def shape(self):
         """return shape of phase array"""
-        # return self._collection.shape[:-1]
-        return self._collection.shape
+        return self.arrays.shape
 
     @property
     def size(self):
@@ -137,7 +129,6 @@ class StateMatrix:
     @property
     def nstate(self):
         """return number of phase states"""
-        # return (self._collection.shape[-1] - 1) // 2
         return (self.states.shape[-2] - 1) // 2
 
     @property
@@ -261,40 +252,39 @@ class StateMatrix:
 
     # public functions
 
-    def copy(self, states=None, *, check=False, **kwargs):
+    def copy(self, states=None, **kwargs):
         """copy state matrix"""
-        states = states if not states is None else self.states
-        kwargs = {
-            "check": check,
-            "kvalue": self.kvalue,
-            "tvalue": self.tvalue,
-            **self.options,
-            **kwargs,
-        }
-        cls = type(self)
-        sm = cls(states, equilibrium=self.equilibrium, coords=self.coords, **kwargs)
+        sm = self.__new__(type(self))
+        coll = self.arrays.copy()
+        if states is not None:
+            coll.set('states', states)
+        if 'equilibrium' in kwargs:
+            coll.set('equilibrium', kwargs.pop('equilibrium'))
+        if 'coords' in kwargs:
+            coll.set('coords', kwargs.pop('coords'))
+        sm.arrays = coll
+        sm.kvalue = kwargs.pop('kvalue', self.kvalue)
+        sm.tvalue = kwargs.pop('tvalue', self.tvalue)
+        sm.options = {**self.options, **kwargs}
         return sm
 
     def resize(self, nstate):
         """resize state matrix to nstate"""
         if nstate == self.nstate:
             return
-        # self._collection.resize_axis(2 * nstate + 1, -1)
-        self._collection.resize("nstate", 2 * nstate + 1)
+        self.arrays.resize("nstate", 2 * nstate + 1)
 
     def expand(self, ndim):
         """expend state matrix to n-dimensions"""
-        # self._collection.expand(ndim + 1, insert_index=-1)
-        diff = ndim - self._collection.ndim
+        diff = ndim - self.arrays.ndim
         if diff > 0:
-            self._collection.expand(diff)
+            self.arrays.expand(diff)
 
     def reduce(self, ndim):
         """expend state matrix to n-dimensions"""
-        # self._collection.reduce(ndim + 1, remove_index=-1)
-        diff = self._collection.ndim - ndim
+        diff = self.arrays.ndim - ndim
         if diff > 0:
-            self._collection.reduce(diff)
+            self.arrays.reduce(diff)
 
     def check(self):
         return utils.check_states(self.states)
@@ -304,7 +294,7 @@ class StateMatrix:
             # resize
             diff = kdim - self.kdim
             if diff > 0:
-                xp = self._collection.xp
+                xp = self.arrays.xp
                 coords = self.coords
                 zeros = xp.zeros(coords.shape[:-1] + (diff,))
                 coords = xp.concatenate([coords, zeros], axis=-1)
@@ -314,8 +304,7 @@ class StateMatrix:
                 return
         else:
             coords = _setup_coords(self.nstate, kdim)
-        # self._collection.set("coords", coords)
-        self._collection.set("coords", coords, layout=[..., "nstate", "kdim"])
+        self.arrays.set("coords", coords, layout=[..., "nstate", "kdim"])
 
 
 # private functions
@@ -404,7 +393,7 @@ class ArrayCollection:
     """
 
     def __init__(self, default=None, *, expand_axis=0):
-        self._expand_axis = expand_axis
+        self._expand_axis = int(expand_axis)
         self._layouts = {}
         self._arrays = {}
         # default shape
@@ -483,7 +472,7 @@ class ArrayCollection:
 
         self.check(array.shape, layout, ignore=name)
         self._arrays[name] = array
-        self._layouts[name] = layout
+        self._layouts[name] = tuple(layout)
         
             
     def pop(self, name, default=None):
@@ -494,6 +483,16 @@ class ArrayCollection:
         return array
 
     # utilities
+    def copy(self):
+        """ copy collection """
+        coll = self.__new__(type(self))
+        coll.xp = self.xp
+        coll._expand_axis = self._expand_axis
+        coll._layouts = {name: tuple(self._layouts[name]) for name in self}
+        coll._arrays = {name: self._arrays[name].copy() for name in self}
+        coll._default = tuple(self._default)
+        return coll
+
     def get_axes(self, ignore=None):
         axes = {}
         for name in self:
