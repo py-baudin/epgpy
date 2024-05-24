@@ -85,8 +85,9 @@ class DiffOperator(operator.Operator, abc.ABC):
         order1 = getattr(sm, "order1", {})
         order2 = getattr(sm, "order2", {})
 
-        order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
-        order1 = self._apply_order1(sm, order1) # inplace=inplace
+        if order1 or self.coeffs1 or order2 or self.coeffs2:
+            order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
+            order1 = self._apply_order1(sm, order1) # inplace=inplace
 
         # apply operator
         sm = super().__call__(sm, inplace=inplace)
