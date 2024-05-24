@@ -407,7 +407,6 @@ class ArrayCollection:
         self._expand_axis = expand_axis
         self._layouts = {}
         self._arrays = {}
-        self._namedaxes = {}
         # default shape
         self._default = (1,) if default is None else tuple(default)
         self.xp = common.get_array_module()
@@ -460,7 +459,7 @@ class ArrayCollection:
     @property
     def axes(self):
         """dictionary of named axes"""
-        return self._namedaxes
+        return self.get_axes()
 
     def get(self, name, default=None):
         if not name in self._arrays:
@@ -475,34 +474,47 @@ class ArrayCollection:
         array = xp.array(array)  # copy array
 
         if name in self._arrays:
+            ignore = name
             if layout is None:
                 # keep existing layout
                 layout = self._layouts[name]
-            # self.pop(name)
         elif layout is None:
             layout = [Ellipsis]
 
-        self.check(array.shape, layout)
+        self.check(array.shape, layout, ignore=name)
         self._arrays[name] = array
         self._layouts[name] = layout
-
+        
+            
     def pop(self, name, default=None):
         if not name in self._arrays:
             return default
+        self._layouts.pop(name)
         array = self._arrays.pop(name)
-        for ax in self._layouts.pop(name):
-            if not ax in self._namedaxes:
-                continue
-            layouts = [self._layouts[name] for name in self]
-            if not any(ax in layout for layout in layouts):
-                self._namedaxes.pop(ax)
         return array
 
     # utilities
+    def get_axes(self, ignore=None):
+        axes = {}
+        for name in self:
+            if name == ignore:
+                continue
+            array = self._arrays[name]
+            layout = self._layouts[name]
+            idx = 0
+            for ax in layout:
+                if ax is Ellipsis:
+                    idx += array.ndim - len(layout) + 1
+                    continue
+                elif isinstance(ax, str):
+                    axes.setdefault(ax, array.shape[idx])
+                idx += 1
+        return axes
 
-    def check(self, shape, layout=(...,)):
+    def check(self, shape, layout=(...,), *, ignore=None):
         """check shape and layout"""
         shape = tuple(shape)
+        axes = self.get_axes(ignore=ignore)
         axis, idx = None, 0
         # check layout
         for i, ax in enumerate(layout):
@@ -511,19 +523,14 @@ class ArrayCollection:
                     raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
                 axis = i
                 idx += len(shape) - len(layout) + 1
-            elif isinstance(ax, int):
-                if shape[idx] != ax:
-                    raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
-                idx += 1
-            elif isinstance(ax, str):
-                size = self._namedaxes.setdefault(ax, shape[idx])
-                if shape[idx] != size:
-                    raise ValueError(
-                        f"Invalid named axis dimension `{ax}` ({idx}) in array: {shape}"
-                    )
-                idx += 1
-            elif ax is None:
-                idx += 1
+                continue
+            elif isinstance(ax, int) and shape[idx] != ax:
+                raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
+            elif isinstance(ax, str) and shape[idx] != axes.get(ax, shape[idx]):
+                raise ValueError(
+                    f"Invalid named axis dimension {ax}={shape[idx]} in array: {shape}"
+                )
+            idx += 1
         if axis is None:
             raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
 
@@ -550,9 +557,10 @@ class ArrayCollection:
     def resize(self, ax, size, *, constant=0):
         """resize named axis"""
         xp = self.xp
-        if not ax in self._namedaxes:
+        axes = self.axes
+        if not ax in axes:
             raise ValueError(f"Unknown size: {ax}")
-        diff = size - self._namedaxes[ax]
+        diff = size - axes[ax]
         if diff == 0:
             return
         for name in self._arrays:
@@ -572,7 +580,6 @@ class ArrayCollection:
                 pad[axis] = (diff // 2, (diff + 1) // 2)
                 arr = xp.pad(arr, pad, constant_values=constant)
             self._arrays[name] = arr
-        self._namedaxes[ax] = size
 
     def expand(self, ndim):
         """add dimensions to broadcast shape"""

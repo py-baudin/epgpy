@@ -35,7 +35,7 @@ def test_arraycollection_class():
     coll.set("arr3", array(2, 1, 6))
     assert coll.get("arr3").shape == (2, 3, 6)
 
-    # shared axis
+    # named axis
     coll.set("arr4", array(2, 1, 4), layout=(..., "ax"))
     coll.set("arr5", array(4, 3), layout=("ax", ...))
     assert coll.get("arr1").shape == (2, 3)
@@ -44,6 +44,11 @@ def test_arraycollection_class():
 
     with pytest.raises(ValueError):
         coll.set("arr5", array(5, 3))
+
+    # replace axis
+    coll.set('arr7', array(1, 5), layout=(..., 'ax7'))
+    coll.set('arr7', array(1, 6))
+    assert coll.get('arr7').shape == (2, 3, 6)
 
     # resize axis
     coll.resize("ax", 6)
