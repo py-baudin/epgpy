@@ -40,17 +40,6 @@ class Operator(abc.ABC):
         """does nothing: TO IMPLEMENT"""
         return sm
 
-    # def copy(self, name=None, duration=None, **kwargs):
-    #     """return copy of self"""
-    #     raise NotImplementedError()
-
-    # def combinable(self, other):
-    #     """check if `other` can be combined with self"""
-    #     raise NotImplementedError()
-
-    # def combine(self, other, *others, name=None, duration=None):
-    #     """combine `other` with self"""
-    #     raise NotImplementedError()
 
     @classmethod
     def from_list(cls, sequence):
@@ -114,7 +103,18 @@ class Operator(abc.ABC):
         sm = self._apply(sm)
         return sm
     
+    # def copy(self, name=None, duration=None, **kwargs):
+    #     """return copy of self"""
+    #     raise NotImplementedError()
 
+    # def combinable(self, other):
+    #     """check if `other` can be combined with self"""
+    #     raise NotImplementedError()
+
+    # @staticmethod
+    # def combine(self, ops, name=None, duration=None):
+    #     """combine multiple operators """
+    #     raise NotImplementedError()
         
 
 

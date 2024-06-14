@@ -2,10 +2,10 @@
 import numpy as np
 
 # from . import bloch, common
-from . import common, oplinear
+from . import common, opscalar
 
 
-class R(oplinear.ScalarOp):
+class R(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, rT=0, rL=0, *, r0=None, axes=None, name=None, duration=None):
@@ -36,13 +36,13 @@ class R(oplinear.ScalarOp):
         duration = self.tau if duration is True else duration
 
         # coefficients
-        coeff, coeff0 = evolution_operator(rT, rL, r0)
+        arr, arr0 = evolution_operator(rT, rL, r0)
 
         # init operator
-        super().__init__(coeff, coeff0, axes=axes, name=name, duration=duration)
+        super().__init__(arr, arr0, axes=axes, name=name, duration=duration)
 
 
-class E(oplinear.ScalarOp):
+class E(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, tau, T1, T2, g=0, *, axes=None, name=None, duration=None):
@@ -76,12 +76,12 @@ class E(oplinear.ScalarOp):
         duration = self.tau if duration is True else duration
 
         # coefficients
-        coeff, coeff0 = relaxation_operator(tau, T1, T2, g)
+        arr, arr0 = relaxation_operator(tau, T1, T2, g)
 
-        super().__init__(coeff, coeff0, axes=axes, name=name, duration=duration)
+        super().__init__(arr, arr0, axes=axes, name=name, duration=duration)
 
 
-class P(oplinear.ScalarOp):
+class P(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
 
     def __init__(self, tau, g, *, axes=None, name=None, duration=None):
@@ -113,10 +113,10 @@ class P(oplinear.ScalarOp):
         duration = self.tau if duration is True else duration
 
         # coefficients
-        coeff, coeff0 = precession_operator(tau, g)
+        arr, arr0 = precession_operator(tau, g)
 
         # init operator
-        super().__init__(coeff, coeff0, axes=axes, name=name, duration=duration)
+        super().__init__(arr, arr0, axes=axes, name=name, duration=duration)
 
 
 #

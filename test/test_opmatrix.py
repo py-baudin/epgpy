@@ -1,81 +1,13 @@
 import numpy as np
 import pytest
-from epgpy import oplinear, statematrix
+from epgpy import opscalar, opmatrix, statematrix
 
 StateMatrix = statematrix.StateMatrix
 
 
-def test_ScalarOp_class():
-    ScalarOp = oplinear.ScalarOp
-
-    coeff = [1j, -1j, 0.5]
-    op = ScalarOp(coeff)
-
-    assert op.nshift == 0
-    assert op.shape == (1,)
-
-    sm0 = StateMatrix([1, 1, 1])
-    assert np.allclose(op(sm0).states, [1j, -1j, 0.5])
-
-    # multiple dimensions
-    op = ScalarOp([coeff, coeff])
-    assert op.shape == (2,)
-    assert np.allclose(op(sm0).states, [[[1j, -1j, 0.5]], [[1j, -1j, 0.5]]])
-
-    # with constant
-    const = [0, 0, 0.5]
-    op = ScalarOp([coeff, coeff], [const, const])
-    assert op.shape == (2,)
-    assert np.allclose(op(sm0).states, [[[1j, -1j, 1]], [[1j, -1j, 1]]])
-
-    # using axis
-    op = ScalarOp([coeff, coeff], axes=2)
-    assert op.shape == (1, 1, 2)
-
-    op = ScalarOp(3 * [2 * [coeff]], axes=(1, 3))
-    assert op.shape == (1, 3, 1, 2)
-
-    # abritrary matrices
-    coeff = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
-    coeff += coeff[..., (1, 0, 2)].conj()
-    op = ScalarOp(coeff)
-    assert np.allclose(op(sm0).states, coeff * [1, 1, 1])
-
-    coeff0 = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
-    coeff0 += coeff0[..., (1, 0, 2)].conj()
-    op = ScalarOp(coeff, coeff0)
-    assert np.allclose(op(sm0).states, coeff * [1, 1, 1] + coeff0 * [0, 0, 1])
-
-    # mat property
-    assert np.allclose(op.mat[0], np.diag(coeff))
-    assert np.allclose(op.mat0[0], np.diag(coeff0))
-
-    # combine
-    coeff_ = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
-    coeff_ += coeff_[..., (1, 0, 2)].conj()
-    coeff0_ = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
-    coeff0_ += coeff0_[..., (1, 0, 2)].conj()
-
-    op = ScalarOp(coeff) @ ScalarOp(coeff_)
-    assert np.allclose(op.coeff, coeff_ * coeff)
-    assert op.coeff0 is None
-
-    op = ScalarOp(coeff, coeff0) @ ScalarOp(coeff_)
-    assert np.allclose(op.coeff, coeff_ * coeff)
-    assert np.allclose(op.coeff0, coeff_ * coeff0)
-
-    op = ScalarOp(coeff) @ ScalarOp(coeff_, coeff0_)
-    assert np.allclose(op.coeff, coeff_ * coeff)
-    assert np.allclose(op.coeff0, coeff0_)
-
-    op = ScalarOp(coeff, coeff0) @ ScalarOp(coeff_, coeff0_)
-    assert np.allclose(op.coeff, coeff_ * coeff)
-    assert np.allclose(op.coeff0, coeff_ * coeff0 + coeff0_)
-
-
 def test_MatrixOp_class():
-    ScalarOp = oplinear.ScalarOp
-    MatrixOp = oplinear.MatrixOp
+    ScalarOp = opscalar.ScalarOp
+    MatrixOp = opmatrix.MatrixOp
 
     mat = [[0, 1j, 0], [-1j, 0, 0], [0, 0, 1]]
     op = MatrixOp(mat)

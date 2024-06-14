@@ -7,7 +7,7 @@ from epgpy import statematrix, diff
 def test_parse_partials():
 
     class Op(diff.DiffOperator):
-        PARAMETERS = ["x", "y"]
+        parameters = ["x", "y"]
         def _apply(self, sm): pass
         def _derive1(self, *args): pass
         def _derive2(self, sm, params): pass
@@ -64,7 +64,7 @@ def test_order12():
     """ Test order 1 and 2 partials"""
 
     class Op(diff.DiffOperator):
-        PARAMETERS = ["x", "y"]
+        parameters = ["x", "y"]
         def _apply(self, sm): return sm
         def _derive1(self, sm, param):
             op1 = {'x': 2, 'y': 3}[param]
@@ -128,7 +128,7 @@ def test_order12():
 def test_diff_chain():
     """ chain multiple differentiable operators """
     class Op(diff.DiffOperator):
-        PARAMETERS = ["x", "y"]
+        parameters = ["x", "y"]
         def _apply(self, sm): return sm
         def _derive1(self, sm, param):
             op1 = {'x': 2, 'y': 3}[param]

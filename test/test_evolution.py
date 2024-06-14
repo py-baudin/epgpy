@@ -77,24 +77,24 @@ def test_R_class():
     op_r = R(1 / 3)
     op_e = E(10, 1e10, 30)
     assert np.allclose(op_r.rL, 0)
-    assert op_r.coeff0 is None
-    assert np.allclose(op_r.coeff, op_e.coeff)
+    assert op_r.arr0 is None
+    assert np.allclose(op_r.arr, op_e.arr)
 
     op_r = R(1 / 3 + 2j * np.pi, 1 / 10)
     op_e = E(10, 100, 30, g=0.1)
-    assert op_r.coeff0 is None  # no recovery
-    assert np.allclose(op_r.coeff, op_e.coeff)
+    assert op_r.arr0 is None  # no recovery
+    assert np.allclose(op_r.arr, op_e.arr)
 
     op_r = R(1 / 3 + 2j * np.pi, 1 / 10, r0=1 / 10)
     op_e = E(10, 100, 30, g=0.1)
-    assert np.allclose(op_r.coeff, op_e.coeff)
-    assert np.allclose(op_r.coeff0, op_e.coeff0)
+    assert np.allclose(op_r.arr, op_e.arr)
+    assert np.allclose(op_r.arr0, op_e.arr0)
 
     op_r = R(2j * np.pi)
     op_p = P(10, 0.1)
     assert np.allclose(op_r.rL, 0)
-    assert op_r.coeff0 is None
-    assert np.allclose(op_r.coeff, op_p.coeff)
+    assert op_r.arr0 is None
+    assert np.allclose(op_r.arr, op_p.arr)
 
     sm0 = StateMatrix()
     op_t = T([90, 0], 90)

@@ -153,6 +153,43 @@ def map_arrays(arrays=None, func=np.asarray, *, xp=np, **kwargs):
     return _apply(arrays)
 
 
+class ArrayTuple(tuple):
+    """ summable tuples"""
+    def __neg__(self):
+        return ArrayTuple(None if a is None else -a for a in self)
+    def __add__(self, other):
+        if isscalar(other):
+            return ArrayTuple(other if a is None else a + other for a in self)
+        return ArrayTuple(a if b is None else b if a is None else a + b for a, b in zip(self, other, strict=True))
+    def __radd__(self, other):
+        return self.__add__(other)
+    def __iadd__(self, other):
+        if isscalar(other):
+            return ArrayTuple(other if a is None else a.__iadd__(other) for a in self)
+        return ArrayTuple(
+            a if b is None else 
+            b if a is None else 
+            a + b if isscalar(a) 
+            else a.__iadd__(b) 
+            for a, b in zip(self, other, strict=True)
+        )
+    def __mul__(self, other):
+        if isscalar(other):
+            return ArrayTuple(0 * other if a is None else a * other for a in self)
+        return ArrayTuple(0*a if b is None else 0*b if a is None else a * b for a, b in zip(self, other, strict=True))
+    def __rmul__(self, other):
+        return self.__mul__(other)
+    def __imul__(self, other):
+        if isscalar(other):
+            return ArrayTuple(other * 0 if a is None else a.__imul__(other) for a in self)
+        return ArrayTuple(
+            0 * a if b is None else
+            0 * b if a is None else
+            a * b if isscalar(a) else 
+            a.__imul__(b) 
+            for a, b in zip(self, other, strict=True)
+        )
+
 #
 # wrapper of frequently used np/xp functions
 
@@ -249,7 +286,7 @@ def expand_arrays(*objs, append=False):
     xp = get_array_module(*objs)
     shapes = [get_shape(arr) for arr in objs]
     if not broadcastable(*shapes, append=append):
-        raise ValueError("Arrays cannot be broadcast to a single shape")
+        raise ValueError("ArrayTuple cannot be broadcast to a single shape")
     ndim = max(len(shape) for shape in shapes)
 
     return tuple(

@@ -7,6 +7,12 @@ from . import operator, common, probe
 
 LOGGER = logging.getLogger(__name__)
 
+"""TODO
+self.parameters needed ?
+
+merge: oplin and diff (same)
+"""
+
 
 class DiffOperator(operator.Operator, abc.ABC):
     """ Differential Operator
@@ -16,10 +22,8 @@ class DiffOperator(operator.Operator, abc.ABC):
     """
 
     # parameters for which the differential operator exist
-    PARAMETERS = []
+    parameters = []
 
-
-    @abc.abstractmethod
     def _derive1(self, sm, param):
         """ TO IMPLEMENT """
         pass
@@ -30,7 +34,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         pass
 
 
-    def __init__(self, *args, order1=False, order2=False, **kwargs):
+    def __init__(self, *args, parameters=None, order1=False, order2=False, **kwargs):
         """Init differential operator
 
         Arguments:
@@ -47,6 +51,9 @@ class DiffOperator(operator.Operator, abc.ABC):
                 dict of dict {(<var1>, <var2>): {(<param1>, <param2): <coeff12>, ...}):
                     compute combined partial derivatives, using the coefficients of the 2nd order parameter's derivatives
         """
+        # parameters for which the differential operator exist
+        if parameters:
+            self.parameters = parameters
         coeffs1, coeffs2 = self._parse_partials(order1, order2)
         self.coeffs1 = coeffs1
         self.coeffs2 = coeffs2
@@ -63,7 +70,8 @@ class DiffOperator(operator.Operator, abc.ABC):
     @property
     def parameters_order2(self):
         """Set of parameters used in 2nd order derivatives"""
-        return {param for params in self.coeffs2.values() for param in params}
+        return {param for vars in self.coeffs2 for var in vars for param in self.coeffs1.get(var, [])}
+        # return {param for params in self.coeffs2.values() for param in params}
 
     def derive1(self, sm, param):
         """apply 1st order differential operator w/r to parameter `param` """
@@ -126,7 +134,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         # 1st order derivatives
         # {var1: {param1: dparam1/dvar1, param2: dparam2/dvar1}, var2: ...}
-        parameters = set(self.PARAMETERS)
+        parameters = set(self.parameters)
 
         if isinstance(order1, str):
             # single variable
@@ -225,15 +233,20 @@ class DiffOperator(operator.Operator, abc.ABC):
         self, 
         sm,
         order1={},
+        apply=None,
+        derive1=None,
         # inplace=False,
     ):
         """Apply 1st order derived operator"""
+        apply = apply or self.__call__
+        derive1 = derive1 or self.derive1
+
         # operator's partial derivatives for involved parameters
         parameters = {param for var in self.coeffs1 for param in self.coeffs1[var]}
         # apply operator to previous 1st-order partials
-        order1_previous = {var: self(order1[var]) for var in order1}
+        order1_previous = {var: apply(order1[var]) for var in order1}
         # apply derived opertors to previous element
-        order1_partials = {param: self.derive1(sm, param) for param in parameters}
+        order1_partials = {param: derive1(sm, param) for param in parameters}
         # combine_partials partial derivatives
         order1_current = combine_partials(self.coeffs1, order1_partials)
         # if inplace:
@@ -249,12 +262,19 @@ class DiffOperator(operator.Operator, abc.ABC):
         sm,
         order1={},
         order2={},
+        apply=None,
+        derive1=None,
+        derive2=None,
         # inplace=False,
     ):
         """Apply 2nd order derived operator"""
+        apply = apply or self.__call__
+        derive1 = derive1 or self.derive1
+        derive2 = derive2 or self.derive2
+
         # apply operator to previous 2nd order partials
         order2 = {frozenset(pair): value for pair, value in order2.items()}
-        order2_previous = {pair: self(order2[pair]) for pair in order2}
+        order2_previous = {pair: apply(order2[pair]) for pair in order2}
 
         # 2nd derivatives of current operator
         gradient2 = {
@@ -267,14 +287,14 @@ class DiffOperator(operator.Operator, abc.ABC):
             if {v1, v2} <= set(self.coeffs1)
         }
         pairs = {pair for pairs in gradient2.values() for pair in pairs}
-        order2_partials = {pair: self.derive2(sm, pair) for pair in pairs}
+        order2_partials = {pair: derive2(sm, pair) for pair in pairs}
         order2_current = combine_partials(gradient2, order2_partials)
 
         # add non-zero 2nd order parameter derivatives (generally none)
         order2_params = {param for pair in self.coeffs2 for param in self.coeffs2[pair]}
         order2_params = combine_partials(
             {frozenset(pair): self.coeffs2[pair] for pair in self.coeffs2},
-            {param: self.derive1(sm, param) for param in order2_params},
+            {param: derive1(sm, param) for param in order2_params},
         )
 
         # cross derivatives
@@ -294,7 +314,7 @@ class DiffOperator(operator.Operator, abc.ABC):
                 for v1 in variables_current
                 if frozenset((v1, v2)) in order2_pairs
             }
-            _partials = {param: self.derive1(order1[v2], param) for param in parameters}
+            _partials = {param: derive1(order1[v2], param) for param in parameters}
             _cross12 = combine_partials(gradient12, _partials)
             # repeat if it's twice the same variable
             _cross11 = {pair: _cross12[pair] for pair in _cross12 if len(pair) == 1}
@@ -470,6 +490,10 @@ def accumulate(main, *dicts, default=0):
     """update or accumulate dictionaries"""
     for other in dicts:
         for var in other:
-            main.setdefault(var, default)
-            main[var] += other[var]
+            if not var in main:
+                main[var] = other[var]
+            else:
+                main[var] += other[var]
+            # main.setdefault(var, default)
+            # main[var] += other[var]
     return main
