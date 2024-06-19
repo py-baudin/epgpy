@@ -132,6 +132,33 @@ def test_multiop_class():
         op12(statematrix.StateMatrix(shape=(3,)))
 
 
+def test_combinable_class():
+    class OP1(operator.CombinableOperator):
+        def _apply(self, sm):
+            return sm
+        
+        @classmethod
+        def combinable(cls, other):
+            return True
+        
+        @classmethod
+        def combine(cls, ops):
+            name = '|'.join(op.name for op in ops)
+            duration = sum(op.duration for op in ops)
+            return OP1(name=name, duration=duration)
+        
+    op1 = OP1(name='op1', duration=1)
+    op2 = OP1(name='op2', duration=2)
+    opnc = operator.EmptyOperator(name='opnc')
+
+    opc = op1 @ op2
+    assert opc.name == 'op1|op2'
+    assert opc.duration == op1.duration + op2.duration
+
+    with pytest.raises(TypeError):
+        op1 @ opnc
+
+
 def test_spoiler_class():
     sm0 = statematrix.StateMatrix(0.5 * np.ones((3, 3)))
 

@@ -7,15 +7,9 @@ from . import operator, common, probe
 
 LOGGER = logging.getLogger(__name__)
 
-"""TODO
-self.parameters needed ?
-
-merge: oplin and diff (same)
-"""
-
 
 class DiffOperator(operator.Operator, abc.ABC):
-    """ Differential Operator
+    """ Differential Operator 
     
     Computes partial derivatives of the state matrix
     

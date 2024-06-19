@@ -107,16 +107,6 @@ class Operator(abc.ABC):
     #     """return copy of self"""
     #     raise NotImplementedError()
 
-    # def combinable(self, other):
-    #     """check if `other` can be combined with self"""
-    #     raise NotImplementedError()
-
-    # @staticmethod
-    # def combine(self, ops, name=None, duration=None):
-    #     """combine multiple operators """
-    #     raise NotImplementedError()
-        
-
 
 #
 # MultiOperator
@@ -208,13 +198,9 @@ class MultiOperator(Operator):
         self.duration += op.duration
 
 
+
 class CombinableOperator(Operator, abc.ABC):
     """Base class for combinable operators"""
-
-    @classmethod
-    @abc.abstractmethod
-    def combine(cls, ops, *, name=None, duration=None, check=True):
-        pass
 
     @classmethod
     @abc.abstractmethod
@@ -222,16 +208,29 @@ class CombinableOperator(Operator, abc.ABC):
         """ check if operator is combinable """
         pass
 
+    @classmethod
+    @abc.abstractmethod
+    def _combine(self, ops):
+        pass
+
+    @classmethod
+    def combine(cls, ops, *, name=None, duration=None):
+        # check types
+        non_combinable = {op for op in ops if not isinstance(op, CombinableOperator)}
+        if non_combinable:
+            raise TypeError(f'Non-combinable operator(s): {non_combinable}')
+        non_combinable = {op for op in ops if not cls.combinable(op)}
+        if non_combinable:
+            raise TypeError(f'Non-combinanble operator(s) with type {cls}: {non_combinable}')
+        return cls._combine(ops)
+
+
     def __matmul__(self, other):
-        """ combine operators """
-        if not self.combinable(other):
-            raise TypeError(f'Cannot combine operator of type {type(other)}')
+        """ combine other with self"""
         return self.combine([self, other])
 
     def __rmatmul__(self, other):
-        """ combine operators """
-        if not self.combinable(other):
-            raise TypeError(f'Cannot combine operator of type {type(other)}')
+        """ combine other with self"""
         return self.combine([other, self])
 
 
