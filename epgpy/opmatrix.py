@@ -1,11 +1,11 @@
 """ Scalar operator and functions """
 import numpy as np
-from . import common, oplinear, opscalar
+from . import common, operator, diff, opscalar
 
 NAX = np.newaxis
 
 
-class MatrixOp(oplinear.LinearOperator):
+class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
     """state-wise matrix multiplication operator"""
 
     def __init__(self, mat, mat0=None, *, axes=None, **kwargs):
@@ -40,18 +40,6 @@ class MatrixOp(oplinear.LinearOperator):
     def shape(self):
         return self.mat.shape[:-2]
 
-    def __matmul__(self, other):
-        """multiply operators"""
-        if not isinstance(other, (MatrixOp, opscalar.ScalarOp)):
-            return NotImplemented
-        return self.combine([self, other])
-
-    def __rmatmul__(self, other):
-        """multiply operators"""
-        if not isinstance(other, (MatrixOp, opscalar.ScalarOp)):
-            return NotImplemented
-        return self.combine([other, self])
-
     def _apply(self, sm):
         """Apply transform to state matrix (inplace)"""
         return matrix_apply(self.mat, self.mat0, sm)
@@ -66,8 +54,14 @@ class MatrixOp(oplinear.LinearOperator):
             raise NotImplementedError('derive2')
         return matrix_apply(self.d2mat, self.d2mat0, sm)
     
-    @staticmethod
-    def combine(ops, name=None):
+    # combine
+
+    @classmethod
+    def combinable(cls, other):
+        return isinstance(other, (cls, opscalar.ScalarOp))
+    
+    @classmethod
+    def combine(cls, ops, name=None):
         """ combine multiple scalar operators"""
         mat, mat0 = ops[0].mat, ops[0].mat0
         dmat, dmat0 = ops[0].dmat, ops[0].dmat0

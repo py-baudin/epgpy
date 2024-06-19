@@ -302,6 +302,36 @@ def expand_arrays(*objs, append=False):
     )
 
 
+def set_axes(ndim, arr, axes):
+    """ extend array given list of axes"""
+    ndim = arr.ndim - ndim
+    if isinstance(axes, int):
+        axes = tuple(range(axes, axes + ndim))
+    elif not isinstance(axes, tuple) or not all(isinstance(ax, int) for ax in axes):
+        raise ValueError(f"Invalid axes: {axes}")
+
+    # expand dimensions
+    newdims = tuple([i for i in range(max(axes)) if not i in axes])
+    return expand_dims(arr, newdims)
+
+
+def extend_operators(ndim, *ops):
+    """extend operators to make them broadcastable
+    TODO: remove? (duplicate of extend_arrays?)
+    """
+    shapes = [get_shape(op)[:-ndim] for op in ops]
+    shape = broadcast_shapes(*shapes, append=True)
+    ndim = len(shape)
+    extended = []
+    for op in ops:
+        if op is None:
+            extended.append(None)
+        else:
+            dims = tuple(range(op.ndim - ndim, ndim))
+            extended.append(expand_dims(op, dims))
+    return extended
+
+
 #
 # representation
 

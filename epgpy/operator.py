@@ -207,13 +207,33 @@ class MultiOperator(Operator):
         self._nshift += op.nshift
         self.duration += op.duration
 
-    # def combinable(self, other):
-    #     return self.operators[-1].combinable(other)
 
-    # def combine(self, other, *others, name=None, duration=None):
-    #     """call combine on last operator"""
-    #     last = self.operators[-1].combine(other, *others)
-    #     return MultiOperator(self.operators[:-1] + [last], name=name, duration=duration)
+class CombinableOperator(Operator, abc.ABC):
+    """Base class for combinable operators"""
+
+    @classmethod
+    @abc.abstractmethod
+    def combine(cls, ops, *, name=None, duration=None, check=True):
+        pass
+
+    @classmethod
+    @abc.abstractmethod
+    def combinable(cls, other):
+        """ check if operator is combinable """
+        pass
+
+    def __matmul__(self, other):
+        """ combine operators """
+        if not self.combinable(other):
+            raise TypeError(f'Cannot combine operator of type {type(other)}')
+        return self.combine([self, other])
+
+    def __rmatmul__(self, other):
+        """ combine operators """
+        if not self.combinable(other):
+            raise TypeError(f'Cannot combine operator of type {type(other)}')
+        return self.combine([other, self])
+
 
 
 #
@@ -278,3 +298,6 @@ class Reset(Operator):
 
 # Spoiler instance
 RESET = Reset(name="Reset")
+
+
+

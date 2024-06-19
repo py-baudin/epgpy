@@ -1,14 +1,13 @@
 """ Scalar operator and functions """
 import abc
 import numpy as np
-from . import common, oplinear
+from . import common, operator, diff
 
 NAX = np.newaxis
 
 
-class ScalarOp(oplinear.LinearOperator):
+class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
     """State-wise scalar multiplication operator"""
-
 
     def __init__(self, arr, arr0=None, *, axes=None, check=True, **kwargs):
         """Initialize operator"""
@@ -30,15 +29,6 @@ class ScalarOp(oplinear.LinearOperator):
     def mat0(self):
         return as_matrix(self.arr0)    
     
-    def __matmul__(self, other):
-        """multiply operators 
-        
-        
-        put in oplinear ?"""
-        if not isinstance(other, ScalarOp):
-            return NotImplemented
-        return self.combine([self, other])
-
     def _apply(self, sm):
         """apply inplace"""
         return scalar_apply(self.arr, self.arr0, sm)
@@ -51,8 +41,12 @@ class ScalarOp(oplinear.LinearOperator):
         d2arr, d2arr0 = self.d2arrs[params]
         return scalar_apply(d2arr, d2arr0, sm)
     
-    @staticmethod
-    def combine(ops, *, name=None, duration=None, check=True):
+    @classmethod
+    def combinable(cls, other):
+        return isinstance(other, cls)
+            
+    @classmethod
+    def combine(cls, ops, *, name=None, duration=None, check=True):
         """ combine multiple scalar operators"""
         arrs = ops[0].arr, ops[0].arr0
         darrs = getattr(ops[0], 'darrs', {})
@@ -84,17 +78,11 @@ class ScalarOp(oplinear.LinearOperator):
 
             # combine operators
             arrs = apply()(arrs)
-            # arrs = scalar_combine(arrs[0], op.arr, arrs[1], op.arr0)
 
         if name is None:
             name = "|".join(op.name for op in ops)
         if duration is None:
             duration = sum(op.duration for op in ops)
-
-        # for var in darrs:
-        #     darrs[var] *= (1, None)
-        for vars in d2arrs:
-            d2arrs[vars] *= (1, None)
         
         parameters = {param for op in ops for param in op.parameters}
         coeffs1 = {var: op.coeffs1[var] for op in ops for var in op.coeffs1}
@@ -127,8 +115,8 @@ def scalar_setup(arr, arr0=None, *, axes=None, check=True):
         arr, arr0 = np.broadcast_arrays(arr, arr0)
 
     if axes is not None:
-        arr = oplinear.set_axes(1, arr, axes)
-        arr0 = None if arr0 is None else oplinear.set_axes(1, arr0, axes)
+        arr = common.set_axes(1, arr, axes)
+        arr0 = None if arr0 is None else common.set_axes(1, arr0, axes)
     return common.ArrayTuple([arr, arr0])
 
 
@@ -152,7 +140,7 @@ def scalar_format(arr, check=True):
 def scalar_combine(arr_1, arr_2, arr0_1=None, arr0_2=None):
     """combine 2 scalar operators"""
     xp = common.get_array_module(arr_1, arr_2)
-    arr_1, arr_2, arr0_1, arr0_2 = oplinear.extend_operators(
+    arr_1, arr_2, arr0_1, arr0_2 = common.extend_operators(
         1, arr_1, arr_2, arr0_1, arr0_2
     )
     arr = arr_2 * arr_1
@@ -191,4 +179,5 @@ def scalar_prod(arr, states, *, inplace=False):
     else:
         states = states * arr
     return states
+
 
