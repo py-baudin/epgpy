@@ -124,12 +124,12 @@ def test_ScalarOp_diff1():
     # finite differences
 
     # r2
-    op3_r2 = ScalarOp.combine([op_r2, op_r2, op_r2])
+    op3_r2 = op_r2.combine(op_r2).combine(op_r2)
     diff_r2 = (op3_r2(sm0).states - sm3.states).imag * 1e5
     assert np.allclose(diff_r2[..., (0, 2)], sm3.order1['r2'].states[..., (0, 2)])
     
     # r1
-    op3_r1 = ScalarOp.combine([op_r1, op_r1, op_r1], check=False)
+    op3_r1 = op_r1.combine(op_r1, check=False).combine(op_r1, check=False)
     diff_r1 = (op3_r1(sm0).states - sm1.states).imag * 1e5
     assert np.allclose(diff_r1, sm3.order1['r1'].states)
 
@@ -201,7 +201,7 @@ def test_ScalarOp_diff2():
     assert np.allclose(sm3.order2[('t', 'r1')], sm3_.order2[('t', 'r1')])
 
     # finite diff
-    op3_t = ScalarOp.combine([op_t, op_t, op_t], check=False)
+    op3_t = op_t.combine(op_t, check=False).combine(op_t, check=False)
     diff3_t = (op3_t(sm0).states - sm3.states).imag * 1e5
     assert np.allclose(diff3_t[..., (0, 2)], sm3.order1['t'].states[..., (0, 2)])
 

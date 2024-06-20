@@ -99,7 +99,7 @@ def test_order12():
         ((op, "y"), (op, "y")): {},
     }
     assert op.parameters_order1 == {"x", "y"}
-    assert op.parameters_order2 == set() # {"x", "y"}
+    assert op.parameters_order2 == {"x", "y"}
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states) # sm is unchanged
@@ -116,7 +116,7 @@ def test_order12():
     # Arbitrary variable `a`
     op = Op(order1={"a": {"x": 0.1, "y": 0.2}}, order2={("a", "a"): {"x": 0.3}})
     assert op.parameters_order1 == {'x', 'y'}
-    assert op.parameters_order2 == {'x'}
+    assert op.parameters_order2 == {'x', 'y'}
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.order1["a"], (0.1 * 2 + 0.2 * 3) * sm0.states)

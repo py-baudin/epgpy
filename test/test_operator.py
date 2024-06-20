@@ -133,7 +133,12 @@ def test_multiop_class():
 
 
 def test_combinable_class():
-    class OP1(operator.CombinableOperator):
+
+    class OP_NC(operator.Operator):
+        def _apply(self, sm):
+            return sm
+
+    class OP_C(operator.CombinableOperator):
         def _apply(self, sm):
             return sm
         
@@ -142,18 +147,20 @@ def test_combinable_class():
             return True
         
         @classmethod
-        def combine(cls, ops):
-            name = '|'.join(op.name for op in ops)
-            duration = sum(op.duration for op in ops)
-            return OP1(name=name, duration=duration)
+        def _combine(cls, op1, op2, **kwargs):
+            return OP_C(**kwargs)
         
-    op1 = OP1(name='op1', duration=1)
-    op2 = OP1(name='op2', duration=2)
-    opnc = operator.EmptyOperator(name='opnc')
+    op1 = OP_C(name='op1', duration=1)
+    op2 = OP_C(name='op2', duration=2)
+    opnc = OP_NC(name='opnc')
 
     opc = op1 @ op2
     assert opc.name == 'op1|op2'
     assert opc.duration == op1.duration + op2.duration
+
+    opc = op2.combine(op1, right=True, duration=2)
+    assert opc.name == 'op1|op2'
+    assert opc.duration == 2
 
     with pytest.raises(TypeError):
         op1 @ opnc

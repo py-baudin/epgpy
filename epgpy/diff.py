@@ -1,4 +1,7 @@
-""" Differential operators """
+""" Differential operators 
+
+Note: only works with linear/affine operators
+"""
 import itertools
 import abc
 import logging

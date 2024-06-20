@@ -41,60 +41,53 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         d2arr, d2arr0 = self.d2arrs[params]
         return scalar_apply(d2arr, d2arr0, sm)
     
-    @classmethod
-    def combinable(cls, other):
-        return isinstance(other, cls)
+    def combinable(self, other):
+        return isinstance(other, type(self))
             
     @classmethod
-    def combine(cls, ops, *, name=None, duration=None, check=True):
+    def _combine(cls, op1, op2, **kwargs):
         """ combine multiple scalar operators"""
-        arrs = ops[0].arr, ops[0].arr0
-        darrs = getattr(ops[0], 'darrs', {})
-        d2arrs = getattr(ops[0], 'd2arrs', {})
-
-        for op in ops[1:]:
-            if not isinstance(op, ScalarOp):
-                raise NotImplementedError()
-            
-            def apply(offset=True):
-                def func(arrs, op=op):
-                    return scalar_combine(arrs[0], op.arr, arrs[1], op.arr0 if offset else None)
-                return func
-            
-            def derive1(offset=True):
-                def func(arrs, param, op=op):
-                    darr, darr0 = op.darrs[param]
-                    return scalar_combine(arrs[0], darr, arrs[1], darr0 if offset else None)
-                return func
-                
-            def derive2(arrs, params, op=op):
-                d2arr, d2arr0 = op.d2arrs[params]
-                return scalar_combine(arrs[0], d2arr, arrs[1], d2arr0)
-
-            if darrs or op.coeffs1 or d2arrs or op.coeffs2:
-                # combine differential operators
-                d2arrs = op._apply_order2(arrs, darrs, d2arrs, apply=apply(False), derive1=derive1(False), derive2=derive2)
-                darrs = op._apply_order1(arrs, darrs, apply=apply(False), derive1=derive1())
-
-            # combine operators
-            arrs = apply()(arrs)
-
-        if name is None:
-            name = "|".join(op.name for op in ops)
-        if duration is None:
-            duration = sum(op.duration for op in ops)
         
-        parameters = {param for op in ops for param in op.parameters}
-        coeffs1 = {var: op.coeffs1[var] for op in ops for var in op.coeffs1}
-        coeffs2 = {vars: op.coeffs2[vars] for op in ops for vars in op.coeffs2}
+        # merge parameters and coefficients
+        parameters = set(op1.parameters) | set(op2.parameters)
+        coeffs1 = {var: op.coeffs1[var] for op in (op1, op2) for var in op.coeffs1}
+        coeffs2 = {vars: op.coeffs2[vars] for op in (op1, op2) for vars in op.coeffs2}
+
+        # combine arrays
+        arrs = op1.arr, op1.arr0
+        darrs = getattr(op1, 'darrs', {})
+        d2arrs = getattr(op1, 'd2arrs', {})
+            
+        def apply(arrs):
+            return scalar_combine(arrs[0], op2.arr, arrs[1], None)
+        
+        def derive1(arrs, param):
+            darr, darr0 = op2.darrs[param]
+            return scalar_combine(arrs[0], darr, arrs[1], darr0)
+        
+        def derive1_2(arrs, param):
+            darr, darr0 = op2.darrs[param]
+            return scalar_combine(arrs[0], darr, arrs[1], None)
+            
+        def derive2(arrs, params):
+            d2arr, d2arr0 = op2.d2arrs[params]
+            return scalar_combine(arrs[0], d2arr, arrs[1], d2arr0)
+
+        # combine operators
+        if darrs or op2.coeffs1 or d2arrs or op2.coeffs2:
+            # combine differential operators
+            d2arrs = op2._apply_order2(arrs, darrs, d2arrs, apply=apply, derive1=derive1_2, derive2=derive2)
+            darrs = op2._apply_order1(arrs, darrs, apply=apply, derive1=derive1)
+
+        arrs = scalar_combine(arrs[0], op2.arr, arrs[1], op2.arr0)
+
         return ScalarOp(
             arrs[0], arrs[1], 
             darrs=darrs, d2arrs=d2arrs, 
             order1=coeffs1,
             order2=coeffs2,
             parameters=parameters,
-            name=name, duration=duration,
-            check=check,
+            **kwargs,
         )
 
 

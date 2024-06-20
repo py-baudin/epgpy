@@ -202,36 +202,39 @@ class MultiOperator(Operator):
 class CombinableOperator(Operator, abc.ABC):
     """Base class for combinable operators"""
 
-    @classmethod
     @abc.abstractmethod
-    def combinable(cls, other):
+    def combinable(self,  other):
         """ check if operator is combinable """
         pass
 
     @classmethod
     @abc.abstractmethod
-    def _combine(self, ops):
+    def _combine(cls, op1, op2, **kwargs):
         pass
 
-    @classmethod
-    def combine(cls, ops, *, name=None, duration=None):
+    def combine(self, other, *, right=False, name=None, duration=None, **kwargs):
         # check types
-        non_combinable = {op for op in ops if not isinstance(op, CombinableOperator)}
-        if non_combinable:
-            raise TypeError(f'Non-combinable operator(s): {non_combinable}')
-        non_combinable = {op for op in ops if not cls.combinable(op)}
-        if non_combinable:
-            raise TypeError(f'Non-combinanble operator(s) with type {cls}: {non_combinable}')
-        return cls._combine(ops)
+        if not isinstance(other, CombinableOperator):
+            raise TypeError(f'Non-combinable operator: {other}')
+        elif not self.combinable(other):
+            return NotImplemented
+        
+        op1, op2 = (other, self) if right else (self, other)
 
+        if name is None:
+            name = f'{op1.name}|{op2.name}'
+        if duration is None:
+            duration = op1.duration + op2.duration
+
+        return self._combine(op1, op2, name=name, duration=duration, **kwargs)
 
     def __matmul__(self, other):
         """ combine other with self"""
-        return self.combine([self, other])
+        return self.combine(other)
 
     def __rmatmul__(self, other):
         """ combine other with self"""
-        return self.combine([other, self])
+        return self.combine(other, right=True)
 
 
 
