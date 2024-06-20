@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from epgpy import opscalar, opmatrix, statematrix
+from epgpy import opscalar, opmatrix, statematrix, transition, evolution
 
 StateMatrix = statematrix.StateMatrix
 
@@ -8,6 +8,7 @@ StateMatrix = statematrix.StateMatrix
 def test_MatrixOp_class():
     ScalarOp = opscalar.ScalarOp
     MatrixOp = opmatrix.MatrixOp
+    rstate = np.random.RandomState(0)
 
     mat = [[0, 1j, 0], [-1j, 0, 0], [0, 0, 1]]
     op = MatrixOp(mat)
@@ -37,20 +38,20 @@ def test_MatrixOp_class():
     assert op.shape == (1, 3, 1, 2)
 
     # abritrary matrices
-    mat = np.random.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
+    mat = rstate.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
     mat += mat[..., (1, 0, 2), :][..., (1, 0, 2)].conj()
     op = MatrixOp(mat)
     assert np.allclose(op(sm0).states, mat @ [1, 1, 1])
 
-    mat0 = np.random.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
+    mat0 = rstate.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
     mat0 += mat0[..., (1, 0, 2), :][..., (1, 0, 2)].conj()
     op = MatrixOp(mat, mat0)
     assert np.allclose(op(sm0).states, mat @ [1, 1, 1] + mat0 @ [0, 0, 1])
 
     # combine
-    mat_ = np.random.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
+    mat_ = rstate.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
     mat_ += mat_[..., (1, 0, 2), :][..., (1, 0, 2)].conj()
-    mat0_ = np.random.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
+    mat0_ = rstate.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
     mat0_ += mat0_[..., (1, 0, 2), :][..., (1, 0, 2)].conj()
 
     op = MatrixOp(mat) @ MatrixOp(mat_)
@@ -74,9 +75,9 @@ def test_MatrixOp_class():
     assert np.allclose(op.mat0, mat @ mat0_ + mat0)
 
     # combine with scalar op
-    coeff = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
+    coeff = rstate.uniform(-1, 1, (3, 2)).dot([1, 1j])
     coeff += coeff[..., (1, 0, 2)].conj()
-    coeff0 = np.random.uniform(-1, 1, (3, 2)).dot([1, 1j])
+    coeff0 = rstate.uniform(-1, 1, (3, 2)).dot([1, 1j])
     coeff0 += coeff0[..., (1, 0, 2)].conj()
 
     op = MatrixOp(mat, mat0) @ ScalarOp(coeff, coeff0)
@@ -87,34 +88,69 @@ def test_MatrixOp_class():
     assert np.allclose(op.mat, mat @ np.diag(coeff))
     assert np.allclose(op.mat0, mat @ np.diag(coeff0) + mat0)
 
+    # combine and broadcasting
+    mat1 = rstate.uniform(-1, 1, (3, 3, 2)).dot([1, 1j])
+    mat1 += mat1[..., [1, 0, 2], :][..., [1, 0, 2]].conj()
+    mat2 = rstate.uniform(-1, 1, (2, 3, 3, 2)).dot([1, 1j])
+    mat2 += mat2[..., [1, 0, 2], :][..., [1, 0, 2]].conj()
+    op12 = MatrixOp(mat1) @ MatrixOp(mat2)
+    assert op12.shape == (2,)
 
-""" TODO: combine
+    arr3 = rstate.uniform(-1, 1, (1, 4, 3, 2)).dot([1, 1j])
+    arr3 += arr3[..., [1, 0, 2]].conj()
+    op13 = MatrixOp(mat2) @ ScalarOp(arr3)
+    assert op13.shape == (2, 4)
 
-# combine
-op1 = bloch.B([[mat] * 2], [[const] * 2])
-assert op1.shape == (1, 2)
-# const2 = [0,0,0.2]
-const2 = np.diag([0, 0, 0.2])
-op2 = bloch.B([mat] * 3, [const2] * 3, duration=2)
-assert op2.shape == (3,)
+    mat3 = rstate.uniform(-1, 1, (3, 3, 3, 2)).dot([1, 1j])
+    mat3 += mat3[..., [1, 0, 2], :][..., [1, 0, 2]].conj()
+    with pytest.raises(ValueError):
+        MatrixOp(mat2) @ MatrixOp(mat3)
 
-op12 = bloch.B.combine([op1, op2])
-assert op12.shape == (3, 2)
-assert op12.duration == 2
-assert np.allclose(op12(sm0).states, op2(op1(sm0)).states)
-# breakpoint()
-assert op12(StateMatrix(shape=(3,)))
 
-with pytest.raises(ValueError):
-    # invalid sm.shape
-    op12(StateMatrix(shape=(2,)))
 
-with pytest.raises(ValueError):
-    # invalid shapes
-    bloch.B([mat] * 2) * bloch.B([mat] * 3)
+def test_MatrixOp_diff():
+    ScalarOp = opscalar.ScalarOp
+    MatrixOp = opmatrix.MatrixOp
 
-with pytest.raises(ValueError):
-    # invalid shapes
-    bloch.B.combine([bloch.B([mat] * 2), bloch.B([mat] * 3)])
+    rstate = np.random.RandomState(0)
+    A = rstate.uniform(-1, 1, (3, 3)); A += A[[1,0,2], :][:, [1,0,2]].conj()
+    B = rstate.uniform(-1, 1, (3, 3)); B += B[[1,0,2], :][:, [1,0,2]].conj()
+    dA = rstate.uniform(-1, 1, (3, 3)); dA += dA[[1,0,2], :][:, [1,0,2]].conj()
+    dB = rstate.uniform(-1, 1, (3, 3)); dB += dB[[1,0,2], :][:, [1,0,2]].conj()
 
-"""
+    a = rstate.uniform(-1, 1, 3); a += a[[1,0,2]].conj()
+    b = rstate.uniform(-1, 1, 3); b += b[[1,0,2]].conj()
+    da = rstate.uniform(-1, 1, 3); da += da[[1,0,2]].conj()
+    db = rstate.uniform(-1, 1, 3); db += db[[1,0,2]].conj()
+
+    
+    op1 = MatrixOp(A, B, parameters=['x'], dmats={'x': (dA, dB)}, order1={'x': {'x': 1}}, order2={('x', 'y'): {}})
+    op2 = ScalarOp(a, b, parameters=['y'], darrs={'y': (da, db)}, order1={'y': {'y': 1}}, order2={('x', 'y'): {}})
+
+    sm0 = StateMatrix([1, 1, 0])
+    sm2 = op1(op2(op1(sm0)))
+
+    # combine
+    op12 = op1 @ op2 @ op1
+    assert op12.parameters == {'x', 'y'}
+    sm2_ = op12(sm0)
+    assert np.allclose(sm2.states, sm2_.states)
+    assert np.allclose(sm2.order1['x'].states, sm2_.order1['x'].states)
+    assert np.allclose(sm2.order1['y'].states, sm2_.order1['y'].states)
+    assert np.allclose(sm2.order2[('x', 'y')].states, sm2_.order2[('x', 'y')].states)
+
+    # finite diffs
+    dx = 1e-5j
+    A_x = A + dx * dA
+    B_x = B + dx * dB
+    op1_x =  MatrixOp(A_x, B_x, check=False)
+    op12_x = op1_x.combine(op2, check=False).combine(op1_x, check=False)
+    sm2_x = op12_x(sm0)
+    fdiff_x = (sm2_x.states - sm2.states).imag * 1e5
+    assert np.allclose(fdiff_x, sm2.order1['x'].states)
+
+    fdiff2_xy = (sm2_x.order1['y'].states - sm2.order1['y'].states).imag * 1e5
+    assert np.allclose(fdiff2_xy, sm2.order2[('x', 'y')].states)
+
+
+    

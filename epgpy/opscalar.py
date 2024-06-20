@@ -11,10 +11,15 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
 
     def __init__(self, arr, arr0=None, *, axes=None, check=True, **kwargs):
         """Initialize operator"""
+
+        # setup scalar operator
         self.arr, self.arr0 = scalar_setup(arr, arr0, axes=axes, check=check)
+
+        # setup derivatives
         darrs, d2arrs = kwargs.pop('darrs', {}), kwargs.pop('d2arrs', {})
         self.darrs = {param: scalar_setup(*darrs[param], axes=axes, check=check) for param in darrs}
         self.d2arrs = {params: scalar_setup(*d2arrs[params], axes=axes, check=check) for params in d2arrs}
+
         super().__init__(**kwargs)
         
     @property
@@ -28,6 +33,14 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
     @property
     def mat0(self):
         return as_matrix(self.arr0)    
+    
+    @property
+    def dmats(self):
+        return {var: common.ArrayTuple(map(as_matrix, arrs)) for var, arrs in self.darrs.items()}
+    
+    @property
+    def d2mats(self):
+        return {vars: common.ArrayTuple(map(as_matrix, arrs)) for vars, arrs in self.d2arrs.items()}    
     
     def _apply(self, sm):
         """apply inplace"""
@@ -66,7 +79,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
             return scalar_combine(arrs[0], darr, arrs[1], darr0)
         
         def derive1_2(arrs, param):
-            darr, darr0 = op2.darrs[param]
+            darr, _ = op2.darrs[param]
             return scalar_combine(arrs[0], darr, arrs[1], None)
             
         def derive2(arrs, params):
@@ -84,9 +97,9 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         return ScalarOp(
             arrs[0], arrs[1], 
             darrs=darrs, d2arrs=d2arrs, 
+            parameters=parameters,
             order1=coeffs1,
             order2=coeffs2,
-            parameters=parameters,
             **kwargs,
         )
 
@@ -99,6 +112,7 @@ def as_matrix(arr):
         return None
     xp = common.get_array_module(arr)
     return arr[..., NAX] * xp.eye(3)
+
 
 def scalar_setup(arr, arr0=None, *, axes=None, check=True):
     """ setup scalar operator """
