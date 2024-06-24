@@ -9,18 +9,24 @@ NAX = np.newaxis
 class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
     """State-wise scalar multiplication operator"""
 
-    def __init__(self, arr, arr0=None, *, axes=None, check=True, **kwargs):
+    def __init__(self, arr, arr0=None, *, darrs=None, d2arrs=None, axes=None, check=True, **kwargs):
         """Initialize operator"""
+
+        super().__init__(**kwargs)
+        self._init(arr, arr0, darrs=darrs, d2arrs=d2arrs, axes=axes, check=check)
+
+    def _init(self, arr, arr0=None, *, darrs=None, d2arrs=None, axes=None, check=True):
+        """ initialize arrays """
 
         # setup scalar operator
         self.arr, self.arr0 = scalar_setup(arr, arr0, axes=axes, check=check)
 
         # setup derivatives
-        darrs, d2arrs = kwargs.pop('darrs', {}), kwargs.pop('d2arrs', {})
+        darrs = darrs or {}
+        d2arrs = d2arrs or {}
         self.darrs = {param: scalar_setup(*darrs[param], axes=axes, check=check) for param in darrs}
         self.d2arrs = {params: scalar_setup(*d2arrs[params], axes=axes, check=check) for params in d2arrs}
 
-        super().__init__(**kwargs)
         
     @property
     def shape(self):

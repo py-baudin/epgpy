@@ -23,9 +23,15 @@ def test_parse_partials():
     assert not coeffs2
     assert coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
 
+    coeffs1, coeffs2 = op._parse_partials(order1=True, isolated=False)
+    assert coeffs1 == {'x': {"x": 1}, 'y': {"y": 1}}
+
     coeffs1, coeffs2 = op._parse_partials(order1="x")
     assert not coeffs2
     assert coeffs1 == {(op, "x"): {"x": 1}}
+
+    coeffs1, coeffs2 = op._parse_partials(order1="x", isolated=False)
+    assert coeffs1 == {'x': {"x": 1}}
 
     coeffs1, coeffs2 = op._parse_partials(order1={"z": {"x": 2, "y": 3}})
     assert not coeffs2
@@ -48,6 +54,10 @@ def test_parse_partials():
     coeffs1, coeffs2 = op._parse_partials(order2="x")
     assert coeffs1 == {(op, "x"): {"x": 1}}
     assert coeffs2 == {((op, "x"), (op, "x")): {}}
+
+    coeffs1, coeffs2 = op._parse_partials(order2="x", isolated=False)
+    assert coeffs1 == {'x': {"x": 1}}
+    assert coeffs2 == {('x', 'x'): {}}
 
     coeffs1, coeffs2 = op._parse_partials(
         order1={"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}},
@@ -76,7 +86,8 @@ def test_order12():
 
     # order 1
     op = Op(order1=True)
-    assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
+    # assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}}
+    assert op.coeffs1 == {'x': {'x': 1}, 'y': {"y": 1}}
     assert not op.coeffs2
     assert op.parameters_order1 == {"x", "y"}
 
@@ -85,38 +96,54 @@ def test_order12():
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states) # sm is unchanged
-    assert {(op, "x"), (op, "y")} == set(sm.order1) # order1 partials were computed
-    assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
-    assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
+    # assert {(op, "x"), (op, "y")} == set(sm.order1) # order1 partials were computed
+    assert {'x', 'y'} == set(sm.order1) # order1 partials were computed
+    # assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
+    # assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
+    assert np.allclose(sm.order1["x"], 2 * sm0.states)
+    assert np.allclose(sm.order1["y"], 3 * sm0.states)
 
     # order 2
     op = Op(order2=True)
     # order 1 is filled by default
-    assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}} 
+    # assert op.coeffs1 == {(op, "x"): {"x": 1}, (op, "y"): {"y": 1}} 
+    assert op.coeffs1 == {"x": {"x": 1}, "y": {"y": 1}} 
     assert op.coeffs2 == {
-        ((op, "x"), (op, "x")): {},
-        ((op, "x"), (op, "y")): {},
-        ((op, "y"), (op, "y")): {},
+        # ((op, "x"), (op, "x")): {},
+        # ((op, "x"), (op, "y")): {},
+        # ((op, "y"), (op, "y")): {},
+        ("x", "x"): {},
+        ("x", "y"): {},
+        ("y", "y"): {},
     }
     assert op.parameters_order1 == {"x", "y"}
-    assert op.parameters_order2 == {"x", "y"}
+    assert op.parameters_order2 == {('x', 'y'), ('x', 'x'), ('y', 'y')} # {"x", "y"}
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states) # sm is unchanged
     # order1 partials were computed
-    assert {(op, "x"), (op, "y")} == set(sm.order1)
+    # assert {(op, "x"), (op, "y")} == set(sm.order1)
+    assert {"x", "y"} == set(sm.order1)
     # order2 partials were computed
-    assert {((op, "x"), (op, "x")), ((op, "x"), (op, "y")), ((op, "y"), (op, "x")), ((op, "y"), (op, "y"))} == set(sm.order2)
-    assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
-    assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
-    assert np.allclose(sm.order2[(op, "x"), (op, "x")], 4 * sm0.states)
-    assert np.allclose(sm.order2[(op, "x"), (op, "y")], 5 * sm0.states)
-    assert np.allclose(sm.order2[(op, "y"), (op, "y")], 6 * sm0.states)
+    # assert {((op, "x"), (op, "x")), ((op, "x"), (op, "y")), ((op, "y"), (op, "x")), ((op, "y"), (op, "y"))} == set(sm.order2)
+    assert {("x", "x"), ("x", "y"), ("y", "x"), ("y", "y")} == set(sm.order2)
+    # assert np.allclose(sm.order1[(op, "x")], 2 * sm0.states)
+    # assert np.allclose(sm.order1[(op, "y")], 3 * sm0.states)
+    assert np.allclose(sm.order1["x"], 2 * sm0.states)
+    assert np.allclose(sm.order1["y"], 3 * sm0.states)
+    # assert np.allclose(sm.order2[(op, "x"), (op, "x")], 4 * sm0.states)
+    # assert np.allclose(sm.order2[(op, "x"), (op, "y")], 5 * sm0.states)
+    # assert np.allclose(sm.order2[(op, "y"), (op, "y")], 6 * sm0.states)
+    assert np.allclose(sm.order2["x", "x"], 4 * sm0.states)
+    assert np.allclose(sm.order2["x", "y"], 5 * sm0.states)
+    assert np.allclose(sm.order2["y", "y"], 6 * sm0.states)
+
 
     # Arbitrary variable `a`
     op = Op(order1={"a": {"x": 0.1, "y": 0.2}}, order2={("a", "a"): {"x": 0.3}})
     assert op.parameters_order1 == {'x', 'y'}
-    assert op.parameters_order2 == {'x', 'y'}
+    # assert op.parameters_order2 == {('x', 'y')} # {'x', 'y'}
+    assert op.parameters_order2 == {('x', 'y'), ('x', 'x'), ('y', 'y')} 
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.order1["a"], (0.1 * 2 + 0.2 * 3) * sm0.states)
@@ -124,6 +151,7 @@ def test_order12():
         sm.order2[("a", "a")],
         (4 * 0.1 ** 2 + 2 * 5 * 0.1 * 0.2 + 6 * 0.2 ** 2 + 0.3 * 2) * sm0.states,
     )
+
 
 def test_diff_chain():
     """ chain multiple differentiable operators """
@@ -168,84 +196,6 @@ def test_diff_chain():
     assert np.allclose(sm2.order2[('b', 'b')].states, (2 * 0.4 * 2 * 0.2 * 3) * sm0.states)
 
     
-
-# def test_diff_E_class():
-#     # 0 state
-#     sm0 = core.StateMatrix([[1, 0, 1j], [1 + 1j, 1 - 1j, 0], [0, 1, -1j]])
-
-#     tau = 10
-#     T1 = 1e3
-#     T2 = 1e2
-#     g = 1e-1
-
-#     E = diff.E(tau, T1, T2, g=g, order1=True)
-#     sm = E._apply(sm0.copy())
-
-#     # order1 w/r tau
-#     E_tau = diff.E(tau + 1e-8, T1, T2, g=g, order1=True)
-#     fdiff = (E_tau._apply(sm0.copy()).states - sm.states) * 1e8
-#     sm_tau = E._derive1("tau", sm0.copy())
-#     assert np.allclose(sm_tau.states, fdiff)
-
-#     # order1 w/r T1
-#     E_T1 = diff.E(tau, T1 + 1e-8, T2, g=g, order1=True)
-#     fdiff = (E_T1._apply(sm0.copy()).states - sm.states) * 1e8
-#     sm_T1 = E._derive1("T1", sm0.copy())
-#     assert np.allclose(sm_T1.states, fdiff)
-
-#     # order1 w/r T2
-#     E_T2 = diff.E(tau, T1, T2 + 1e-8, g=g, order1=True)
-#     fdiff = (E_T2._apply(sm0.copy()).states - sm.states) * 1e8
-#     sm_T2 = E._derive1("T2", sm0.copy())
-#     assert np.allclose(sm_T2.states, fdiff)
-
-#     # order1 w/r g
-#     E_g = diff.E(tau, T1, T2, g=g + 1e-8, order1=True)
-#     fdiff = (E_g._apply(sm0.copy()).states - sm.states) * 1e8
-#     sm_g = E._derive1("g", sm0.copy())
-#     assert np.allclose(sm_g.states, fdiff)
-
-#     #
-#     # 2nd order
-#     E = diff.E(tau, T1, T2, g=g, order2=True)
-
-#     fdiff = (E_tau._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
-#     assert np.allclose(E._derive2(("tau", "tau"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_T1._derive1("T1", sm0.copy()).states - sm_T1.states) * 1e8
-#     assert np.allclose(E._derive2(("T1", "T1"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_T2._derive1("T2", sm0.copy()).states - sm_T2.states) * 1e8
-#     assert np.allclose(E._derive2(("T2", "T2"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_g._derive1("g", sm0.copy()).states - sm_g.states) * 1e8
-#     assert np.allclose(E._derive2(("g", "g"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_tau._derive1("T1", sm0.copy()).states - sm_T1.states) * 1e8
-#     assert np.allclose(E._derive2(("tau", "T1"), sm0.copy()).states, fdiff)
-#     fdiff = (E_T1._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
-#     assert np.allclose(E._derive2(("T1", "tau"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_tau._derive1("T2", sm0.copy()).states - sm_T2.states) * 1e8
-#     assert np.allclose(E._derive2(("tau", "T2"), sm0.copy()).states, fdiff)
-#     fdiff = (E_T2._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
-#     assert np.allclose(E._derive2(("T2", "tau"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_tau._derive1("g", sm0.copy()).states - sm_g.states) * 1e8
-#     assert np.allclose(E._derive2(("tau", "g"), sm0.copy()).states, fdiff)
-#     fdiff = (E_g._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
-#     assert np.allclose(E._derive2(("g", "tau"), sm0.copy()).states, fdiff)
-
-#     fdiff = (E_tau._derive1("T2", sm0.copy()).states - sm_T2.states) * 1e8
-#     assert np.allclose(E._derive2(("tau", "T2"), sm0.copy()).states, fdiff)
-#     fdiff = (E_T2._derive1("tau", sm0.copy()).states - sm_tau.states) * 1e8
-#     assert np.allclose(E._derive2(("T2", "tau"), sm0.copy()).states, fdiff)
-
-#     assert np.allclose(E._derive2(("T1", "T2"), sm0.copy()).states, 0)
-#     assert np.allclose(E._derive2(("T1", "g"), sm0.copy()).states, 0)
-#     assert np.allclose(E._derive2(("T2", "g"), sm0.copy()).states, 0)
-
-
 # def test_diff_T_class():
 #     T = diff.T(90, 90, order1=True)
 
