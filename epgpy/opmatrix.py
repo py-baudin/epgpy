@@ -8,7 +8,7 @@ NAX = np.newaxis
 class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
     """state-wise matrix multiplication operator"""
 
-    def __init__(self, mat, mat0=None, *, axes=None, check=True, **kwargs):
+    def __init__(self, mat, mat0=None, *, dmats=None, d2mats=None, axes=None, check=True, **kwargs):
         """Initialize operator
 
         Args:
@@ -17,17 +17,21 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
             axes: shift axes to given indices
 
         """
+        # init parent class
+        super().__init__(**kwargs)
+        self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes, check=check)
+
+    def _init(self, mat, mat0=None, *, dmats=None, d2mats=None, axes=None, check=True):
+        """ initialize arrays """
         # setup matrix operator
         self.mat, self.mat0 = matrix_setup(mat, mat0, axes=axes, check=check)
 
         # setup derivatives
-        dmats = kwargs.pop('dmats', {})
-        d2mats = kwargs.pop('d2mats', {})
+        dmats = dmats or {}
+        d2mats = d2mats or {}
         self.dmats = {param: matrix_setup(*dmats[param], axes=axes, check=check) for param in dmats}
         self.d2mats = {params: matrix_setup(*d2mats[params], axes=axes, check=check) for params in d2mats}
-    
-        # init parent class
-        super().__init__(**kwargs)
+
 
     @property
     def shape(self):

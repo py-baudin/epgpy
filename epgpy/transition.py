@@ -6,7 +6,9 @@ from . import common, opmatrix
 class T(opmatrix.MatrixOp):
     """n-dimensional transition operator (instantaneous RF-pulse)"""
 
-    def __init__(self, alpha, phi, *, axes=None, name=None, duration=None):
+    parameters = ['alpha', 'phi']
+
+    def __init__(self, alpha, phi, *, axes=None, name=None, duration=None, **kwargs):
         """Init instantaneous RF-pulse operator
 
         Args:
@@ -27,10 +29,30 @@ class T(opmatrix.MatrixOp):
         # store parameters
         self.alpha = params["alpha"]
         self.phi = params["phi"]
-        mat = rotation_operator(self.alpha, self.phi)
 
         # init operator
-        super().__init__(mat, axes=axes, name=name, duration=duration)
+        opmatrix.diff.DiffOperator.__init__(self, name=name, duration=duration, **kwargs)
+
+        # init arrays
+        mat = rotation_operator(self.alpha, self.phi)
+        mat0 = None
+
+        # derivatives
+        dmats, d2mats = {}, {}
+        order1, order2 = self.parameters_order1, self.parameters_order2
+        if order1 or order2:
+            if 'alpha' in order1:
+                dmats['alpha'] = rotation_d_alpha(self.alpha, self.phi), None
+            if 'phi' in order1:
+                dmats['phi'] = rotation_d_phi(self.alpha, self.phi), None
+            if ('alpha', 'alpha') in order2:
+                d2mats[('alpha', 'alpha')] = rotation_d2_alpha(self.alpha, self.phi), None
+            if ('phi', 'phi') in order2:
+                d2mats[('phi', 'phi')] = rotation_d2_phi(self.alpha, self.phi), None
+            if ('alpha', 'phi') in order2:
+                d2mats[('alpha', 'phi')] = rotation_d_alpha_phi(self.alpha, self.phi), None
+
+        self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes)
 
 
 # short cut classes
@@ -47,15 +69,30 @@ class Ty(T):
 class Phi(opmatrix.MatrixOp):
     """Add phase offset"""
 
-    def __init__(self, phi, *, axes=None, name=None):
+    parameters = ['phi']
+
+    def __init__(self, phi, *, axes=None, name=None, duration=0, **kwargs):
         params = common.map_arrays(phi=phi)
         if not name:
             name = common.repr_operator("Phi", ["phi"], [phi], [".1f"])
         self.phi = params["phi"]
-        mat = rotation_phi(self.phi)
-
+        
         # init operator
-        super().__init__(mat, axes=axes, name=name, duration=0)
+        opmatrix.diff.DiffOperator.__init__(self, name=name, duration=duration, **kwargs)
+
+        # init arrays
+        mat = rotation_phi(self.phi)
+        mat0 = None
+
+        # derivatives
+        dmats, d2mats = {}, {}
+        if self.parameters_order1:
+            if 'phi' in self.parameters_order1:
+                dmats['phi'] = rotation_phi_d(self.phi), None
+            if ('phi', 'phi') in self.parameters_order2:
+                d2mats[('phi', 'phi')] = rotation_phi_d2(self.phi), None
+
+        self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes)
 
 
 # functions
@@ -155,7 +192,7 @@ def rotation_d2_alpha(alpha, phi):
     return rotation_phi(phi) @ rotation_alpha_d2(alpha) @ rotation_phi(-phi)
 
 
-def rotation_d2_alpha_phi(alpha, phi):
+def rotation_d_alpha_phi(alpha, phi):
     """gradient of RF pulse w/r alpha"""
     return rotation_phi_d(phi) @ rotation_alpha_d(alpha) @ rotation_phi(
         -phi
