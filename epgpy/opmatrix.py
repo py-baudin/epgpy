@@ -69,7 +69,7 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         dmats = getattr(op1, 'dmats', {})
         d2mats = getattr(op1, 'd2mats', {})
             
-        def apply(mats):
+        def derive0(mats):
             return matrix_combine(mats[0], op2.mat, mats[1], None)
         
         def derive1(mats, param):
@@ -87,8 +87,8 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         # combine operators
         if dmats or op2.coeffs1 or d2mats or op2.coeffs2:
             # combine differential operators
-            d2mats = op2._apply_order2(mats, dmats, d2mats, apply=apply, derive1=derive1_2, derive2=derive2)
-            dmats = op2._apply_order1(mats, dmats, apply=apply, derive1=derive1)
+            d2mats = op2._apply_order2(mats, dmats, d2mats, derive0=derive0, derive1=derive1_2, derive2=derive2)
+            dmats = op2._apply_order1(mats, dmats, derive0=derive0, derive1=derive1)
 
         mats = matrix_combine(mats[0], op2.mat, mats[1], op2.mat0)
         

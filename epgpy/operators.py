@@ -1,5 +1,6 @@
 from .operator import Operator, MultiOperator, EmptyOperator, Spoiler, Wait, Reset
 from .probe import Probe, Adc, Imaging
+from .diff import Jacobian, Hessian
 from .evolution import E, P, R
 from .transition import T, Phi
 from .shift import S, G

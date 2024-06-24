@@ -85,6 +85,11 @@ class DiffOperator(operator.Operator, abc.ABC):
         # return {param for vars in self.coeffs2 for var in vars for param in self.coeffs1.get(var, [])}
         # return {param for params in self.coeffs2.values() for param in params}
 
+    def derive0(self, sm):
+        """ apply operator (without order1 and order2 differential operators)"""
+        sm = self.prepare(sm, inplace=False)
+        return self._apply(sm)
+
     def derive1(self, sm, param):
         """apply 1st order differential operator w/r to parameter `param` """
         sm = self.prepare(sm, inplace=False)
@@ -263,18 +268,18 @@ class DiffOperator(operator.Operator, abc.ABC):
         self, 
         sm,
         order1={},
-        apply=None,
+        derive0=None,
         derive1=None,
         # inplace=False,
     ):
         """Apply 1st order derived operator"""
-        apply = apply or self.__call__
+        derive0 = derive0 or self.derive0 # self.__call__
         derive1 = derive1 or self.derive1
 
         # operator's partial derivatives for involved parameters
         parameters = {param for var in self.coeffs1 for param in self.coeffs1[var]}
         # apply operator to previous 1st-order partials
-        order1_previous = {var: apply(order1[var]) for var in order1}
+        order1_previous = {var: derive0(order1[var]) for var in order1}
         # apply derived opertors to previous element
         order1_partials = {param: derive1(sm, param) for param in parameters}
         # combine_partials partial derivatives
@@ -292,19 +297,19 @@ class DiffOperator(operator.Operator, abc.ABC):
         sm,
         order1={},
         order2={},
-        apply=None,
+        derive0=None,
         derive1=None,
         derive2=None,
         # inplace=False,
     ):
         """Apply 2nd order derived operator"""
-        apply = apply or self.__call__
+        derive0 = derive0 or self.derive0 # self.__call__
         derive1 = derive1 or self.derive1
         derive2 = derive2 or self.derive2
 
         # apply operator to previous 2nd order partials
         order2 = {frozenset(pair): value for pair, value in order2.items()}
-        order2_previous = {pair: apply(order2[pair]) for pair in order2}
+        order2_previous = {pair: derive0(order2[pair]) for pair in order2}
 
         # 2nd derivatives of current operator
         gradient2 = {

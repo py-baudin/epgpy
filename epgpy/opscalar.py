@@ -77,7 +77,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         darrs = getattr(op1, 'darrs', {})
         d2arrs = getattr(op1, 'd2arrs', {})
             
-        def apply(arrs):
+        def derive0(arrs):
             return scalar_combine(arrs[0], op2.arr, arrs[1], None)
         
         def derive1(arrs, param):
@@ -95,8 +95,8 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         # combine operators
         if darrs or op2.coeffs1 or d2arrs or op2.coeffs2:
             # combine differential operators
-            d2arrs = op2._apply_order2(arrs, darrs, d2arrs, apply=apply, derive1=derive1_2, derive2=derive2)
-            darrs = op2._apply_order1(arrs, darrs, apply=apply, derive1=derive1)
+            d2arrs = op2._apply_order2(arrs, darrs, d2arrs, derive0=derive0, derive1=derive1_2, derive2=derive2)
+            darrs = op2._apply_order1(arrs, darrs, derive0=derive0, derive1=derive1)
 
         arrs = scalar_combine(arrs[0], op2.arr, arrs[1], op2.arr0)
 

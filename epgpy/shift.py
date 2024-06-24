@@ -1,11 +1,11 @@
 """ Shift functions """
 import numpy as np
-from . import common, operator, utils
+from . import common, diff, utils
 
 _S = slice(None)
 
 
-class S(operator.Operator):
+class S(diff.DiffOperator):
     """Shift operator
 
     Methods: 'int-1d', 'int-nd', 'float-nd'
@@ -133,6 +133,12 @@ class S(operator.Operator):
             raise ValueError(f"Unknown method: {self.method}")
         return sm
 
+    def _derive1(self, sm, param):
+        raise NotImplementedError()
+    
+    def _derive2(self, sm, param):
+        raise NotImplementedError()
+    
     # todo: def combine(self, ...)?
 
 
