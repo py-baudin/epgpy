@@ -318,117 +318,51 @@ def test_diff2_ssfp():
     assert np.isclose(order2[2], sm.order2[('T2', 'T2')].F0)
 
 
-# def test_A_combine():
-#     """test combining B operators"""
-#     E = diff.E(5, 1e2, 5e2, g=1e-1, order1="T2", name="E")
-#     Ta = diff.T(15, 90, order1={"b1": {"alpha": 15}, "phi": {"phi": 1}}, name="Ta")
-#     Tb = diff.T(20, 90, order1={"b1": {"alpha": 20}, "phi": {"phi": 1}}, name="Tb")
+def test_diff_combine():
+    """test differential combined operators """
 
-#     assert E.diff1 == {"T2"}
-#     assert Ta.diff1 == {"alpha", "phi"}
-#     assert Tb.diff1 == {"alpha", "phi"}
+    # sinc pulse
+    npoint = 100
+    nlobe = 5
+    pulse = np.sinc(nlobe * np.linspace(-1, 1, npoint))
 
-#     # combine operators
-#     ops = [Ta, E, Tb, E, Ta, E, Tb, E]
-#     combined = diff.A.combine(ops)
-#     assert combined.diff1 == {
-#         (E, "T2"),
-#         "b1",
-#         "phi",
-#     }
+    # RF power
+    alpha = 90
+    pow = alpha / 180 / np.abs(np.sum(pulse))
+    angles = pulse * pow / 180
+    
+    T, E = operators.T, operators.E
+    rlx = E(1, 100, 10, order1=['T2', 'g'], name='rlx')
+    seq = [op for a in angles for op in [T(a, 0), rlx]]
 
-#     # simulate separately
-#     sm0 = core.StateMatrix([1, 1, 0])
-#     sm1 = sm0
-#     for i, op in enumerate(ops):
-#         sm1 = op(sm1)
+    # finite diffs
+    rlx_T2 = E(1, 100, 10 + 1e-8)
+    rlx_g = E(1, 100, 10, g=1e-8)
 
-#     sm2 = core.StateMatrix([1, 1, 0])
-#     sm2 = combined(sm2)
-#     # assert set(sm2.order1) == combined.diff1
-#     assert set(sm2.order1) == set(combined.coeffs1)
+    # loop
+    sm0 = statematrix.StateMatrix()
+    sm, sm_T2, sm_g = None, None, None
+    for op in seq:
+        sm = op(sm or sm0)
+        sm_T2 = rlx_T2(sm_T2) if op.name == 'rlx' else op(sm_T2 or sm0) 
+        sm_g = rlx_g(sm_g) if op.name == 'rlx' else op(sm_g or sm0) 
 
-#     assert np.allclose(sm1.states, sm2.states)
-#     for partial in combined.coeffs1:
-#         assert np.allclose(sm1.order1[partial].states, sm2.order1[partial])
+    assert set(sm.order1) == {'T2', 'g'}
+    assert np.allclose((sm_T2.states - sm.states) * 1e8, sm.order1['T2'].states)
+    assert np.allclose((sm_g.states - sm.states) * 1e8, sm.order1['g'].states)
 
-#     # 2nd order combine
-#     E = diff.E(5, 1e2, 5e2, g=1e-1, order2="T2", name="E")
-#     Ta = diff.T(15, 90, order2=True, name="Ta")
-#     Tb = diff.T(20, 90, order2=True, name="Tb")
+    # combine
+    combined = seq[0]
+    for op in seq[1:]:
+        combined = combined @ op
+    smc = combined(sm0)
 
-#     assert E.diff2 == {"T2"}
-#     assert E.auto_cross_derivatives
-#     assert Ta.diff2 == {"alpha", "phi"}
-#     assert Ta.auto_cross_derivatives
-#     assert Tb.diff2 == {"alpha", "phi"}
-#     assert Tb.auto_cross_derivatives
+    assert np.allclose(sm.states, smc.states)
+    assert np.allclose(sm.order1['T2'].states, smc.order1['T2'].states)
+    assert np.allclose(sm.order1['g'].states, smc.order1['g'].states)
 
-#     # combine operators
-#     ops = [Ta, E, Tb, E, Ta, E, Tb, E]
-#     combined = diff.A.combine(ops)
-#     assert combined.diff2 == {
-#         (E, "T2"),
-#         (Ta, "alpha"),
-#         (Ta, "phi"),
-#         (Tb, "alpha"),
-#         (Tb, "phi"),
-#     }
-
-#     # simulate separately
-#     sm0 = core.StateMatrix([1, 1, 0])
-#     sm1 = sm0
-#     for i, op in enumerate(ops):
-#         sm1 = op(sm1)
-
-#     sm2 = core.StateMatrix([1, 1, 0])
-#     sm2 = combined(sm2)
-
-#     assert set(sm2.order1) == set(sm1.order1)
-#     for var in sm1.order1:
-#         assert np.allclose(sm1.order1[var].states, sm2.order1[var].states)
-
-#     assert set(sm2.order2) == set(sm1.order2)
-#     for pair in sm1.order2:
-#         assert np.allclose(sm1.order2[pair].states, sm2.order2[pair].states)
-
-
-# def test_combine_2():
-#     E = diff.E(10, 1e3, 35, order2=["T1", "T2"], name="E")
-#     T = diff.T(150, 0, order2=["alpha"], name="T")
-
-#     sm0 = core.StateMatrix([1, 1, 0])
-#     sm1 = E(T(E(sm0)))
-
-#     combined = diff.A.combine([E, T, E])
-#     sm2 = combined(sm0)
-
-#     assert np.allclose(sm1.states, sm2.states)
-#     assert set(sm1.order1) == set(sm2.order1)
-#     for var in sm1.order1:
-#         assert np.allclose(sm1.order1[var], sm2.order1[var])
-#     assert set(sm1.order2) == set(sm2.order2)
-#     pairs = list(sm1.order2)
-#     for var in sm1.order2:
-#         assert np.allclose(sm1.order2[var], sm2.order2[var])
-
-#     # repeat combined
-#     sm1 = E(T(E(sm0)))
-#     smx = combined(sm0)
-
-#     _combined = diff.A.combine([T, E])
-#     combined2 = diff.A.combine([E, _combined])
-#     sm2 = combined2(sm0)
-
-#     assert np.allclose(sm1.states, sm2.states)
-#     assert set(sm1.order1) == set(sm2.order1)
-#     for var in sm1.order1:
-#         assert np.allclose(sm1.order1[var], sm2.order1[var])
-#     assert set(sm1.order2) == set(sm2.order2)
-#     pairs = list(sm1.order2)
-#     for var in sm1.order2:
-#         assert np.allclose(sm1.order2[var], sm2.order2[var])
-
+    
+    
 
 def test_jacobian_class():
     # jacobian probe
@@ -464,6 +398,7 @@ def test_jacobian_class():
     assert jac3.shape == (5, 2, 1)  # magnitude, alpha
     assert np.allclose(jac3[-1, 0], sm.F0)
     assert np.allclose(jac3[-1, 1], sm.order1[(rf, "alpha")].F0)
+
 
 
 def test_hessian_class():

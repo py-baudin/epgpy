@@ -175,16 +175,25 @@ class ArrayTuple(tuple):
         )
     def __mul__(self, other):
         if isscalar(other):
-            return ArrayTuple(0 * other if a is None else a * other for a in self)
-        return ArrayTuple(0*a if b is None else 0*b if a is None else a * b for a, b in zip(self, other, strict=True))
+            # return ArrayTuple(0 * other if a is None else a * other for a in self)
+            return ArrayTuple(None if a is None else a * other for a in self)
+        return ArrayTuple(
+            None if (a is None) or (b is None) else
+            # 0 * a if b is None else 
+            # 0 * b if a is None else 
+            a * b 
+            for a, b in zip(self, other, strict=True)
+        )
     def __rmul__(self, other):
         return self.__mul__(other)
     def __imul__(self, other):
         if isscalar(other):
-            return ArrayTuple(other * 0 if a is None else a.__imul__(other) for a in self)
+            # return ArrayTuple(other * 0 if a is None else a.__imul__(other) for a in self)
+            return ArrayTuple(None if a is None else a.__imul__(other) for a in self)
         return ArrayTuple(
-            0 * a if b is None else
-            0 * b if a is None else
+            None if (a is None) or (b is None) else
+            # 0 * a if b is None else
+            # 0 * b if a is None else
             a * b if isscalar(a) else 
             a.__imul__(b) 
             for a, b in zip(self, other, strict=True)
