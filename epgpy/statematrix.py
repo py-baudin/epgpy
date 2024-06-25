@@ -204,7 +204,7 @@ class StateMatrix:
     @property
     def zeros(self):
         """zero state matrix with current shape/nstate"""
-        return self.copy([0, 0, 0], nstate=self.nstate, shape=self.shape, check=False)
+        return self.copy([[0, 0, 0]], nstate=self.nstate, shape=self.shape, check=False)
 
     @property
     def writeable(self):

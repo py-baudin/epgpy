@@ -56,17 +56,28 @@ class DiffOperator(operator.Operator, abc.ABC):
                 dict of dict {(<var1>, <var2>): {(<param1>, <param2): <coeff12>, ...}):
                     compute combined partial derivatives, using the coefficients of the 2nd order parameter's derivatives
         """
+        super().__init__(*args, **kwargs)
+
         # parameters for which the differential operator exist
         if parameters:
             self.parameters = parameters
-        coeffs1, coeffs2 = self._parse_partials(order1, order2, isolated=False)
+        # compute coefficients
+        coeffs1, coeffs2 = self._parse_partials(order1, order2)
         self.coeffs1 = coeffs1
         self.coeffs2 = coeffs2
         
-        # compute inter operator derivatives automatically if `order2` was not provided in full
-        # self.auto_cross_derivatives = coeffs2 != order2
-        self.auto_cross_derivatives = not isinstance(order2, dict)
-        super().__init__(*args, **kwargs)
+        self.auto_cross_derivatives = False
+        if isinstance(order2, (bool, str)) or all(isinstance(item, str) for item in order2):
+            # compute inter operator derivatives automatically if `order2` pairs were not given
+            self.auto_cross_derivatives = True
+
+    @property
+    def order1(self):
+        return set(self.coeffs1)
+    
+    @property
+    def order2(self):
+        return {var for vars in self.coeffs2 for var in vars if var in self.coeffs1}
 
     @property
     def parameters_order1(self):
@@ -75,7 +86,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
     @property
     def parameters_order2(self):
-        """Set of parameters used in 2nd order derivatives"""
+        """Pairs of parameters used in 2nd order derivatives"""
         return {
             tuple(sorted((p1, p2)))
             for v1, v2 in self.coeffs2 
@@ -111,6 +122,10 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = getattr(sm, "order2", {})
 
         if order1 or self.coeffs1 or order2 or self.coeffs2:
+            missing = {var for vars in order2 for var in vars} & self.order1 - self.order2
+            if missing:
+                raise ValueError(f'Missing 2nd order parameters in {self}: {missing}')
+            # breakpoint
             order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
             order1 = self._apply_order1(sm, order1) # inplace=inplace
 
@@ -125,7 +140,7 @@ class DiffOperator(operator.Operator, abc.ABC):
     # 
     # private
 
-    def _parse_partials(self, order1=None, order2=None, *, isolated=True):
+    def _parse_partials(self, order1=None, order2=None):
         """ Parse order1 and order2 arguments
         
         Parse simple structures used in the constructor to provided fully defined
@@ -153,47 +168,45 @@ class DiffOperator(operator.Operator, abc.ABC):
         # {var1: {param1: dparam1/dvar1, param2: dparam2/dvar1}, var2: ...}
         parameters = set(self.parameters)
 
+        if (not order1) and isinstance(order2, (bool, str)):
+            order1 = order2
+
         if isinstance(order1, str):
             # single variable
             order1 = [order1]
 
-        if order1 == True:
+        if order1 is True:
             # action: compute magnetisation order1 w/r all operator's parameters
             # 1st derivatives of arguments are set to 1
-            if isolated:
-                coeffs1.update({(self, param): {param: 1} for param in parameters})
-            else:
-                coeffs1.update({param: {param: 1} for param in parameters})
+            coeffs1.update({param: {param: 1} for param in parameters})
 
         elif isinstance(order1, list):
             # derive with respect to operator's parameters
             invalid = set(order1) - parameters
             if invalid:
-                raise ValueError(f"Invalid parameter(s): {invalid}")
-            # 1st derivatives of arguments is set to 1
-            if isolated:
-                coeffs1.update({(self, param): {param: 1} for param in order1})
-            else:
-                coeffs1.update({param: {param: 1} for param in order1})
+                raise ValueError(f"Unknown parameter(s): {invalid}")
+            # 1st derivatives of variables is set to 1
+            coeffs1.update({param: {param: 1} for param in order1})
 
         elif isinstance(order1, dict) and all(
-            isinstance(order1, dict) for order1 in order1.values()
+            isinstance(coeffs, dict) for coeffs in order1.values()
         ):
             # pass the 1st derivatives of the op's parameters w/r to a custom variable
-            invalid = {
-                param for order1 in order1.values() for param in order1
-            } - parameters
+            invalid = {var for var in order1 if not set(order1[var]) <= parameters} 
             if invalid:
-                raise ValueError(f"Invalid parameter(s): {invalid}")
+                raise ValueError(f"Unknown coefficients(s) in variable(s): {invalid}")
             coeffs1.update({var: order1[var] for var in order1 if order1[var]})
 
         elif order1:
-            raise ValueError(f"Invalid parameter 'order1' value: {order1}")
+            raise ValueError(f"Invalid 'order1' value: {order1}")
 
         # 2nd order derivatives
         # {(x, y): {arg1: d2 arg1/dxdy, arg2: d2 arg2/dxdy, ...}}
 
-        parameters_pairs = get_combinations(parameters)
+        if order2 and not coeffs1:
+            raise ValueError('order1 coefficients must be set.')
+
+        # parameters_pairs = get_combinations(parameters)
 
         if isinstance(order2, str):
             # single variable
@@ -205,62 +218,35 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         if order2 == True:
             # compute all 2nd order partial derivatives
-            # update 1st order coeffs1 if not already set
-            if isolated:
-                [coeffs1.setdefault((self, param), {param: 1}) for param in parameters]
-                # assumes 2nd derivatives of arguments is 0
-                coeffs2.update({((self, p1), (self, p2)): {} for p1, p2 in parameters_pairs})
-            else:
-                [coeffs1.setdefault(param, {param: 1}) for param in parameters]
-                coeffs2.update({(p1, p2): {} for p1, p2 in parameters_pairs})
+            # assumes 2nd derivatives of arguments is 0
+            coeffs2.update({(v1, v2): {} for v1, v2 in get_combinations(coeffs1)})
 
-        elif isinstance(order2, list) and all(isinstance(pair, tuple) for pair in order2):
+        elif isinstance(order2, list) and all(isinstance(pair, tuple) and len(pair)==2 for pair in order2):
             # compute *some* 2nd order partial derivatives
-            invalid = set(order2) - parameters_pairs
+            invalid = {vars for vars in order2 if not set(vars) & set(coeffs1)}
             if invalid:
-                raise ValueError(f"Invalid variables pair(s): {invalid}")
-            # update 1st order coeffs1 if not already set
-            if isolated:
-                [
-                    coeffs1.setdefault((self, param), {param: 1})
-                    for pair in order2
-                    for param in pair
-                ]
-                # assumes 2nd derivatives of arguments is 0
-                coeffs2.update({((self, p1), (self, p2)): {} for p1, p2 in order2})
-            else:
-                [
-                    coeffs1.setdefault(param, {param: 1})
-                    for pair in order2
-                    for param in pair
-                ]
-                coeffs2.update({(p1, p2): {} for p1, p2 in order2})
+                raise ValueError('Unknown variable pair(s): {invalid}')
+            coeffs2.update({(v1, v2): {} for v1, v2 in order2})
 
         elif isinstance(order2, dict) and all(
-            isinstance(order2, dict) for order2 in order2.values()
+            isinstance(pair, tuple) and len(pair)==2 and isinstance(coeffs, dict) for pair, coeffs in order2.items()
         ):
             # compute the 2nd derivatives of the operator's parameters w/r to custom
-            if not all(isinstance(pair, tuple) and len(pair) == 2 for pair in order2):
-                raise ValueError(f"Invalid variable pair(s): {list(order2)}")
-
-            invalid = {
-                param for order2 in order2.values() for param in order2
-            } - parameters
+            invalid = {vars for vars in order2 if not set(vars) & set(order1)}
             if invalid:
-                raise ValueError(f"Invalid parameter(s): {invalid}")
-            # check 1st order partials
-            missing = {
-                var: set(order2[pair]) - set(coeffs1.get(var, []))
-                for pair in order2
-                for var in pair
-            }
-            if any(missing[var] for var in missing):
-                raise ValueError(f"Missing 1st order derivatives for variables: {missing}")
+                raise ValueError('Unknown variable pair(s): {invalid}')
+            invalid = {vars for vars in order2 if set(order2[vars]) - {param for var in order1 for param in order1[var]}}
+            if invalid:
+                raise ValueError(f'Missing 1st order derivatives for variable(s): {vars}')
+            invalid = {vars for vars in order2 if set(order2[vars]) - parameters}
+            if invalid:
+                raise ValueError(f'Unknown coefficients in variable pair(s): {invalid}')
             coeffs2.update(order2)
 
         elif order2:
             raise ValueError(f"Invalid parameter 'order2' value: {order2}")
 
+        # breakpoint()
         return coeffs1, coeffs2
 
 
