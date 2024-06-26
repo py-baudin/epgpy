@@ -92,8 +92,7 @@ fk = 0.2
 sims = {}
 stats = {}
 print(f"iteration 0: Kg={Kg:.2f}")
-# for iter in range(100):
-for iter in range(3):
+for iter in range(100):
     tic = time.time()
     Fs, ks = functions.simulate(seq, kgrid=Kg, probe=("F", "k"), asarray=False)
     duration = time.time() - tic
