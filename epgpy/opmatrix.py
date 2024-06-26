@@ -18,7 +18,7 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
 
         """
         # init parent class
-        super().__init__(**kwargs)
+        super().__init__(parameters_order1=set(dmats or []), parameters_order2=set(d2mats or []), **kwargs)
         self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes, check=check)
 
     def _init(self, mat, mat0=None, *, dmats=None, d2mats=None, axes=None, check=True):
@@ -30,7 +30,7 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         dmats = dmats or {}
         d2mats = d2mats or {}
         self.dmats = {param: matrix_setup(*dmats[param], axes=axes, check=check) for param in dmats}
-        self.d2mats = {params: matrix_setup(*d2mats[params], axes=axes, check=check) for params in d2mats}
+        self.d2mats = {diff.Pair(params): matrix_setup(*d2mats[params], axes=axes, check=check) for params in d2mats}
 
 
     @property
@@ -60,7 +60,6 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         """ combine multiple scalar operators"""
         
         # merge parameters and coefficients
-        parameters = set(op1.parameters) | set(op2.parameters)
         coeffs1 = {var: op.coeffs1[var] for op in (op1, op2) for var in op.coeffs1}
         coeffs2 = {vars: op.coeffs2[vars] for op in (op1, op2) for vars in op.coeffs2}
 
@@ -94,8 +93,7 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         
         return MatrixOp(
             mats[0], mats[1], 
-            dmats=dmats, d2mats=d2mats, 
-            parameters=parameters,
+            dmats=dmats, d2mats=d2mats,
             order1=coeffs1,
             order2=coeffs2,
             **kwargs,

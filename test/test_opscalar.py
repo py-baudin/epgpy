@@ -85,7 +85,7 @@ def test_ScalarOp_diff1():
     }
 
     # order1
-    op = ScalarOp(arr, arr0, darrs=darrs, order1={'r2': {'r2': 1}, 'r1': {'r1': 1}}, parameters=['r2', 'r1'], name='op1')
+    op = ScalarOp(arr, arr0, darrs=darrs, order1={'r2': {'r2': 1}, 'r1': {'r1': 1}}, name='op1')
 
     sm0 = StateMatrix([1, 1, 0])
     sm1 = op(sm0)
@@ -154,7 +154,6 @@ def test_ScalarOp_diff2():
     # order2
     op = ScalarOp(
         arr, arr0, darrs=darrs, d2arrs=d2arrs,
-        parameters=['r2', 'r1', 't'],
         order1={'r2': {'r2': 1}, 'r1': {'r1': 1}, 't': {'t': 1}},
         order2={('t', 'r2'): {}, ('t', 'r1'): {}},
         name='op1',
@@ -172,7 +171,6 @@ def test_ScalarOp_diff2():
     op_t = ScalarOp(
         arr_t, arr0_t, 
         name='op_t', 
-        parameters=['r2', 'r1'], 
         order1={'r2': {'r2': 1}, 'r1': {'r1': 1}}, 
         darrs={
             'r2': ([-(1 + dt) * r2 * dr2, -(1 + dt) * r2 * dr2, 0], None), 

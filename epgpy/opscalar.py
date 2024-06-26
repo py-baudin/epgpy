@@ -12,7 +12,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
     def __init__(self, arr, arr0=None, *, darrs=None, d2arrs=None, axes=None, check=True, **kwargs):
         """Initialize operator"""
 
-        super().__init__(**kwargs)
+        super().__init__(parameters_order1=set(darrs or []), parameters_order2=set(d2arrs or []), **kwargs)
         self._init(arr, arr0, darrs=darrs, d2arrs=d2arrs, axes=axes, check=check)
 
     def _init(self, arr, arr0=None, *, darrs=None, d2arrs=None, axes=None, check=True):
@@ -25,7 +25,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         darrs = darrs or {}
         d2arrs = d2arrs or {}
         self.darrs = {param: scalar_setup(*darrs[param], axes=axes, check=check) for param in darrs}
-        self.d2arrs = {params: scalar_setup(*d2arrs[params], axes=axes, check=check) for params in d2arrs}
+        self.d2arrs = {diff.Pair(params): scalar_setup(*d2arrs[params], axes=axes, check=check) for params in d2arrs}
 
         
     @property
@@ -68,7 +68,6 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         """ combine multiple scalar operators"""
         
         # merge parameters and coefficients
-        parameters = set(op1.parameters) | set(op2.parameters)
         coeffs1 = {var: op.coeffs1[var] for op in (op1, op2) for var in op.coeffs1}
         coeffs2 = {vars: op.coeffs2[vars] for op in (op1, op2) for vars in op.coeffs2}
 
@@ -102,8 +101,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
 
         return ScalarOp(
             arrs[0], arrs[1], 
-            darrs=darrs, d2arrs=d2arrs, 
-            parameters=parameters,
+            darrs=darrs, d2arrs=d2arrs,
             order1=coeffs1,
             order2=coeffs2,
             **kwargs,

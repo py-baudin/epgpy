@@ -8,8 +8,8 @@ from . import common, opscalar
 class R(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
 
-    parameters = ['rT', 'rL', 'r0']
-    independant = {('r0', 'rL'), ('r0', 'rT'), ('rL', 'rT')}
+    PARAMETERS_ORDER1 = {'rT', 'rL', 'r0'}
+    PARAMETERS_ORDER2 = {('rT', 'rT'), ('rL', 'rL'), ('r0', 'r0')}
 
     def __init__(self, rT=0, rL=0, *, r0=None, axes=None, name=None, duration=None, **kwargs):
         """Initialize evolution operator with relaxation/precession and recovery arrays
@@ -65,8 +65,11 @@ class R(opscalar.ScalarOp):
 
 class E(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
-    parameters= ['tau', 'T1', 'T2', 'g']
-    independant = {('T1', 'T2'), ('T1', 'g')}
+    PARAMETERS_ORDER1 = {'tau', 'T1', 'T2', 'g'}
+    PARAMETERS_ORDER2 = {
+        ('tau', 'tau'), ('T1', 'T1'), ('T2', 'T2'), ('g', 'g'),
+        ('T1', 'tau'), ('T2', 'tau'), ('g', 'tau'), ('T2', 'g'),
+    }
 
     def __init__(self, tau, T1, T2, g=0, *, axes=None, name=None, duration=None, **kwargs):
         """Initialize evolution operator with relaxation and precession rates
@@ -139,7 +142,8 @@ class E(opscalar.ScalarOp):
 class P(opscalar.ScalarOp):
     """n-dimensional evolution operator"""
 
-    parameters = ['tau', 'g']
+    PARAMETERS_ORDER1 = {'tau', 'g'}
+    PARAMETERS_ORDER2 = {('tau', 'tau'), ('g', 'g'), ('g', 'tau')}
 
     def __init__(self, tau, g, *, axes=None, name=None, duration=None, **kwargs):
         """Initialize evolution operator with precession rate

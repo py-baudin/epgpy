@@ -124,15 +124,15 @@ def test_MatrixOp_diff():
     db = rstate.uniform(-1, 1, 3); db += db[[1,0,2]].conj()
 
     
-    op1 = MatrixOp(A, B, parameters=['x'], dmats={'x': (dA, dB)}, order1={'x': {'x': 1}}, order2={('x', 'y'): {}})
-    op2 = ScalarOp(a, b, parameters=['y'], darrs={'y': (da, db)}, order1={'y': {'y': 1}}, order2={('x', 'y'): {}})
+    op1 = MatrixOp(A, B, dmats={'x': (dA, dB)}, order1={'x': {'x': 1}}, order2={('x', 'y'): {}})
+    op2 = ScalarOp(a, b, darrs={'y': (da, db)}, order1={'y': {'y': 1}}, order2={('x', 'y'): {}})
 
     sm0 = StateMatrix([1, 1, 0])
     sm2 = op1(op2(op1(sm0)))
 
     # combine
     op12 = op1 @ op2 @ op1
-    assert op12.parameters == {'x', 'y'}
+    assert op12.parameters_order1 == {'x', 'y'}
     sm2_ = op12(sm0)
     assert np.allclose(sm2.states, sm2_.states)
     assert np.allclose(sm2.order1['x'].states, sm2_.order1['x'].states)

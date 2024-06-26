@@ -6,7 +6,8 @@ from . import common, opmatrix
 class T(opmatrix.MatrixOp):
     """n-dimensional transition operator (instantaneous RF-pulse)"""
 
-    parameters = ['alpha', 'phi']
+    PARAMETERS_ORDER1 = {'alpha', 'phi'}
+    PARAMETERS_ORDER2 = {('alpha', 'alpha'), ('alpha', 'phi'), ('phi', 'phi')}
 
     def __init__(self, alpha, phi, *, axes=None, name=None, duration=None, **kwargs):
         """Init instantaneous RF-pulse operator
@@ -69,7 +70,8 @@ class Ty(T):
 class Phi(opmatrix.MatrixOp):
     """Add phase offset"""
 
-    parameters = ['phi']
+    PARAMETERS_ORDER1 = {'phi'}
+    PARAMETERS_ORDER2 = {('phi', 'phi')}
 
     def __init__(self, phi, *, axes=None, name=None, duration=0, **kwargs):
         params = common.map_arrays(phi=phi)

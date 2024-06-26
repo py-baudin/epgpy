@@ -7,7 +7,8 @@ from epgpy import statematrix, diff, operators, functions
 def test_parse_partials():
 
     class Op(diff.DiffOperator):
-        parameters = ["x", "y"]
+        PARAMETERS_ORDER1 = {"x", "y"}
+        PARAMETERS_ORDER2 = {('x', 'y'), ('x', 'x'), ('y', 'y')}
         def _apply(self, sm): pass
         def _derive1(self, *args): pass
         def _derive2(self, sm, params): pass
@@ -54,7 +55,7 @@ def test_parse_partials():
         order2={("foo", "bar"): {"x": 2, "y": 3}},
     )
     assert coeffs1 == {"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}}
-    assert coeffs2 == {("foo", "bar"): {"x": 2, "y": 3}}
+    assert coeffs2 == {("bar", "foo"): {"x": 2, "y": 3}}
 
     with pytest.raises(ValueError):
         op._parse_partials(order2={("foo", "bar"): {"x": 2, "y": 3}})
@@ -64,7 +65,8 @@ def test_order12():
     """ Test order 1 and 2 partials"""
 
     class Op(diff.DiffOperator):
-        parameters = ["x", "y"]
+        PARAMETERS_ORDER1 = {"x", "y"}
+        PARAMETERS_ORDER2 = {('x', 'y'), ('x', 'x'), ('y', 'y')}
         def _apply(self, sm): return sm
         def _derive1(self, sm, param):
             op1 = {'x': 2, 'y': 3}[param]
@@ -130,7 +132,8 @@ def test_order12():
 def test_diff_chain():
     """ chain multiple differentiable operators """
     class Op(diff.DiffOperator):
-        parameters = ["x", "y"]
+        PARAMETERS_ORDER1 = {"x", "y"}
+        PARAMETERS_ORDER2 = {('x', 'y'), ('x', 'x'), ('y', 'y')}
         def _apply(self, sm): 
             return 0.9 * sm
         def _derive1(self, sm, param):
@@ -243,7 +246,7 @@ def test_diff2_ssfp():
     sm = statematrix.StateMatrix([0, 0, 1])
     sm_T2 = sm.copy()
     sm_alpha = sm.copy()
-    for i, op in enumerate(seq):
+    for op in seq:
         sm = op(sm)
         sm_T2 = rlx_T2(sm_T2) if op.name == "relax" else op(sm_T2)
         sm_alpha = rf_alpha(sm_alpha) if op.name == "pulse" else op(sm_alpha)
