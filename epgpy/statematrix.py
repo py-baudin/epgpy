@@ -65,11 +65,13 @@ class StateMatrix:
             # custom init
             init = _format_states(init, check=check)
 
-        # self.arrays.set("states", init)
+        # set initial magnetization
         self.arrays.set("states", init, layout=[..., "nstate", 3])
 
-        # self.arrays.set("equilibrium", equilibrium)
-        self.arrays.set("equilibrium", equilibrium, layout=[..., 1, 3])
+        # set equilibrium
+        self.arrays.set("equilibrium", equilibrium, layout=[..., "nstate", 3], resize=True)
+
+        # set frequency coordinates
         if coords is not None:
             self.arrays.set("coords", coords, layout=[..., "nstate", "kdim"])
         self.kvalue = kvalue
@@ -98,7 +100,7 @@ class StateMatrix:
 
     @property
     def density(self):
-        return self.equilibrium[..., 0, 2].real
+        return self.equilibrium[..., self.nstate, 2].real
 
     @property
     def equilibrium(self):
@@ -259,11 +261,11 @@ class StateMatrix:
         sm = self.__new__(type(self))
         coll = self.arrays.copy()
         if states is not None:
-            coll.set('states', states)
+            coll.set('states', states, resize=True)
         if 'equilibrium' in kwargs:
-            coll.set('equilibrium', kwargs.pop('equilibrium'))
+            coll.set('equilibrium', kwargs.pop('equilibrium'), resize=True)
         if 'coords' in kwargs:
-            coll.set('coords', kwargs.pop('coords'))
+            coll.set('coords', kwargs.pop('coords'), resize=True)
         sm.arrays = coll
         sm.kvalue = kwargs.pop('kvalue', self.kvalue)
         sm.tvalue = kwargs.pop('tvalue', self.tvalue)
@@ -319,7 +321,6 @@ def _init_states(density=1):
     init = xp.array([[[0, 0, 1]]])
     states = density * init
     return states
-
 
 def _format_states(states, check=True):
     """format and check states matrix"""
@@ -406,7 +407,7 @@ class ArrayCollection:
         return len(self._arrays)
 
     def __repr__(self):
-        return f"ArrayCollection({len(self._arrays)})"
+        return f"ArrayCollection({len(self._arrays)}, shape={self.shape})"
 
     def __iter__(self):
         return iter(self._arrays)
@@ -453,31 +454,40 @@ class ArrayCollection:
         return self.get_axes()
 
     def get(self, name, default=None):
+        """ get (broadcast) array from collection """
         if not name in self._arrays:
             return default
         layout = self._layouts[name]
         array = self._arrays[name]
         return self._broadcast_array(array, layout)
 
-    def set(self, name, array, *, layout=None):
-        """layout = (..., None, 3, 'a')"""
+    def set(self, name, array, *, layout=None, resize=False):
+        """ add array to collection"""
         xp = self.xp
         array = xp.array(array)  # copy array
 
         if name in self._arrays:
-            ignore = name
-            if layout is None:
-                # keep existing layout
+            if layout is None: # keep existing layout
                 layout = self._layouts[name]
-        elif layout is None:
+        elif layout is None: # set default layout
             layout = [Ellipsis]
 
-        self.check(array.shape, layout, ignore=name)
+        # self.check(array.shape, layout, ignore=name)
+        self.check_layout(layout)
+        if resize:
+            axes = self.get_axes(ignore=name)
+            sizes = get_axes_size([array.shape], [layout])
+            indices = get_axes_index(array.shape, layout)
+            for ax in sizes:
+                if ax in axes and sizes[ax] != axes[ax]:
+                    array = resize_array(array, axes[ax] - sizes[ax], axis=indices[ax])
+
+        self.check_shape(array.shape, layout, ignore=name)
         self._arrays[name] = array
         self._layouts[name] = tuple(layout)
-        
             
     def pop(self, name, default=None):
+        """ remove array from collection """
         if not name in self._arrays:
             return default
         self._layouts.pop(name)
@@ -494,48 +504,47 @@ class ArrayCollection:
         coll._arrays = {name: self._arrays[name].copy() for name in self}
         coll._default = tuple(self._default)
         return coll
-
-    def get_axes(self, ignore=None):
-        axes = {}
-        for name in self:
-            if name == ignore:
-                continue
-            array = self._arrays[name]
-            layout = self._layouts[name]
-            idx = 0
-            for ax in layout:
-                if ax is Ellipsis:
-                    idx += array.ndim - len(layout) + 1
-                    continue
-                elif isinstance(ax, str):
-                    axes.setdefault(ax, array.shape[idx])
-                idx += 1
-        return axes
-
-    def check(self, shape, layout=(...,), *, ignore=None):
-        """check shape and layout"""
-        shape = tuple(shape)
-        axes = self.get_axes(ignore=ignore)
-        axis, idx = None, 0
-        # check layout
+    
+    def get_axes(self, *, ignore=None):
+        """ get named axes"""
+        names = [name for name in self._arrays if name != ignore]
+        shapes = [self._arrays[name].shape for name in names]
+        layouts = [self._layouts[name] for name in names]
+        return get_axes_size(shapes, layouts)
+    
+    def check_layout(self, layout):
+        """ check layout """
+        axis = None
         for i, ax in enumerate(layout):
             if ax is Ellipsis:
                 if axis is not None:
-                    raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+                    raise ValueError(f"`layout` must contain only one Ellipsis: {layout}")
                 axis = i
-                idx += len(shape) - len(layout) + 1
                 continue
+        if axis is None:
+            raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+        
+    def check_shape(self, shape, layout, *, ignore=None):
+        """check shape"""
+        shape = tuple(shape)
+        axes = self.get_axes(ignore=ignore)
+
+        # check named axes
+        idx = 0
+        for i, ax in enumerate(layout):
+            if ax is Ellipsis:
+                idx += len(shape) - len(layout) + 1
             elif isinstance(ax, int) and shape[idx] != ax:
                 raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
             elif isinstance(ax, str) and shape[idx] != axes.get(ax, shape[idx]):
                 raise ValueError(
-                    f"Invalid named axis dimension {ax}={shape[idx]} in array: {shape}"
+                    f"Invalid axis dimension {idx} (`{ax}`) in array: {shape}"
                 )
-            idx += 1
-        if axis is None:
-            raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+            else:
+                idx += 1
 
         # check shape
+        axis = layout.index(Ellipsis)
         common = list(shape[axis : len(shape) - len(layout) + 1])
         shared = self.shape
         diff = len(shared) - len(common)
@@ -544,20 +553,53 @@ class ArrayCollection:
         if diff < 0:
             common[ax : ax - diff] = []
         elif diff > 0:
-            common = (
-                common[:ax]
-                + [
-                    1,
-                ]
-                * diff
-                + common[ax:]
-            )
+            common = common[:ax] + [1,] * diff + common[ax:]
         if any(1 != d1 != d2 != 1 for d1, d2 in zip(common, shared)):
             raise ValueError(f"Incompatible shape: {shape} and {shared}")
 
+
+    def check(self, shape, layout, *, ignore=None):
+        """check shape and layout"""
+        self.check_layout(layout)
+        self.check_shape(shape, layout, ignore=ignore)
+
+        # shape = tuple(shape)
+        # axes = self.get_axes(ignore=ignore)
+        # axis, idx = None, 0
+        # # check layout
+        # for i, ax in enumerate(layout):
+        #     if ax is Ellipsis:
+        #         if axis is not None:
+        #             raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+        #         axis = i
+        #         idx += len(shape) - len(layout) + 1
+        #         continue
+        #     elif isinstance(ax, int) and shape[idx] != ax:
+        #         raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
+        #     elif isinstance(ax, str) and shape[idx] != axes.get(ax, shape[idx]):
+        #         raise ValueError(
+        #             f"Invalid axis dimension {idx} (`{ax}`) in array: {shape}"
+        #         )
+        #     idx += 1
+        # if axis is None:
+        #     raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+
+        # # check shape
+        # common = list(shape[axis : len(shape) - len(layout) + 1])
+        # shared = self.shape
+        # diff = len(shared) - len(common)
+
+        # ax = self.expand_axis
+        # if diff < 0:
+        #     common[ax : ax - diff] = []
+        # elif diff > 0:
+        #     common = common[:ax] + [1,] * diff + common[ax:]
+        # if any(1 != d1 != d2 != 1 for d1, d2 in zip(common, shared)):
+        #     raise ValueError(f"Incompatible shape: {shape} and {shared}")
+
     def resize(self, ax, size, *, constant=0):
         """resize named axis"""
-        xp = self.xp
+        # xp = self.xp
         axes = self.axes
         if not ax in axes:
             raise ValueError(f"Unknown size: {ax}")
@@ -572,14 +614,7 @@ class ArrayCollection:
             axis = layout.index(ax)
             if 0 <= layout.index(Ellipsis) < axis:
                 axis = arr.ndim - len(layout) + axis
-            if diff < 0:  # crop
-                slices = [slice(None) for _ in range(arr.ndim)]
-                slices[axis] = slice(-diff // 2, arr.shape[axis] - (-diff + 1) // 2)
-                arr = arr[tuple(slices)]
-            elif diff > 0:  # padd
-                pad = [(0, 0) for _ in range(arr.ndim)]
-                pad[axis] = (diff // 2, (diff + 1) // 2)
-                arr = xp.pad(arr, pad, constant_values=constant)
+            arr = resize_array(arr, diff, axis=axis, constant=constant)
             self._arrays[name] = arr
 
     def expand(self, ndim):
@@ -634,3 +669,43 @@ class ArrayCollection:
         if tuple(shape) != array.shape:
             array = xp.broadcast_to(array, shape)
         return array
+
+def get_axes_size(shapes, layouts):
+    """ get named axes"""
+    axes = {}
+    for shape, layout in zip(shapes, layouts):
+        idx = 0
+        for ax in layout:
+            if ax is Ellipsis:
+                idx += len(shape) - len(layout) + 1
+                continue
+            elif isinstance(ax, str):
+                axes.setdefault(ax, shape[idx])
+            idx += 1
+    return axes
+
+def get_axes_index(shape, layout):
+    idx = 0
+    axes = {}
+    for ax in layout:
+        if ax is Ellipsis:
+            idx += len(shape) - len(layout) + 1
+        else:
+            if isinstance(ax, str):
+                axes[ax] = idx
+            idx += 1
+    return axes
+
+
+def resize_array(array, diff, axis=0, *, constant=0):
+    """ resize array at given axis """
+    xp = common.get_array_module(array)
+    if diff < 0:  # crop
+        slices = [slice(None) for _ in range(array.ndim)]
+        slices[axis] = slice(-diff // 2, array.shape[axis] - (-diff + 1) // 2)
+        array = array[tuple(slices)]
+    elif diff > 0:  # padd
+        pad = [(0, 0) for _ in range(array.ndim)]
+        pad[axis] = (diff // 2, (diff + 1) // 2)
+        array = xp.pad(array, pad, constant_values=constant)
+    return array

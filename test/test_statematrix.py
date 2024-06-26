@@ -90,6 +90,21 @@ def test_arraycollection_class():
     assert coll.shape == (2, 4)
     assert coll.get("arr1").shape == (2, 4, 3)
 
+    # resize on set
+    coll.set('arr3', array(1, 5), layout=(..., 'ax1'))
+    with pytest.raises(ValueError):
+        coll.set('arr4', array(1, 2), layout=(..., 'ax1'))
+    coll.set('arr4', array(1, 2), layout=(..., 'ax1'), resize=True)
+    assert coll.get('arr4').shape == coll.shape + (5,)
+    # arr4 was padded with zeros
+    assert np.all(coll.get('arr4')[0, 0] == np.r_[array(1)*0, array(2), array(2)*0])
+    with pytest.raises(ValueError): #
+        coll.set('arr5', array(1, 7), layout=(..., 'ax1'))
+    coll.set('arr5', array(1, 7), layout=(..., 'ax1'), resize=True)
+    # arr5 was cropped
+    assert np.all(coll.get('arr5')[0, 0] == array(7)[1:-1])
+
+
 
 def test_state_matrix_class():
     sm = statematrix.StateMatrix(init=[0, 0, 1])
@@ -165,6 +180,7 @@ def test_state_matrix_class():
     assert sm.nstate == 3
     sm.resize(5)
     assert sm.nstate == 5
+    assert sm.equilibrium.shape[-2:] == sm.states.shape[-2:]
     sm.resize(0)
     assert sm.nstate == 0
     assert np.all(sm == [[[0, 0, 1]]])

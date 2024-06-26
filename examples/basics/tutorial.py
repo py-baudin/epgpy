@@ -104,8 +104,8 @@ spgr = [[epg.T(14.8, phase), relax, adc, relax, shift] for phase in phases]
 necho = 200
 TR, TE = 19.9, 4.2
 rf = epg.T(45, 0)
-relax1 = epg.E(TE, 800, 70, duration=TE)
-relax2 = epg.E(TR - 2 * TE, 800, 70, duration=TR - 2 * TE)
+relax1 = epg.E(TE, 800, 70, duration=True)
+relax2 = epg.E(TR - 2 * TE, 800, 70, duration=True)
 dess = [rf, relax1, adc, shift, relax2, adc, relax1] * necho
 
 
