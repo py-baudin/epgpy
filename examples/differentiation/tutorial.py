@@ -158,9 +158,9 @@ nobs, nparam = J.shape
 dof = nobs - nparam
 
 # variance-covariance matrix
-# V = np.linalg.inv((J.T @ J).real)
-V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real)
-
+# V = np.linalg.inv((J.T @ J).real) # 1st order
+V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real) # 2nd order
+ 
 # c.int of reduced t statistics (mean=0, variance=1)
 tval = np.asarray(stats.t.interval(0.95, dof))[1]
 
