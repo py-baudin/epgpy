@@ -1,5 +1,5 @@
 import numpy as np
-from epgpy import optim
+from epgpy import stats
 
 
 def test_crlb():
@@ -42,17 +42,17 @@ def test_crlb():
     hessp = np.concatenate([hessp.real, hessp.imag], axis=0)
 
     # crlb
-    cost, grad = optim.crlb(jac(p), H=hess(p))
-    fdiff = (optim.crlb(jac(p + 1e-8 * dp)) - cost) * 1e8
+    cost, grad = stats.crlb(jac(p), H=hess(p))
+    fdiff = (stats.crlb(jac(p + 1e-8 * dp)) - cost) * 1e8
     assert np.allclose(fdiff, grad @ dp)
 
     # with log10
-    cost, grad = optim.crlb(jac(p), H=hess(p), log=True)
-    fdiff = (optim.crlb(jac(p + 1e-8 * dp), log=True) - cost) * 1e8
+    cost, grad = stats.crlb(jac(p), H=hess(p), log=True)
+    fdiff = (stats.crlb(jac(p + 1e-8 * dp), log=True) - cost) * 1e8
     assert np.allclose(fdiff, grad @ dp)
 
     # crlb with weights
     weights = [1, 2, 3]
-    cost, grad = optim.crlb(jac(p), H=hess(p), W=weights)
-    fdiff = (optim.crlb(jac(p + 1e-8 * dp), W=weights) - cost) * 1e8
+    cost, grad = stats.crlb(jac(p), H=hess(p), W=weights)
+    fdiff = (stats.crlb(jac(p + 1e-8 * dp), W=weights) - cost) * 1e8
     assert np.allclose(fdiff, grad @ dp)
