@@ -133,9 +133,9 @@ from scipy import stats
 """
 The signal's Jacobian matrix can be used for confidence interval calculation with the delta method
 
-Note: noise is assumed to be Gaussian instead of Rician
+Note: for simplification, observation noise is wrongly assumed to be Gaussian instead of Rician
 
-cf:
+Ref:
 https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-prediction-intervals
 """
 
@@ -143,7 +143,7 @@ https://www.astro.rug.nl/software/kapteyn/kmpfittutorial.html#confidence-and-pre
 noise = np.random.normal(size=necho)
 noise *= np.sqrt(1e-2 / np.sum(noise**2))
 
-obs = signal.real[:, 0] + noise
+obs = np.maximum(signal.real[:, 0] + noise, 0)
 pred = signal.real[:, 0]
 
 # sum of squared error 
@@ -160,7 +160,6 @@ dof = nobs - nparam
 # variance-covariance matrix
 # V = np.linalg.inv((J.T @ J).real)
 V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real)
-
 
 # c.int of reduced t statistics (mean=0, variance=1)
 tval = np.asarray(stats.t.interval(0.95, dof))[1]
@@ -180,8 +179,9 @@ plt.figure("mse-cint")
 plt.plot(times, obs, 'b+', label='observation')
 plt.plot(times, pred, 'b', label='prediction')
 plt.fill_between(
-    times, pred - 3*cband, pred + 3*cband, alpha=0.3, label='95% confidence band (3$\sigma$)'
+    times, pred - 3*cband, pred + 3*cband, alpha=0.3, label='95% confidence band (3$\\sigma$)'
 )
+
 plt.title(
     f"MSE: confidence and prediction intervals\n"
     f"$cint(\\alpha)=150\\pm{cint_alpha:.1f}^\\circ$, "

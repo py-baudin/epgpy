@@ -12,6 +12,7 @@ def crlb(J, H=None, W=None, sigma2=1, log=False):
     # J.shape: npoint x nparam x ...
     if np.iscomplexobj(J):
         J = xp.concatenate([J.real, J.imag], axis=-2)
+    # Fisher information  matrix
     I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
@@ -55,73 +56,6 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     if log:
         crb = np.log10(crb)
     return xp.moveaxis(crb, -1, 0)
-
-
-# def confint(sse, jac, *, dof=None, alpha=0.05):
-#     """non-linear least-square regression confidence interval calculation
-
-#     Parameters
-#         sse: sum of squared error (float, or N-array)
-#         jac: Jacobian matrix (D x P or N x D x P array)
-#         dof: number of degrees of freedom (default: D - P)
-#         alpha: risk of the confidence interval (ie. 0.05 for 95% confidence interval)
-#     """
-#     sse = np.asarray(sse)
-
-#     jac = np.asarray(jac)
-#     nvalue, nparam = jac.shape[-2:]
-#     if jac.ndim == 2:
-#         jac = jac[np.newaxis]
-#     if sse.ndim == 0:
-#         sse = sse[np.newaxis]
-
-#     # ouput cint shape
-#     shape = sse.shape + (nparam,)
-
-#     # degrees of freedom
-#     if dof is None:
-#         dof = nvalue - nparam
-#     sse = sse / dof
-
-#     # J.T * J for all observations
-#     jac2 = np.einsum("...ji,...jk", jac.conj(), jac).real
-
-#     # compute conditionning
-#     with np.errstate(divide="ignore", invalid="ignore"):
-#         # ignore divide-by-0 errors
-#         conditionning = np.linalg.cond(jac2)
-
-#     # check singularity
-#     is_non_singular = conditionning < 1e10
-#     non_singular = np.flatnonzero(is_non_singular)
-
-#     # compute inverse
-#     # V = sse * linalg.inv(J.T * J)
-#     if len(non_singular) == 0:
-#         # no valid solution
-#         return np.nan * np.ones(shape)
-#     else:
-#         # inv_jac_2 = np.linalg.pinv(jac2[non_singular])
-#         inv_jac_2 = np.linalg.inv(jac2[non_singular])
-
-#     # init vector
-#     inv_j_diag_full = np.nan * np.ones(jac2.shape[:-2] + (nparam,))
-#     if len(inv_jac_2):
-#         # take positive diagonal elements
-#         inv_j = np.einsum("...jj->...j", inv_jac_2)
-#         with np.errstate(invalid="ignore"):
-#             inv_j_diag = np.where(inv_j >= 0, np.sqrt(inv_j), np.nan)
-#         # insert back non singular values
-#         inv_j_diag_full[non_singular, :] = inv_j_diag
-
-#     # t value for risk alpha
-#     tval = get_tstat_interval(1 - alpha, dof)
-
-#     # cint
-#     cint = np.sqrt(sse[..., np.newaxis]) * inv_j_diag_full * tval
-
-#     return cint
-
 
 
 def confint(obs, S, J, H=None, *, alpha=0.05):
