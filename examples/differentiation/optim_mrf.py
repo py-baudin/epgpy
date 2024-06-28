@@ -14,37 +14,30 @@ import time
 import numpy as np
 from scipy import optimize
 from matplotlib import pyplot as plt
-from epgpy import epg, stats
+from epgpy import epg, stats, diff
 
-import logging
 
-# logging.basicConfig(level=logging.INFO)
-
-nTR = 40
+# define MRF sequence
+nTR = 50
 T1, T2 = 1380, 80
 
-
-order1_rf = {f'alpha_{i}': {'alpha': 1} for i in range(nTR)}
-order2_rf1 = {('T1', f'alpha_{i}'): {} for i in range(nTR)}
-order2_rf2 = {('T2', f'alpha_{i}'): {} for i in range(nTR)}
+order1_rf = [{f'alpha_{i}': {'alpha': 1}} for i in range(nTR)]
+order2_rf = [{('T1', f'alpha_{i}'): {}, ('T2', f'alpha_{i}'): {}} for i in range(nTR)]
 
 def rf(i, alpha, deriv=False):
     if not deriv:
         return epg.T(alpha, 90)
-    return epg.T(alpha, 90, order1=order1_rf, order2={**order2_rf1, **order2_rf2})
+    return epg.T(alpha, 90, order1=order1_rf[i], order2=order2_rf[i])
     
-
-order1_rlx = {'T1': {'T1': 1}, 'T2': {'T2': 1}}
-order1_tau = {f'tau_{i}': {'tau': 1} for i in range(nTR)}
-order2_rlx1 = {('T1', f'tau_{i}'): {} for i in range(nTR)}
-order2_rlx2 = {('T2', f'tau_{i}'): {} for i in range(nTR)}
+order1_t12 = {'T1': {'T1': 1}, 'T2': {'T2': 1}}
+order1_rlx = [{f'tau_{i}': {'tau': 1}, **order1_t12} for i in range(nTR)]
+order2_rlx = [{('T1', f'tau_{i}'): {}, ('T2', f'tau_{i}'): {}} for i in range(nTR)]
 def rlx(i, tau, deriv=False): 
     if not deriv:
-        return epg.E(tau, T1, T2, order1=order1_rlx, duration=True)
+        return epg.E(tau, T1, T2, order1=order1_t12, duration=True)
     return epg.E(
         tau, T1, T2, 
-        order1={**order1_rlx, **order1_tau}, 
-        order2={**order2_rlx1, **order2_rlx2}, 
+        order1=order1_rlx[i], order2=order2_rlx[i],
         duration=True,
     )
 grd = epg.S(1)
@@ -67,18 +60,14 @@ TR in [11, 16]
 """
 
 
-# def get_values(params):
-#     """return dict of values from param array"""
-#     values = {"T1": T1, "T2": T2}
-#     values.update({alphas[i]: params[i] for i in range(nTR)})
-#     values.update({taus[i]: params[nTR + i] for i in range(nTR)})
-#     return values
-
-
 weights = [1, 1 / T1 ** 2, 1 / T2 ** 2]
 params = [f'alpha_{i}' for i in range(nTR)] + [f'tau_{i}' for i in range(nTR)]
 Jac = epg.Jacobian(['magnitude', 'T1', 'T2'])
 Hes = epg.Hessian(['magnitude', 'T1', 'T2'], params)
+def Num(sm):
+    return (len(sm.order1), len(sm.order2))
+
+pruner = diff.PartialsPruner(params, 1e-5)
 
 def signal(params):
     alphas, taus = params[:nTR], params[nTR:]
@@ -91,7 +80,7 @@ def costfunction(params):
     jac = epg.simulate(seq(alphas, taus, False), probe=Jac)
     cost = stats.crlb(np.moveaxis(jac, -1, 0), W=weights, log=True)
     print(f"Cost function call: {cost}")
-    print(params)
+    # print(params)
     return cost
 
 
@@ -99,14 +88,14 @@ def costfunction_jac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
     alphas, taus = params[:nTR], params[nTR:]
     # breakpoint()
-    jac, hes = epg.simulate(seq(alphas, taus, True), probe=[Jac, Hes])
+    jac, hes, num = epg.simulate(seq(alphas, taus, True), probe=[Jac, Hes, Num], callback=pruner)
     cost, grad = stats.crlb(
         np.moveaxis(jac, -1, 0), 
         np.moveaxis(hes, -1, 0),
         W=weights,
         log=True,
     )
-    print(f"Cost function gradient call: {cost}")
+    print(f"Cost function gradient call: {cost} (num partials: {max(num[:, 0]), max(num[:, 1])})")
     return grad.ravel()
 
 
@@ -165,7 +154,7 @@ plt.title("TE values")
 plt.ylabel("TE (ms)")
 plt.xlabel("echo index")
 plt.ylim(10, 17)
-plt.show()
+# plt.show()
 
 
 varnames = [f"alpha{i}" for i in range(nTR)] + [f"tau{i}" for i in range(nTR)]
@@ -181,7 +170,7 @@ plt.ylabel("signal")
 plt.title(f"Fingerprint for T1={T1}ms, T2={T2}ms")
 plt.legend()
 plt.grid()
-plt.show()
+# plt.show()
 
 
 # plt.figure("mfr-iterations")

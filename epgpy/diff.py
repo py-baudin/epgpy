@@ -478,6 +478,7 @@ class PartialsPruner:
         for pair in pairs:
             if np.all(order2[pair].norm < self.threshold):
                 order2.pop(pair)
+        
 
 
 
