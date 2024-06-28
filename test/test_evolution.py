@@ -264,20 +264,20 @@ def test_E_diff():
     op = E([1, 1e10], 10, [[10] * 3], 0.1, order1=True, order2=[('tau', 'T1'), ('tau', 'T2')])
     sm1 = op(sm0)
     assert sm1.order1['tau'].shape == sm1.order1['T2'].shape == sm1.shape
-    assert sm1.order2[('tau', 'T1')].shape == sm1.order2[('tau', 'T2')].shape == sm1.shape
+    assert sm1.order2[('T2', 'tau')].shape == sm1.order2[('T2', 'tau')].shape == sm1.shape
     assert np.allclose(sm1.order1['tau'].states, sm1.order1['tau'].states[:, 0:1])
     assert np.allclose(sm1.order1['T1'].states, sm1.order1['T1'].states[:, 0:1])
     assert np.allclose(sm1.order1['T2'].states, sm1.order1['T2'].states[:, 0:1])
-    assert np.allclose(sm1.order2[('tau', 'T1')].states, sm1.order2[('tau', 'T1')].states[:, 0:1])
-    assert np.allclose(sm1.order2[('tau', 'T2')].states, sm1.order2[('tau', 'T2')].states[:, 0:1])
+    assert np.allclose(sm1.order2[('T1', 'tau')].states, sm1.order2[('T1', 'tau')].states[:, 0:1])
+    assert np.allclose(sm1.order2[('T2', 'tau')].states, sm1.order2[('T2', 'tau')].states[:, 0:1])
 
     assert not np.allclose(sm1.order1['tau'].states[0], 0)
     assert not np.allclose(sm1.order1['T1'].states[0], 0)
-    assert not np.allclose(sm1.order2[('tau', 'T1')].states[0], 0)
-    assert not np.allclose(sm1.order2[('tau', 'T2')].states[0], 0)
+    assert not np.allclose(sm1.order2[('T1', 'tau')].states[0], 0)
+    assert not np.allclose(sm1.order2[('T2', 'tau')].states[0], 0)
 
      # infinite time -> derivative is 0
     assert np.allclose(sm1.order1['tau'].states[1], 0)
-    assert np.allclose(sm1.order2[('tau', 'T2')].states[1], 0)
-    assert np.allclose(sm1.order2[('tau', 'T1')].states[1], 0)
+    assert np.allclose(sm1.order2[('T1', 'tau')].states[1], 0)
+    assert np.allclose(sm1.order2[('T2', 'tau')].states[1], 0)
      

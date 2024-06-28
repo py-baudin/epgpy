@@ -268,12 +268,12 @@ def test_diff2_ssfp():
 
     assert np.allclose(
         (sm_alpha.order1['T2'].states - sm.order1['T2'].states) * 1e8, 
-        sm.order2[('alpha', 'T2')].states,
+        sm.order2[('T2', 'alpha')].states,
     )
 
     assert np.allclose(
         (sm_T2.order1['alpha'].states - sm.order1['alpha'].states) * 1e8, 
-        sm.order2[('alpha', 'T2')].states,
+        sm.order2[('T2', 'alpha')].states,
     )
 
     assert np.allclose(
@@ -284,7 +284,7 @@ def test_diff2_ssfp():
     # using simulate
     probe = [
         lambda sm: sm.order2[("alpha", "alpha")].F0,
-        lambda sm: sm.order2[("alpha", "T2")].F0,
+        lambda sm: sm.order2[("T2", "alpha")].F0,
         lambda sm: sm.order2[("T2", "T2")].F0,
     ]
     order2 = functions.simulate(
@@ -293,7 +293,7 @@ def test_diff2_ssfp():
         squeeze=False,  # tmp
     )
     assert np.isclose(order2[0], sm.order2[('alpha', 'alpha')].F0)
-    assert np.isclose(order2[1], sm.order2[('alpha', 'T2')].F0)
+    assert np.isclose(order2[1], sm.order2[('T2', 'alpha')].F0)
     assert np.isclose(order2[2], sm.order2[('T2', 'T2')].F0)
 
 
@@ -323,12 +323,12 @@ def test_diff2_partial():
     for op in seq1:
         sm1 = op(sm1)
 
-    # assert set(sm1.order2) == {
-    #     ("alpha", "T2"),
-    #     ("alpha", "T1"),
-    #     ("T1", "alpha"),
-    #     ("T2", "alpha"),
-    # }
+    assert set(sm1.order2) == {
+        ("alpha", "T2"),
+        ("alpha", "T1"),
+        ("T1", "alpha"),
+        ("T2", "alpha"),
+    }
 
     # full order2
     rf2 = operators.T(15, 90, order2=True, name="rf2")
@@ -340,7 +340,7 @@ def test_diff2_partial():
     for op in seq2:
         sm2 = op(sm2)
     assert np.allclose(
-        sm2.order2[("alpha", "T2")], sm1.order2[("alpha", "T2")]
+        sm2.order2[("T2", "alpha")], sm1.order2[("alpha", "T2")]
     )
 
     # finite diff
@@ -350,11 +350,11 @@ def test_diff2_partial():
         sm_alpha = op(sm_alpha)
     assert np.allclose(
         (sm_alpha.order1["T2"].F0 - sm1.order1["T2"].F0) * 1e8, 
-        sm1.order2[("alpha", "T2")].F0,
+        sm1.order2[("T2", "alpha")].F0,
     )
     assert np.allclose(
         (sm_alpha.order1["T1"].F0 - sm1.order1["T1"].F0) * 1e8, 
-        sm1.order2[("alpha", "T1")].F0,
+        sm1.order2[("T1", "alpha")].F0,
     )
 
 
@@ -478,7 +478,7 @@ def test_hessian_class():
 
     assert hes3.shape == (necho, 2, 1, 1)  # (magnitude, alpha) x T2
     assert np.allclose(hes3[-1, 0, 0], sm.order1["T2"].F0)  # magnitude
-    assert np.allclose(hes3[-1, 1, 0], sm.order2[("alpha", "T2")].F0)
+    assert np.allclose(hes3[-1, 1, 0], sm.order2[("T2", "alpha")].F0)
 
 
 def test_partials_pruner_class():

@@ -432,7 +432,7 @@ class Hessian(probe.Probe):
                 elif "magnitude" == v2:
                     hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
                 else:
-                    hess = getattr(sm.order2.get((v1, v2), sm.zeros), self.probe)
+                    hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                 arrays[-1].append(hess)
 
         return common.asnumpy(arrays)  # copy
