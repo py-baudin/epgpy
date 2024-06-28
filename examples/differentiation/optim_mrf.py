@@ -88,7 +88,7 @@ def costfunction_jac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
     alphas, taus = params[:nTR], params[nTR:]
     # breakpoint()
-    jac, hes, num = epg.simulate(seq(alphas, taus, True), probe=[Jac, Hes, Num], callback=pruner)
+    jac, hes, num = epg.simulate(seq(alphas, taus, True), probe=[Jac, Hes, Num])#, callback=pruner)
     cost, grad = stats.crlb(
         np.moveaxis(jac, -1, 0), 
         np.moveaxis(hes, -1, 0),
@@ -96,6 +96,7 @@ def costfunction_jac(params):
         log=True,
     )
     print(f"Cost function gradient call: {cost} (num partials: {max(num[:, 0]), max(num[:, 1])})")
+    breakpoint()
     return grad.ravel()
 
 
