@@ -24,8 +24,9 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         # setup derivatives
         darrs = darrs or {}
         d2arrs = d2arrs or {}
-        self.darrs = {param: scalar_setup(*darrs[param], axes=axes, check=check) for param in darrs}
-        self.d2arrs = {diff.Pair(params): scalar_setup(*d2arrs[params], axes=axes, check=check) for params in d2arrs}
+        opts = {'axes': axes, 'check': check, 'ref': self.arr}
+        self.darrs = {param: scalar_setup(*darrs[param], **opts) for param in darrs}
+        self.d2arrs = {diff.Pair(params): scalar_setup(*d2arrs[params], **opts) for params in d2arrs}
 
         
     @property
@@ -118,9 +119,12 @@ def as_matrix(arr):
     return arr[..., NAX] * xp.eye(3)
 
 
-def scalar_setup(arr, arr0=None, *, axes=None, check=True):
+def scalar_setup(arr, arr0=None, *, axes=None, check=True, ref=None):
     """ setup scalar operator """
     arr = scalar_format(arr, check=check)
+    if ref is not None:
+        arr, _ = np.broadcast_arrays(arr, ref)
+
     if arr0 is not None:
         arr0 = scalar_format(arr0, check=check)
         arr, arr0 = np.broadcast_arrays(arr, arr0)

@@ -239,7 +239,7 @@ class DiffOperator(operator.Operator, abc.ABC):
             # compute the 2nd derivatives of the operator's parameters w/r to custom
             invalid = {vars for vars in order2 if not set(vars) & set(order1)}
             if invalid:
-                raise ValueError('Unknown variable pair(s): {invalid}')
+                raise ValueError(f'Unknown variable pair(s): {invalid}')
             invalid = {vars for vars in order2 if set(order2[vars]) - {param for var in order1 for param in order1[var]}}
             if invalid:
                 raise ValueError(f'Missing 1st order derivatives for variable(s): {vars}')

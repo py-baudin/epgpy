@@ -7,13 +7,18 @@ from . import common
 def crlb(J, H=None, W=None, sigma2=1, log=False):
     """Cramer-Rao lower bound cost function"""
     xp = common.get_array_module(J)
+
+    # J.shape: ... x npoint x nparam 
     J = xp.asarray(J)
 
-    # J.shape: npoint x nparam x ...
-    if np.iscomplexobj(J):
-        J = xp.concatenate([J.real, J.imag], axis=-2)
     # Fisher information  matrix
-    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
+    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
+
+    # or ?
+    #if np.iscomplexobj(J):
+    #    J = xp.concatenate([J.real, J.imag], axis=-2)
+    # I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
+    
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
@@ -29,9 +34,12 @@ def crlb(J, H=None, W=None, sigma2=1, log=False):
 
     # H is the derivative of J
     # H: npoint x nparam1 x nparam2 x ...
-    if np.iscomplexobj(H):
-        H = xp.concatenate([H.real, H.imag], axis=-3)
-    grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
+    # if np.iscomplexobj(H):
+    #     H = xp.concatenate([H.real, H.imag], axis=-3)
+    # grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
+    HJ = xp.einsum('...npx,...nq->...qpx', H.conj(), J)
+    HJ += np.moveaxis(HJ, -3, -2).conj()
+    grad = -xp.einsum("...pq,...qrx,...rp->...x", W * lb, HJ.real, lb)
     if not log:
         return cost, grad
     return np.log10(cost), grad / cost[..., np.newaxis] / np.log(10)

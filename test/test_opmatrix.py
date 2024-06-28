@@ -107,7 +107,6 @@ def test_MatrixOp_class():
         MatrixOp(mat2) @ MatrixOp(mat3)
 
 
-
 def test_MatrixOp_diff():
     ScalarOp = opscalar.ScalarOp
     MatrixOp = opmatrix.MatrixOp
@@ -152,5 +151,3 @@ def test_MatrixOp_diff():
     fdiff2_xy = (sm2_x.order1['y'].states - sm2.order1['y'].states).imag * 1e5
     assert np.allclose(fdiff2_xy, sm2.order2[('x', 'y')].states)
 
-
-    
