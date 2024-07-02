@@ -18,7 +18,7 @@ from epgpy import epg, stats, diff
 
 
 # define MRF sequence
-nTR = 50
+nTR = 100
 T1, T2 = 1380, 80
 
 order1_rf = [{f'alpha_{i}': {'alpha': 1}} for i in range(nTR)]
