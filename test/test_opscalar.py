@@ -184,10 +184,10 @@ def test_ScalarOp_diff2():
 
     # order 2
     diff_t_r2 = (op_t.derive1(sm0, 'r2').states - op.derive1(sm0, 'r2').states).imag * 1e5
-    assert np.allclose(sm1.order2[('t', 'r2')].states, diff_t_r2)
+    assert np.allclose(sm1.order2[('r2', 't')].states, diff_t_r2)
 
     diff_t_r1 = (op_t.derive1(sm0, 'r1').states - op.derive1(sm0, 'r1').states).imag * 1e5
-    assert np.allclose(sm1.order2[('t', 'r1')].states, diff_t_r1)
+    assert np.allclose(sm1.order2[('r1', 't')].states, diff_t_r1)
 
 
     # combine
@@ -195,8 +195,8 @@ def test_ScalarOp_diff2():
     sm3 = op3(sm0)
     sm3_ = op(op(op(sm0)))
     assert np.allclose(sm3.states, sm3_.states)
-    assert np.allclose(sm3.order2[('t', 'r2')], sm3_.order2[('t', 'r2')])
-    assert np.allclose(sm3.order2[('t', 'r1')], sm3_.order2[('t', 'r1')])
+    assert np.allclose(sm3.order2[('r2', 't')], sm3_.order2[('r2', 't')])
+    assert np.allclose(sm3.order2[('r1', 't')], sm3_.order2[('r1', 't')])
 
     # finite diff
     op3_t = op_t.combine(op_t, check=False).combine(op_t, check=False)
@@ -204,10 +204,10 @@ def test_ScalarOp_diff2():
     assert np.allclose(diff3_t[..., (0, 2)], sm3.order1['t'].states[..., (0, 2)])
 
     diff3_t_r2 = (op3_t.derive1(sm0, 'r2').states - op3.derive1(sm0, 'r2').states).imag * 1e5
-    assert np.allclose(sm3.order2[('t', 'r2')].states, diff3_t_r2)
+    assert np.allclose(sm3.order2[('r2', 't')].states, diff3_t_r2)
 
     diff3_t_r1 = (op3_t.derive1(sm0, 'r1').states - op3.derive1(sm0, 'r1').states).imag * 1e5
-    assert np.allclose(sm3.order2[('t', 'r1')].states, diff3_t_r1)
+    assert np.allclose(sm3.order2[('r1', 't')].states, diff3_t_r1)
     
 
 

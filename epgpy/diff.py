@@ -127,10 +127,6 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = getattr(sm, "order2", {})
 
         if order1 or self.coeffs1 or order2 or self.coeffs2:
-            missing = {var for vars in order2 for var in vars} & self.order1 - self.order2
-            if missing:
-                raise ValueError(f'Missing 2nd order parameters in {self}: {missing}')
-            # breakpoint
             order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
             order1 = self._apply_order1(sm, order1) # inplace=inplace
 
@@ -199,7 +195,7 @@ class DiffOperator(operator.Operator, abc.ABC):
             # pass the 1st derivatives of the op's parameters w/r to a custom variable
             invalid = {var for var in order1 if not set(order1[var]) <= parameters} 
             if invalid:
-                raise ValueError(f"Unknown coefficients(s) in variable(s): {invalid}")
+                raise ValueError(f"Unknown coefficients(s) in variable(s): {sorted(invalid)}")
             coeffs1.update({var: order1[var] for var in order1 if order1[var]})
 
         elif order1:
@@ -230,7 +226,7 @@ class DiffOperator(operator.Operator, abc.ABC):
             # compute *some* 2nd order partial derivatives
             invalid = {vars for vars in order2 if not set(vars) & set(coeffs1)}
             if invalid:
-                raise ValueError('Unknown variable pair(s): {invalid}')
+                raise ValueError(f'Unknown variable pair(s) in {self}: {sorted(invalid)}')
             coeffs2.update({Pair(v1, v2): {} for v1, v2 in order2})
 
         elif isinstance(order2, dict) and all(
@@ -239,13 +235,13 @@ class DiffOperator(operator.Operator, abc.ABC):
             # compute the 2nd derivatives of the operator's parameters w/r to custom
             invalid = {vars for vars in order2 if not set(vars) & set(order1)}
             if invalid:
-                raise ValueError(f'Unknown variable pair(s): {invalid}')
+                raise ValueError(f'Unknown variable pair(s): {sorted(invalid)}')
             invalid = {vars for vars in order2 if set(order2[vars]) - {param for var in order1 for param in order1[var]}}
             if invalid:
                 raise ValueError(f'Missing 1st order derivatives for variable(s): {vars}')
             invalid = {vars for vars in order2 if set(order2[vars]) - parameters}
             if invalid:
-                raise ValueError(f'Unknown coefficients in variable pair(s): {invalid}')
+                raise ValueError(f'Unknown coefficients in variable pair(s): {sorted(invalid)}')
             coeffs2.update({Pair(vars): order2[vars] for vars in order2})
 
         elif order2:
@@ -329,7 +325,8 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2_pairs = {Pair(pair) for pair in self.coeffs2}
         if self.auto_cross_derivatives:
             # compute inter-operator derivatives for all variable pairs
-            variables_cross |= {var for pair in order2 for var in pair}
+            # variables_cross |= {var for pair in order2 for var in pair}
+            variables_cross |= set(order1)
             order2_pairs |= {Pair(v1, v2) for v1 in self.coeffs1 for v2 in order1}
         variables_previous = set(order1) & variables_cross
         variables_current = set(self.coeffs1) & variables_cross
@@ -432,7 +429,7 @@ class Hessian(probe.Probe):
                 elif "magnitude" == v2:
                     hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
                 else:
-                    hess = getattr(sm.order2.get((v1, v2), sm.zeros), self.probe)
+                    hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                 arrays[-1].append(hess)
 
         return common.asnumpy(arrays)  # copy

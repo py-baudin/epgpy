@@ -4,7 +4,7 @@ import numpy as np
 from . import common
 
 
-def crlb(J, H=None, W=None, sigma2=1, log=False):
+def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     """Cramer-Rao lower bound cost function"""
     xp = common.get_array_module(J)
 
