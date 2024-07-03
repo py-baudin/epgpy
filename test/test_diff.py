@@ -232,7 +232,7 @@ def test_diff2_ssfp():
     alpha, phi = 20, 90
     tau, T1, T2 = 5, 1e3, 30
 
-    rf = operators.T(alpha, phi, name="pulse", order1=True, order2="alpha")
+    rf = operators.T(alpha, phi, name="pulse", order2="alpha")
     rlx = operators.E(tau, T1, T2, name="relax", order2="T2")
     grd = operators.S(1, name="grad")
     necho = 5
@@ -251,7 +251,7 @@ def test_diff2_ssfp():
         sm_T2 = rlx_T2(sm_T2) if op.name == "relax" else op(sm_T2)
         sm_alpha = rf_alpha(sm_alpha) if op.name == "pulse" else op(sm_alpha)
 
-    assert set(sm.order1) == {'alpha', 'phi', 'T2'}
+    assert set(sm.order1) == {'alpha', 'T2'}
     assert set(sm.order2) == {('alpha', 'alpha'), ('T2', 'T2'), ('alpha', 'T2'), ('T2', 'alpha')}
 
     # finite difference
@@ -290,7 +290,6 @@ def test_diff2_ssfp():
     order2 = functions.simulate(
         seq + [operators.ADC],
         probe=probe,
-        squeeze=False,  # tmp
     )
     assert np.isclose(order2[0], sm.order2[('alpha', 'alpha')].F0)
     assert np.isclose(order2[1], sm.order2[('T2', 'alpha')].F0)
@@ -446,11 +445,11 @@ def test_hessian_class():
     # order2 probe
     necho = 5
     rf = operators.T(15, 90, order2="alpha", name="T")
-    relax = operators.E(5, 1e3, 30, order2="T2", name="E")
-    shift = operators.S(1, name="S")
+    rlx = operators.E(5, 1e3, 30, order2="T2", name="E")
+    grd = operators.S(1, name="S")
     adc = operators.ADC
 
-    seq = [rf, relax, shift, adc] * necho
+    seq = [rf, rlx, grd, adc] * necho
 
     probes = [
         diff.Hessian("alpha"),
@@ -465,7 +464,7 @@ def test_hessian_class():
         if isinstance(op, operators.Probe):
             tmp.append(probes[0].acquire(sm))
 
-    hes1, hes2, hes3 = functions.simulate(seq, probe=probes, squeeze=False)
+    hes1, hes2, hes3 = functions.simulate(seq, probe=probes)
 
     assert hes1.shape == (necho, 1, 1, 1)  # alpha
     assert np.allclose(hes1[-1, 0, 0], sm.order2[("alpha", "alpha")].F0)
@@ -479,6 +478,27 @@ def test_hessian_class():
     assert hes3.shape == (necho, 2, 1, 1)  # (magnitude, alpha) x T2
     assert np.allclose(hes3[-1, 0, 0], sm.order1["T2"].F0)  # magnitude
     assert np.allclose(hes3[-1, 1, 0], sm.order2[("T2", "alpha")].F0)
+
+    #
+    # vary alpha
+    params = [f'alpha_{i:02d}' for i in range(necho)]
+    alphas = np.sin(np.arange(necho) * np.pi * 1.3 / necho - np.pi / 2) * 5 + 35
+
+    rfs = lambda alpha, param: operators.T(alpha, 90, order1={param: {'alpha': 1}}, order2=[('T2', param)])
+    rlx = operators.E(5, 1e3, 30, order1='T2', order2='T2')
+    grd = operators.S(1)
+    adc = operators.ADC
+
+    seq = [[rfs(alphas[i], params[i]), rlx, grd, adc] for i in range(necho)]
+    Jacobian = diff.Jacobian(["magnitude", "T2"])
+    Hessian = diff.Hessian(["magnitude", "T2"], params)
+    jac, hes = functions.simulate(seq, probe=[Jacobian, Hessian])
+
+    # finite diffs
+    da = np.random.uniform(-1, 1, necho)
+    seq_d = [[rfs(alphas[i] + 1e-8 * da[i], params[i]), rlx, grd, adc] for i in range(necho)]
+    jac_d = functions.simulate(seq_d, probe=Jacobian)
+    assert np.allclose(hes[..., 0] @ da, (jac_d - jac)[..., 0] * 1e8, atol=1e-6)
 
 
 def test_partials_pruner_class():
