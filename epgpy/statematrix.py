@@ -95,7 +95,8 @@ class StateMatrix:
 
     @states.setter
     def states(self, value):
-        self.arrays.set("states", value, check=False)
+        # self.arrays.set("states", value, check=False)
+        self.arrays.update('states', value)
 
     @property
     def density(self):
@@ -200,7 +201,8 @@ class StateMatrix:
     @property
     def norm(self):
         """state matrix norm"""
-        return np.sqrt(np.sum(np.abs(self.states[..., 1:]) ** 2, axis=(-2, -1)))
+        # return np.sqrt(np.sum(np.abs(self.states[..., 1:]) ** 2, axis=(-2, -1)))
+        return self.arrays.apply('states', utils.get_norm)
 
     @property
     def zeros(self):
@@ -264,11 +266,14 @@ class StateMatrix:
         sm = self.__new__(type(self))
         coll = self.arrays.copy()
         if states is not None:
-            coll.set('states', states, resize=True)
+            # coll.set('states', states, resize=True)
+            coll.update('states', states, resize=True)
         if 'equilibrium' in kwargs:
-            coll.set('equilibrium', kwargs.pop('equilibrium'), resize=True)
+            # coll.set('equilibrium', kwargs.pop('equilibrium'), resize=True)
+            coll.update('equilibrium', kwargs.pop('equilibrium'), resize=True)
         if 'coords' in kwargs:
-            coll.set('coords', kwargs.pop('coords'), resize=True)
+            # coll.set('coords', kwargs.pop('coords'), resize=True)
+            coll.update('coords', kwargs.pop('coords'), resize=True)
         sm.arrays = coll
         sm.kvalue = kwargs.pop('kvalue', self.kvalue)
         sm.tvalue = kwargs.pop('tvalue', self.tvalue)
@@ -493,6 +498,17 @@ class ArrayCollection:
         layout = self._layouts[name]
         array = self._arrays[name]
         return self._broadcast_array(array, layout)
+    
+    def update(self, name, array, *, resize=False):
+        """ update array inplace """
+        try:
+            self._arrays[name][:] = array
+        except ValueError:
+            self.set(name, array, check=False, resize=resize)
+
+    def apply(self, name, func):
+        """ apply function to raw array"""
+        return func(self._arrays[name])
 
     def set(self, name, array, *, layout=None, resize=False, check=True):
         """ add array to collection"""
@@ -517,6 +533,7 @@ class ArrayCollection:
         self._arrays[name] = array
         self._layouts[name] = tuple(layout)
         self._update_shape()
+
             
     def pop(self, name, default=None):
         """ remove array from collection """
@@ -532,11 +549,11 @@ class ArrayCollection:
         """ copy collection """
         coll = self.__new__(type(self))
         coll.xp = self.xp
+        coll._shape = self._shape
         coll._expand_axis = self._expand_axis
         coll._layouts = {name: tuple(self._layouts[name]) for name in self}
         coll._arrays = {name: self._arrays[name].copy() for name in self}
         coll._default = tuple(self._default)
-        coll._update_shape()
         return coll
     
     def get_named_axes(self, *, ignore=None):

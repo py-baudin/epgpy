@@ -182,7 +182,7 @@ def scalar_prod(arr, states, *, inplace=False):
     xp = common.get_array_module()
 
     # expand mat dims if needed
-    dims = tuple(range(arr.ndim - 1, states.ndim - 1))
+    dims = tuple(range(arr.ndim - 1, states.ndim - 2))
     if dims:
         arr = xp.expand_dims(arr, dims)
 
@@ -191,9 +191,9 @@ def scalar_prod(arr, states, *, inplace=False):
 
     # multiply
     if inplace and broadcastable:
-        states *= arr
+        states *= arr[..., NAX, :]
     else:
-        states = states * arr
+        states = states * arr[..., NAX, :]
     return states
 
 

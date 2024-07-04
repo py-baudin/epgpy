@@ -170,7 +170,8 @@ def matrix_prod(mat, states, *, inplace=False):
     xp = common.get_array_module()
 
     # expand mat dims if needed
-    dims = tuple(range(mat.ndim - 2, states.ndim - 1))
+    # dims = tuple(range(mat.ndim - 2, states.ndim - 1))
+    dims = tuple(range(mat.ndim - 2, states.ndim - 2))
     if dims:
         mat = xp.expand_dims(mat, dims)
 
@@ -180,6 +181,7 @@ def matrix_prod(mat, states, *, inplace=False):
     # use inplace mult only with numpy
     inplace = inplace & (xp.__name__ == "numpy") & broadcastable
 
+    mat = mat[..., NAX, :, :]
     if inplace:
         return xp.einsum("...ij,...j->...i", mat, states, out=states)
     else:

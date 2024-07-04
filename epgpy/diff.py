@@ -110,14 +110,14 @@ class DiffOperator(operator.Operator, abc.ABC):
         """apply 1st order differential operator w/r to parameter `param` """
         sm = self.prepare(sm, inplace=False)
         sm_d1 = self._derive1(sm, param)
-        sm_d1.arrays.set('equilibrium', [[0, 0, 0]], resize=True) # remove equilibrium
+        sm_d1.arrays.update('equilibrium', 0) # remove equilibrium
         return sm_d1
 
     def derive2(self, sm, params):
         """apply 2nd order differential operator w/r to parameters pair `params` """
         sm = self.prepare(sm, inplace=False)
         sm_d2 = self._derive2(sm, Pair(params))
-        sm_d2.arrays.set('equilibrium', [[0, 0, 0]], resize=True) # remove equilibrium
+        sm_d2.arrays.update('equilibrium', 0) # remove equilibrium
         return sm_d2
 
     def __call__(self, sm, *, inplace=False):

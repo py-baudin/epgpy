@@ -33,6 +33,10 @@ def Axes(*names):
 #
 # conversion functions
 
+def get_norm(states):
+    xp = common.get_array_module()
+    return xp.sqrt(xp.sum(xp.abs(states[..., 1:]) ** 2, axis=(-2, -1)))
+
 
 def get_wavenumber(grad, duration, gamma=gamma_1H):
     """compute wavenumber resulting from gradient application
