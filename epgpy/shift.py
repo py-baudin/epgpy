@@ -367,7 +367,8 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     n1 = sm.shape[-2]
 
     # add shift
-    kL = wavenums + 0 * shift
+    # (prevent rounding issues due to numerical errors)
+    kL = np.around(wavenums + 0 * shift, decimals=8)
     k1T = kL + shift
     k2T = kL - shift
 
