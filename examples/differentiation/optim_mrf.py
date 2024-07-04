@@ -20,7 +20,7 @@ import ipdb; breakpoint = ipdb.set_trace
 
 
 # define MRF sequence
-nTR = 100
+nTR = 400
 T1, T2 = 1380, 80
 
 alphas = [f'alpha_{i:03d}' for i in range(nTR)]
