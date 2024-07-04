@@ -78,13 +78,13 @@ pruner = diff.PartialsPruner(alphas + taus, 1e-5)
 
 def signal(params):
     alphas, taus = params[:nTR], params[nTR:]
-    return epg.simulate(sequence(alphas, taus))
+    return epg.simulate(sequence(alphas, taus), max_nstate=10)
 
 
 def costfun(params):
     """crlb cost function"""
     alphas, taus = params[:nTR], params[nTR:]
-    jac = epg.simulate(sequence(alphas, taus), probe=Jac)
+    jac = epg.simulate(sequence(alphas, taus), probe=Jac, max_nstate=10)
     cost = stats.crlb(np.moveaxis(jac, -1, 0), W=weights, log=True)
     print(f"Cost function call: {cost}")
     return cost
@@ -93,7 +93,7 @@ def costfun(params):
 def costjac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
     alphas, taus = params[:nTR], params[nTR:]
-    jac, hes, num = epg.simulate(sequence(alphas, taus, deriv=True), probe=[Jac, Hes, Num], callback=pruner)
+    jac, hes, num = epg.simulate(sequence(alphas, taus, deriv=True), probe=[Jac, Hes, Num], callback=pruner, disp=True, max_nstate=10)
     cost, grad = stats.crlb(
         np.moveaxis(jac, -1, 0), 
         np.moveaxis(hes, -1, 0),
@@ -130,7 +130,7 @@ config = {
     "bounds": bounds,
     "constraints": [{"type": "ineq", "fun": constraint_function}],
     "callback": callback,
-    "options": {"disp": True, "ftol": 1e-8, "maxiter": 200},
+    "options": {"disp": True, "ftol": 1e-7, "maxiter": 250},
 }
 
 # optimize
@@ -170,9 +170,9 @@ plt.tight_layout()
 
 plt.figure("mrf-fingerprint")
 sig0 = signal(init)
-crb0 = costfunction(init)
+crb0 = costfun(init)
 sig1 = signal(res.x)
-crb1 = costfunction(res.x)
+crb1 = costfun(res.x)
 plt.plot(np.real(sig0[:, 0]), label=f"initial (log10(CRB): {crb0[0]:0.2f})")
 plt.plot(np.real(sig1[:, 0]), label=f"optimized (log10(CRB): {crb1[0]:0.2f})")
 plt.xlabel("echo index")
@@ -185,7 +185,7 @@ plt.tight_layout()
 
 plt.figure("mfr-iterations")
 jacs = [
-    epg.simulate(sequence(params[:nTR], params[nTR:]), probe=Jac)
+    epg.simulate(sequence(params[:nTR], params[nTR:]), probe=Jac, max_nstate=10)
     for params in iterations
 ]
 crb_tot = stats.crlb(jacs, W=weights, log=False)

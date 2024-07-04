@@ -382,15 +382,18 @@ class Jacobian(probe.Probe):
 
     def _acquire(self, sm):
         """return signal's Jacobian"""
+        xp = sm.array_module
+        zeros = xp.zeros(1)
         _variables = [var for var in self.variables if var != "magnitude"]
         # retrieve jacobian arrays except for magnitude
         arrays = [
-            getattr(sm.order1.get(var, sm.zeros), self.probe) for var in _variables
+            getattr(sm.order1[var], self.probe) if var in sm.order1 else zeros 
+            for var in _variables
         ]
         if "magnitude" in self.variables:
             index = self.variables.index("magnitude")
             arrays.insert(index, getattr(sm, self.probe))
-        return common.asnumpy(arrays)  # copy
+        return common.asnumpy(xp.stack(arrays))  # copy
 
 
 class Hessian(probe.Probe):
@@ -420,24 +423,27 @@ class Hessian(probe.Probe):
 
     def _acquire(self, sm):
         """return signal's Hessian"""
+        xp = sm.array_module
+        zeros = xp.zeros(1)
+
         arrays = []
         for v1 in self.variables1:
             arrays.append([])
             for v2 in self.variables2:
                 if "magnitude" == v1:
                     # hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
-                    hess = getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else [0]
+                    hess = getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else zeros
                 elif "magnitude" == v2:
                     # hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
-                    hess = getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else [0]
+                    hess = getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else zeros
                 else:
                     #hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                     v12 = Pair(v1, v2)
-                    hess = getattr(sm.order2[v12], self.probe) if v12 in sm.order2 else [0]
+                    hess = getattr(sm.order2[v12], self.probe) if v12 in sm.order2 else zeros
                     
                 arrays[-1].append(hess)
+            arrays[-1] = xp.stack(arrays[-1])
 
-        xp = sm.array_module
         return common.asnumpy(xp.stack(arrays))  # copy
 
 

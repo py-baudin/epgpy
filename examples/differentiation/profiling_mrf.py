@@ -1,10 +1,12 @@
 import time
 import numpy as np
-from epgpy import epg
+import epgpy as epg
+from epgpy import diff
 
+# epg.set_array_module('cupy')
 
 # define MRF sequence
-nTR = 100
+nTR = 400
 T1, T2 = 1380, 80
 
 alphas = [f'alpha_{i:03d}' for i in range(nTR)]
@@ -44,10 +46,11 @@ Jac = epg.Jacobian(['magnitude', 'T1', 'T2'])
 Hes = epg.Hessian(['magnitude', 'T1', 'T2'], alphas + taus)
 def Num(sm):
     return (len(sm.order1), len(sm.order2))
+pruner = diff.PartialsPruner(threshold=1e-5)
 
 print(f'Simulate MRF sequence (nTR={nTR})')
 tic = time.time()
-jac, hes, num = epg.simulate(sequence(angles, times), probe=[Jac, Hes, Num])
+jac, hes, num = epg.simulate(sequence(angles, times), probe=[Jac, Hes, Num], disp=True, callback=pruner, max_nstate=10)
 
 toc = time.time()
 print(f'Done. Duration: {toc - tic:.1f}s, num. partials order1: {max(num[:, 0])}, num. partials order2: {max(num[:, 1])}.')

@@ -111,12 +111,12 @@ def simulate(
     if init is None:
         init = [0, 0, 1]
     else:
-        LOGGER.info(f"Simulate: non-default initialization: {init}")
+        LOGGER.info(f"Non-default initialization: {init}")
 
     # custom probe(s)
     probes = []
     if probe:
-        LOGGER.info(f"Simulate: custom probe(s): {probe}")
+        LOGGER.info(f"Custom probe(s): {probe}")
         probes = probe if isinstance(probe, (tuple, list)) else [probe]
         probes = [
             probe if isinstance(probe, operators.Probe) else operators.Probe(probe)
@@ -124,7 +124,7 @@ def simulate(
         ]
 
     if callback:
-        LOGGER.info(f"Simulate: callback function: {callback}")
+        LOGGER.info(f"Callback function: {callback}")
 
     if not isinstance(init, statematrix.StateMatrix):
         # TODO: smart memory pre-allocation (depending on nstate, shape) ?
@@ -139,11 +139,7 @@ def simulate(
         sm = init
         sm.options.update(options)
 
-    LOGGER.info(
-        f"Simulate: initial state matrix:"
-        f" num. states: {sm.nstate}"
-        f" shape: {sm.shape}"
-    )
+    LOGGER.info(f"Initial state matrix: num. states: {sm.nstate}, shape: {sm.shape}")
 
     # ensure sm is writeable
     sm = sm.copy()

@@ -6,10 +6,8 @@
         I/O for pulse files
 
 """
-import pathlib
 from .version import __version__
 
 from .core import *
 from . import core as epg
-
-PULSEDIR = pathlib.Path(__file__).parent.parent / "resources" / "pulses"
+from .common import set_array_module, get_array_module
