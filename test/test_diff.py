@@ -527,7 +527,7 @@ def test_partials_pruner_class():
     nonzero1 = np.flatnonzero(jac1[:, 1])
     
     # with pruning
-    pruner = diff.PartialsPruner(threshold=1e-5, variables=['alpha'])
+    pruner = diff.PartialsPruner(condition=1e-5, variables=['alpha'])
     jac2, hes2 = functions.simulate(seq, probe=probe, callback=pruner)
     nonzero2 = np.flatnonzero(jac2[:, 1])
     assert nonzero2.max() < nonzero1.max()

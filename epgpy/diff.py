@@ -450,9 +450,18 @@ class Hessian(probe.Probe):
 class PartialsPruner:
     """callback functor to remove partials with negligible energy"""
 
-    def __init__(self, variables=None, threshold=1e-5):
-        self.threshold = threshold
+    def __init__(self, *, condition=1e-5, variables=None):
+        if callable(condition):
+            self.condition = condition
+        elif common.isscalar(condition):
+            self.threshold = condition
+            self.condition = self.test_norm
+        else:
+            raise TypeError(condition)
         self.variables = set(variables) if variables else None
+
+    def test_norm(self, sm):
+        return sm.norm < self.threshold
 
     def __repr__(self):
         if self.variables:
@@ -471,7 +480,7 @@ class PartialsPruner:
 
         # order1
         for var in variables:
-            if np.all(order1[var].norm < self.threshold):
+            if np.all(self.condition(order1[var])):
                 order1.pop(var)
 
         # order2
@@ -485,7 +494,7 @@ class PartialsPruner:
             pairs = set(order2)
 
         for pair in pairs:
-            if np.all(order2[pair].norm < self.threshold):
+            if np.all(self.condition(order2[pair])):
                 order2.pop(pair)
         
 

@@ -46,7 +46,11 @@ Jac = epg.Jacobian(['magnitude', 'T1', 'T2'])
 Hes = epg.Hessian(['magnitude', 'T1', 'T2'], alphas + taus)
 def Num(sm):
     return (len(sm.order1), len(sm.order2))
-pruner = diff.PartialsPruner(threshold=1e-5)
+
+def condition(sm, th=1e-5):
+    return sm.arrays.apply('states', lambda states: np.abs(states).max() < th)
+pruner = diff.PartialsPruner(condition=condition)
+# pruner = diff.PartialsPruner(condition=1e-5)
 
 print(f'Simulate MRF sequence (nTR={nTR})')
 tic = time.time()

@@ -74,7 +74,10 @@ Hes = epg.Hessian(['magnitude', 'T1', 'T2'], alphas + taus)
 def Num(sm):
     return (len(sm.order1), len(sm.order2))
 
-pruner = diff.PartialsPruner(alphas + taus, 1e-5)
+def condition(sm, th=1e-5):
+    return sm.arrays.apply('states', lambda states: np.abs(states).max() < th)
+pruner = diff.PartialsPruner(condition=condition, variables=alphas + taus)
+# pruner = diff.PartialsPruner(variables=alphas + taus, condition=1e-5)
 
 def signal(params):
     alphas, taus = params[:nTR], params[nTR:]
