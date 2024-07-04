@@ -11,13 +11,8 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_ARRAY_MODULE = "numpy"
 _xp = None
 
-# max object size for staying on cpu
-# MAX_CPU_SIZE = 2 ** 10
-
-
 #
 # array module getters/setters
-
 
 def set_array_module(xp=None):
     """set array module (eg. numpy, cupy)"""
