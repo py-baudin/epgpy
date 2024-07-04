@@ -87,7 +87,7 @@ class X(operator.Operator):
 
     def _apply(self, sm):
         """Apply echange and relaxation/precession"""
-        xp = common.get_array_module(sm.states)
+        xp = sm.array_module
 
         ax = self.axis
         ncomp = self.shape[ax]

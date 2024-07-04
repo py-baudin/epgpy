@@ -425,14 +425,20 @@ class Hessian(probe.Probe):
             arrays.append([])
             for v2 in self.variables2:
                 if "magnitude" == v1:
-                    hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
+                    # hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
+                    hess = getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else [0]
                 elif "magnitude" == v2:
-                    hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
+                    # hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
+                    hess = getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else [0]
                 else:
-                    hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
+                    #hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
+                    v12 = Pair(v1, v2)
+                    hess = getattr(sm.order2[v12], self.probe) if v12 in sm.order2 else [0]
+                    
                 arrays[-1].append(hess)
 
-        return common.asnumpy(arrays)  # copy
+        xp = sm.array_module
+        return common.asnumpy(xp.stack(arrays))  # copy
 
 
 class PartialsPruner:

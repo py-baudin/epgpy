@@ -95,8 +95,7 @@ class StateMatrix:
 
     @states.setter
     def states(self, value):
-        # self.arrays.set("states", value)
-        self.arrays.set("states", value)
+        self.arrays.set("states", value, check=False)
 
     @property
     def density(self):
@@ -211,6 +210,10 @@ class StateMatrix:
     @property
     def writeable(self):
         return getattr(self.states.flags, "writeable", False)
+    
+    @property
+    def array_module(self):
+        return self.arrays.xp
 
     # operator overloading
 
@@ -317,7 +320,7 @@ class StateMatrix:
 def _init_states(density=1):
     xp = common.get_array_module()
     density = xp.atleast_1d(density)
-    density = xp.expand_dims(density, [density.ndim, density.ndim + 1])
+    density = xp.expand_dims(density, (density.ndim, density.ndim + 1))
     init = xp.array([[[0, 0, 1]]])
     states = density * init
     return states
@@ -377,31 +380,35 @@ class ArrayCollection:
 
     Each array has a layout whose items define the broadcastable structure:
     Items:
-        None: free axis dimension
-        <int>: fixed axis dimension
-        Ellipsis: broadcastable axes
-        <str>: shared axis dimension
+        Ellipsis/...: broadcastable axes
+        <int>: fixed axis 
+        <str>: named axis 
+        None: free axis
 
     Example:
         # whole array is broadcast
-        coll.set('arr1', arr1, [Ellipsis])
+        coll.set('arr1', arr1, [...])
+
         # last axis of arr2 is free
-        coll.set('arr2', arr2, [Ellipsis, None])
+        coll.set('arr2', arr2, [..., None])
+
         # first axis of arr3 is fixed with size==3
-        coll.set('arr3', arr3, [3, Ellipsis])
-        # first axis of arr4 and last axis of arr4 are shared
-        coll.set('arr4', arr4, ['ax', Ellipsis])
-        coll.set('arr5', arr5, [Ellipsis, 'ax'])
+        coll.set('arr3', arr3, [3, ...])
+
+        # first axis of arr4 and last axis of arr4 have the same size
+        coll.set('arr4', arr4, ['ax', ...])
+        coll.set('arr5', arr5, [..., 'ax'])
 
     """
 
     def __init__(self, default=None, *, expand_axis=0):
+        self._shape = None
         self._expand_axis = int(expand_axis)
         self._layouts = {}
         self._arrays = {}
-        # default shape
         self._default = (1,) if default is None else tuple(default)
         self.xp = common.get_array_module()
+        self._update_shape()
 
     def __len__(self):
         return len(self._arrays)
@@ -414,14 +421,60 @@ class ArrayCollection:
 
     def __contains__(self, name):
         return name in self._arrays
+        
+    @staticmethod
+    def _get_shared_axes(shape, layout):
+        """ return part of shape that will be broadcast"""
+        start = layout.index(Ellipsis)
+        end = len(shape) - (len(layout) - start - 1)
+        return shape[start:end]
+    
+    @staticmethod
+    def _get_shared_shape(ndim, shape, axis):
+        """ return shape after broadcasting """
+        if axis < 0:
+            axis = ndim - axis + 1
+        return shape[:axis] + (1,) * max(ndim - len(shape), 0) + shape[axis:]
+
+    @staticmethod
+    def _get_named_axes(ndim, layout):
+        """ return axes names and index """
+        idx = layout.index(Ellipsis)
+        diff = ndim - len(layout)
+        return [
+            (i + (i > idx) * diff, ax)
+            for i, ax in enumerate(layout) 
+            if i != idx and isinstance(ax, str)
+        ]
+        
+    @staticmethod
+    def _get_broadcast_shape(shared, shape, layout):
+        """ return shape after broadcasting """
+        shape = list(shape)
+        start = layout.index(Ellipsis)
+        end = len(shape) - (len(layout) - start - 1)
+        shape[start:end] = shared
+        return tuple(shape)
 
     @property
     def ndim(self):
         """broadcast ndim"""
-        layouts = [self._layouts[name] for name in self] + [(Ellipsis,)]
-        ndims = [self._arrays[name].ndim for name in self] + [len(self._default)]
-        ndims = [ndim - len(ax) + 1 for ax, ndim in zip(layouts, ndims)]
-        return max(ndims + [0])
+        return len(self._shape)
+        # arrays, layouts = self._arrays, self._layouts
+        # ndims = [arrays[k].ndim - len(layouts[k]) + 1 for k in arrays] + [len(self._default)]
+        # return max(ndims + [0])
+
+    @property
+    def shape(self):
+        """return broadcast shape"""
+        return self._shape
+    
+    def _update_shape(self):
+        arrays, layouts = self._arrays, self._layouts
+        shared = [self._get_shared_axes(arrays[k].shape, layouts[k]) for k in arrays] + [self._default]
+        ndim = max(len(shape) for shape in shared)
+        shapes = [self._get_shared_shape(ndim, shape, self._expand_axis) for shape in shared]
+        self._shape = tuple(max(shape[i] for shape in shapes) for i in range(ndim))
 
     @property
     def expand_axis(self):
@@ -429,29 +482,9 @@ class ArrayCollection:
         return ax if ax >= 0 else self.ndim + ax + 1
 
     @property
-    def shape(self):
-        """broadcast shape"""
-        layouts = [self._layouts[name] for name in self] + [(Ellipsis,)]
-        indices = [list(layout).index(Ellipsis) for layout in layouts]
-        shapes = [self._arrays[name].shape for name in self] + [self._default]
-        shapes = [
-            shape[idx : idx + len(shape) - len(layout) + 1]
-            for idx, layout, shape in zip(indices, layouts, shapes)
-        ]
-        # expand shapes
-        insert = self.expand_axis
-        ndim = self.ndim
-        shapes = [
-            shape[:insert] + (1,) * (ndim - len(shape)) + shape[insert:]
-            for shape in shapes
-        ]
-        # return broadcast shape
-        return tuple(max(shape[i] for shape in shapes) for i in range(ndim))
-
-    @property
     def axes(self):
         """dictionary of named axes"""
-        return self.get_axes()
+        return self.get_named_axes()
 
     def get(self, name, default=None):
         """ get (broadcast) array from collection """
@@ -461,7 +494,7 @@ class ArrayCollection:
         array = self._arrays[name]
         return self._broadcast_array(array, layout)
 
-    def set(self, name, array, *, layout=None, resize=False):
+    def set(self, name, array, *, layout=None, resize=False, check=True):
         """ add array to collection"""
         xp = self.xp
         array = xp.array(array)  # copy array
@@ -472,19 +505,18 @@ class ArrayCollection:
         elif layout is None: # set default layout
             layout = [Ellipsis]
 
-        # self.check(array.shape, layout, ignore=name)
         self.check_layout(layout)
         if resize:
-            axes = self.get_axes(ignore=name)
-            sizes = get_axes_size([array.shape], [layout])
-            indices = get_axes_index(array.shape, layout)
-            for ax in sizes:
-                if ax in axes and sizes[ax] != axes[ax]:
-                    array = resize_array(array, axes[ax] - sizes[ax], axis=indices[ax])
-
-        self.check_shape(array.shape, layout, ignore=name)
+            axes = self.get_named_axes(ignore=name)
+            for idx, ax in self._get_named_axes(array.ndim, layout):
+                size = array.shape[idx]
+                if ax in axes and size != axes[ax]:
+                    array = resize_array(array, axes[ax] - size, axis=idx)
+        if check:
+            self.check_shape(array.shape, layout, ignore=name)
         self._arrays[name] = array
         self._layouts[name] = tuple(layout)
+        self._update_shape()
             
     def pop(self, name, default=None):
         """ remove array from collection """
@@ -492,6 +524,7 @@ class ArrayCollection:
             return default
         self._layouts.pop(name)
         array = self._arrays.pop(name)
+        self._update_shape()
         return array
 
     # utilities
@@ -503,31 +536,30 @@ class ArrayCollection:
         coll._layouts = {name: tuple(self._layouts[name]) for name in self}
         coll._arrays = {name: self._arrays[name].copy() for name in self}
         coll._default = tuple(self._default)
+        coll._update_shape()
         return coll
     
-    def get_axes(self, *, ignore=None):
-        """ get named axes"""
-        names = [name for name in self._arrays if name != ignore]
-        shapes = [self._arrays[name].shape for name in names]
-        layouts = [self._layouts[name] for name in names]
-        return get_axes_size(shapes, layouts)
+    def get_named_axes(self, *, ignore=None):
+        """ get named axes dimensions"""
+        arrays, layouts = self._arrays, self._layouts
+        return {
+            ax: arr.shape[idx] 
+            for name, arr in arrays.items() if name != ignore
+            for idx, ax in self._get_named_axes(arr.ndim, layouts[name])
+        }
     
     def check_layout(self, layout):
         """ check layout """
-        axis = None
-        for i, ax in enumerate(layout):
-            if ax is Ellipsis:
-                if axis is not None:
-                    raise ValueError(f"`layout` must contain only one Ellipsis: {layout}")
-                axis = i
-                continue
-        if axis is None:
+        counts = [i for i,ax in enumerate(layout) if ax is Ellipsis]
+        if not counts:
             raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
+        elif len(counts) > 1:
+            raise ValueError(f"`layout` must contain only one Ellipsis: {layout}")
         
     def check_shape(self, shape, layout, *, ignore=None):
         """check shape"""
         shape = tuple(shape)
-        axes = self.get_axes(ignore=ignore)
+        axes = self.get_named_axes(ignore=ignore)
 
         # check named axes
         idx = 0
@@ -563,40 +595,6 @@ class ArrayCollection:
         self.check_layout(layout)
         self.check_shape(shape, layout, ignore=ignore)
 
-        # shape = tuple(shape)
-        # axes = self.get_axes(ignore=ignore)
-        # axis, idx = None, 0
-        # # check layout
-        # for i, ax in enumerate(layout):
-        #     if ax is Ellipsis:
-        #         if axis is not None:
-        #             raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
-        #         axis = i
-        #         idx += len(shape) - len(layout) + 1
-        #         continue
-        #     elif isinstance(ax, int) and shape[idx] != ax:
-        #         raise ValueError(f"Invalid axis dimension {idx} in array: {shape}")
-        #     elif isinstance(ax, str) and shape[idx] != axes.get(ax, shape[idx]):
-        #         raise ValueError(
-        #             f"Invalid axis dimension {idx} (`{ax}`) in array: {shape}"
-        #         )
-        #     idx += 1
-        # if axis is None:
-        #     raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
-
-        # # check shape
-        # common = list(shape[axis : len(shape) - len(layout) + 1])
-        # shared = self.shape
-        # diff = len(shared) - len(common)
-
-        # ax = self.expand_axis
-        # if diff < 0:
-        #     common[ax : ax - diff] = []
-        # elif diff > 0:
-        #     common = common[:ax] + [1,] * diff + common[ax:]
-        # if any(1 != d1 != d2 != 1 for d1, d2 in zip(common, shared)):
-        #     raise ValueError(f"Incompatible shape: {shape} and {shared}")
-
     def resize(self, ax, size, *, constant=0):
         """resize named axis"""
         # xp = self.xp
@@ -623,11 +621,13 @@ class ArrayCollection:
         axis = self.expand_axis
         shape[axis:axis] = [1] * ndim
         self._default = tuple(shape)
+        self._update_shape()
 
     def broadcast(self, shape):
         """broadcast collection to shape"""
         self.check(shape, [...])
         self._default = shape
+        self._update_shape()
 
     def reduce(self, ndim, *, axis=0):
         """remove dimensions from default shape"""
@@ -639,16 +639,21 @@ class ArrayCollection:
             axis = len(shape) + axis + 1
             shape[axis - ndim: axis + 1] = []
         self._default = tuple(shape)
+        self._update_shape()
 
     # private
 
     def _broadcast_array(self, array, layout):
         """expand and broadcast array to shared shape"""
         xp = self.xp
-        self.check(array.shape, layout)
 
         # common shape
         shared = self.shape
+
+        # broadcast shape
+        shape = self._get_broadcast_shape(shared, array.shape, layout)
+        if array.shape == shape:
+            return array
 
         # expand dimensions
         diff = len(shared) - (array.ndim - len(layout) + 1)
@@ -669,32 +674,6 @@ class ArrayCollection:
         if tuple(shape) != array.shape:
             array = xp.broadcast_to(array, shape)
         return array
-
-def get_axes_size(shapes, layouts):
-    """ get named axes"""
-    axes = {}
-    for shape, layout in zip(shapes, layouts):
-        idx = 0
-        for ax in layout:
-            if ax is Ellipsis:
-                idx += len(shape) - len(layout) + 1
-                continue
-            elif isinstance(ax, str):
-                axes.setdefault(ax, shape[idx])
-            idx += 1
-    return axes
-
-def get_axes_index(shape, layout):
-    idx = 0
-    axes = {}
-    for ax in layout:
-        if ax is Ellipsis:
-            idx += len(shape) - len(layout) + 1
-        else:
-            if isinstance(ax, str):
-                axes[ax] = idx
-            idx += 1
-    return axes
 
 
 def resize_array(array, diff, axis=0, *, constant=0):

@@ -429,19 +429,13 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     return sm2, k2
 
 
-# def unique_1d(array, axis=0):
-#     """ numpy unique"""
-#     xp = common.get_array_module(array)
-#     return xp.unique(array, axis=axis, return_inverse=True)
-
-
 def unique_1d(values, axis=0):
     """faster unique, using python dictionary"""
 
     if not np.issubdtype(values.dtype, np.integer):
         raise ValueError("This function only works with integer arrays")
 
-    xp = common.get_array_module(values)
+    xp = common.get_array_module()
     values = xp.moveaxis(values, axis, 0)
     shape = values.shape[1:]
     values = values.reshape(len(values), -1)

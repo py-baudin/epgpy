@@ -154,7 +154,7 @@ def scalar_format(arr, check=True):
 
 def scalar_combine(arr_1, arr_2, arr0_1=None, arr0_2=None):
     """combine 2 scalar operators"""
-    xp = common.get_array_module(arr_1, arr_2)
+    xp = common.get_array_module()
     arr_1, arr_2, arr0_1, arr0_2 = common.extend_operators(
         1, arr_1, arr_2, arr0_1, arr0_2
     )
@@ -179,11 +179,12 @@ def scalar_apply(arr, arr0, sm):
 
 def scalar_prod(arr, states, *, inplace=False):
     """element-wise product product"""
-    xp = common.get_array_module(arr, states)
+    xp = common.get_array_module()
 
     # expand mat dims if needed
     dims = tuple(range(arr.ndim - 1, states.ndim - 1))
-    arr = xp.expand_dims(arr, dims)
+    if dims:
+        arr = xp.expand_dims(arr, dims)
 
     # broadcastable
     broadcastable = all(s1 <= s2 for s1, s2 in zip(arr.shape[:-1], states.shape[:-2]))

@@ -136,7 +136,7 @@ def matrix_format(mat, check=True):
 
 def matrix_combine(mat1, mat2, mat01=None, mat02=None):
     """combine 2 matrix operators"""
-    xp = common.get_array_module(mat1, mat2)
+    xp = common.get_array_module()
     mat1, mat2, mat01, mat02 = common.extend_operators(2, mat1, mat2, mat01, mat02)
     mat = xp.einsum("...ij,...jk->...ik", mat2, mat1)
     if mat01 is None and mat02 is None:
@@ -153,7 +153,7 @@ def matrix_combine(mat1, mat2, mat01=None, mat02=None):
 
 def matrix_combine_multi(mats):
     """temp"""
-    xp = common.get_array_module(mats[0])
+    xp = common.get_array_module()
     mat = mats[0]
     for mat_ in mats[1:]:
         mat = xp.einsum("...ij,...jk->...ik", mat_, mat)
@@ -167,11 +167,12 @@ def matrix_apply(mat, mat0, sm):
 
 def matrix_prod(mat, states, *, inplace=False):
     """matrix multiplication"""
-    xp = common.get_array_module(mat, states)
+    xp = common.get_array_module()
 
     # expand mat dims if needed
     dims = tuple(range(mat.ndim - 2, states.ndim - 1))
-    mat = xp.expand_dims(mat, dims)
+    if dims:
+        mat = xp.expand_dims(mat, dims)
 
     # broadcastable
     broadcastable = all(s1 <= s2 for s1, s2 in zip(mat.shape[:-2], states.shape[:-2]))
