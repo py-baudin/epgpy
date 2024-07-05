@@ -45,13 +45,15 @@ class DiffOperator(operator.Operator, abc.ABC):
             order1: # Specify 1st order partial derivatives to compute
                 True/False: compute all or none of the partial derivative of the state matrix
                 str <parameter name> (or list of): compute selected partial derivatives
+                dict of str {<alias1>: <param1>, ...}
+                    rename parameters and compute selected partial derivatives
                 dict of dict {<variable>: {<param1>: <coeff1>, ...}}: 
                     compute combined partial derivatives, using the coefficients of the 1st order parameter's derivatives
 
             order2: # Specify 2nd order partial derivatives to compute
-                True/False:  compute all or none of the partial derivative of the state matrix
-                str <parameter name> (or list of): compute all combinations of selected partial derivatives
-                (str, str) (<param1>, <param2>) (or list of): : compute selected combinations of partial derivatives
+                True/False:  compute all or none of the 2nd order partial derivative of the state matrix
+                str <parameter name> (or list of): compute all 2nd order partial derivatives for selected variables
+                (str, str) (<param1>, <param2>) (or list of): compute selected 2nd order partial derivatives
                 dict of dict {(<var1>, <var2>): {(<param1>, <param2): <coeff12>, ...}):
                     compute combined partial derivatives, using the coefficients of the 2nd order parameter's derivatives
         """
@@ -188,6 +190,16 @@ class DiffOperator(operator.Operator, abc.ABC):
                 raise ValueError(f"Unknown parameter(s): {invalid}")
             # 1st derivatives of variables is set to 1
             coeffs1.update({param: {param: 1} for param in order1})
+
+        elif isinstance(order1, dict) and all(
+            isinstance(param, str) for param in order1.values()
+        ):
+            # use parameter aliases
+            invalid = {var for var in order1 if not order1[var] in parameters} 
+            if invalid:
+                raise ValueError(f"Unknown coefficients(s) in variable(s): {sorted(invalid)}")
+            # 1st derivatives of arguments are set to 1
+            coeffs1.update({var: {order1[var]: 1} for var in order1})
 
         elif isinstance(order1, dict) and all(
             isinstance(coeffs, dict) for coeffs in order1.values()

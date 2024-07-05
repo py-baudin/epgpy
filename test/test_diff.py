@@ -20,14 +20,22 @@ def test_parse_partials():
     coeffs1, coeffs2 = op._parse_partials()
     assert not coeffs1 and not coeffs2
 
+    # all order1 derivatives
     coeffs1, coeffs2 = op._parse_partials(order1=True)
     assert not coeffs2
     assert coeffs1 == {"x": {"x": 1}, "y": {"y": 1}}
 
+    # selected order1 derivatives
     coeffs1, coeffs2 = op._parse_partials(order1="x")
     assert not coeffs2
     assert coeffs1 == {"x": {"x": 1}}
 
+    # selected aliased order1 derivatives 
+    coeffs1, coeffs2 = op._parse_partials(order1={"x1": "x"})
+    assert not coeffs2
+    assert coeffs1 == {"x1": {"x": 1}}
+
+    # custom variable order1 derivatives
     coeffs1, coeffs2 = op._parse_partials(order1={"z": {"x": 2, "y": 3}})
     assert not coeffs2
     assert coeffs1 == {"z": {"x": 2, "y": 3}}
