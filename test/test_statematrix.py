@@ -214,6 +214,30 @@ def test_state_matrix_class():
     sm = statematrix.StateMatrix(max_nstate=3, kgrid=2)
     assert sm.options == {"max_nstate": 3, "kgrid": 2}
 
+    # stack / unstack
+    opts = {'opt1': 'foobar'}
+    sm = statematrix.StateMatrix(
+        [[[1, 1, 0]], [[0, 0, 2]]],
+        equilibrium=[[[0, 0, 1]], [[0, 0, 2]]],
+        coords=[[[1, 2, 3]], [[4, 5, 6]]],
+        shape=(2, 1),
+        **opts
+        )
+    sm_s = list(sm.unstack(axis=0))
+    for i in range(len(sm_s)):
+        sm_s[i].shape == sm.shape[1:]
+        assert np.allclose(sm_s[i].states, sm.states[i])
+        assert np.allclose(sm_s[i].equilibrium, sm.equilibrium[i])
+        assert np.allclose(sm_s[i].coords, sm.coords[i])
+        assert sm.options == sm_s[i].options
+
+    sm2 = sm_s[0].stack(sm_s[1:])
+    assert sm2.shape == sm.shape
+    assert np.allclose(sm2.states, sm.states)
+    assert np.allclose(sm2.equilibrium, sm.equilibrium)
+    assert np.allclose(sm2.coords, sm.coords)
+    assert sm2.options == sm.options
+
 
 def test_conservation():
     """test energy conservation"""

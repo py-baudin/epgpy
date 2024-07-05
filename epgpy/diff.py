@@ -278,6 +278,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         parameters = {param for var in self.coeffs1 for param in self.coeffs1[var]}
         # apply operator to previous 1st-order partials
         order1_previous = {var: derive0(order1[var]) for var in order1}
+        # order1_previous = self._stacked_apply(order1, derive0)
         # apply derived opertors to previous element
         order1_partials = {param: derive1(sm, param) for param in parameters}
         # combine_partials partial derivatives
@@ -308,6 +309,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         # apply operator to previous 2nd order partials
         order2 = {Pair(pair): value for pair, value in order2.items()}
         order2_previous = {pair: derive0(order2[pair]) for pair in order2}
+        # order2_previous = self._stacked_apply(order2, derive0)
 
         # 2nd derivatives of current operator
         gradient2 = {
@@ -344,6 +346,11 @@ class DiffOperator(operator.Operator, abc.ABC):
         variables_current = set(self.coeffs1) & variables_cross
         order1_params = {param for var in variables_current for param in self.coeffs1[var]}
         order2_cross = {}
+        # compute partials
+        # _partials = {
+        #     param: self._stacked_apply({v2: order1[v2] for v2 in variables_previous}, derive1, param)
+        #     for param in order1_params
+        # }
         for v2 in variables_previous:
             gradient12 = {
                 Pair(v1, v2): self.coeffs1[v1]
@@ -352,6 +359,7 @@ class DiffOperator(operator.Operator, abc.ABC):
             }
             _partials = {param: derive1(order1[v2], param) for param in order1_params}
             _cross12 = combine_partials(gradient12, _partials)
+            # _cross12 = combine_partials(gradient12, {param: _partials[param][v2] for param in order1_params})
             # repeat if it's twice the same variable
             _cross11 = {pair: _cross12[pair] for pair in _cross12 if pair[0] == pair[1]}
             order2_cross = accumulate(order2_cross, _cross12, _cross11)
@@ -369,8 +377,14 @@ class DiffOperator(operator.Operator, abc.ABC):
             order2[pair[::-1]] = order2[pair]
 
         return order2
-
-
+    
+    def _stacked_apply(self, partials, apply, *args):
+        if len(partials) < 2:
+            return {var: apply(partials[var], *args) for var in partials}
+        print(f'stacked apply: {len(partials)})')
+        stack = list(partials.values())
+        sm = apply(stack[0].stack(stack[1:]), *args)
+        return dict(zip(partials, sm.unstack()))
 
 # Probe operators for Jacobian/Hessian
 

@@ -3,8 +3,6 @@ import numpy as np
 import epgpy as epg
 from epgpy import diff
 
-# epg.set_array_module('cupy')
-
 # define MRF sequence
 nTR = 400
 T1, T2 = 1380, 80
@@ -17,15 +15,15 @@ order2_rlx = [[('T1', taus[i]), ('T2', taus[i])] for i in range(nTR)]
 def rf(i, alpha):
     return epg.T(
         alpha, 90, 
-        order1={alphas[i]: {'alpha': 1}}, 
-        order2=order2_rf[i],
+        order1={alphas[i]: 'alpha'}, # use parameter alias
+        order2=order2_rf[i], # select cross derivatives
         )
     
 def rlx(i, tau): 
     return epg.E(
         tau, T1, T2, 
-        order1={'T1': {'T1': 1}, 'T2': {'T2': 1}, taus[i]: {'tau': 1}},
-        order2=sum(order2_rlx + order2_rf, start=[]),
+        order1={'T1': 'T1', 'T2': 'T2', taus[i]: 'tau'}, # use parameter aliases
+        order2=sum(order2_rlx + order2_rf, start=[]), # select cross derivatives
         duration=True,
     )
 
@@ -50,11 +48,21 @@ def Num(sm):
 def condition(sm, th=1e-5):
     return sm.arrays.apply('states', lambda states: np.abs(states).max() < th)
 pruner = diff.PartialsPruner(condition=condition)
-# pruner = diff.PartialsPruner(condition=1e-5)
 
 print(f'Simulate MRF sequence (nTR={nTR})')
 tic = time.time()
-jac, hes, num = epg.simulate(sequence(angles, times), probe=[Jac, Hes, Num], disp=True, callback=pruner, max_nstate=10)
+jac, hes, num = epg.simulate(
+    sequence(angles, times), 
+    probe=[Jac, Hes, Num], 
+    max_nstate=10,
+    # callback=pruner,
+    disp=True, 
+    )
 
 toc = time.time()
-print(f'Done. Duration: {toc - tic:.1f}s, num. partials order1: {max(num[:, 0])}, num. partials order2: {max(num[:, 1])}.')
+print(
+    f'Done. '
+    f'Duration: {toc - tic:.1f}s, '
+    f'num. partials order1: {max(num[:, 0])}, '
+    f'num. partials order2: {max(num[:, 1])}.'
+)

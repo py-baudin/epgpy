@@ -5,20 +5,6 @@ from . import common, utils, common
 
 LOGGER = logging.getLogger(__name__)
 
-""" todo
-
- - arraycollection
-    - states (n1 x...x nstate x ndim)
-    - kindices (n1 x...x nstate x kdim)
-    - density (n1 x...x ndim)
-    - init (1x... x nstate x 3)
-- equilibrium is computed as (density * init)
-
-rename: 
-    `equilibrium` -> `eq` ?
-
-"""
-
 
 class StateMatrix:
     """store the phase states of a n-dimensional system"""
@@ -237,7 +223,7 @@ class StateMatrix:
         return value
 
     def __add__(self, other):
-        return self.copy(self.states + self._cmp(other), check=False)
+        return self.copy(self.states + self._cmp(other))
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -247,7 +233,7 @@ class StateMatrix:
         return self
 
     def __mul__(self, other):
-        return self.copy(self.states * self._cmp(other), check=False)
+        return self.copy(self.states * self._cmp(other))
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -318,6 +304,50 @@ class StateMatrix:
             coords = _setup_coords(self.nstate, kdim)
         self.arrays.set("coords", coords, layout=[..., "nstate", "kdim"])
 
+    def stack(self, seq, *, axis=0):
+        """ stack state matrices"""
+        xp = common.get_array_module()
+        seq = [self] + list(seq)
+        states = xp.stack([sm.states for sm in seq], axis=axis)
+        equibm = xp.stack([sm.equilibrium for sm in seq], axis=axis)
+        coords = None
+        if seq[0].coords is not None:
+            coords = xp.stack([sm.coords for sm in seq], axis=axis)
+        kwargs = {
+            'kvalue': seq[0].kvalue,
+            'tvalue': seq[0].tvalue,
+            **seq[0].options,
+        }
+        cls = type(self)
+        return cls(states, equilibrium=equibm, coords=coords, check=False, **kwargs)
+    
+    def unstack(self, sm=None, *, axis=0):
+        """split state matrices at given axis"""
+        xp = common.get_array_module()
+        sm = self if sm is None else sm
+        states, equibm, coords = sm.states, sm.equilibrium, sm.coords
+        if axis != 0:
+            states = xp.moveaxis(states, axis, 0)
+            equibm = xp.moveaxis(equibm, axis, 0)
+            coords = xp.moveaxis(coords, axis, 0) if coords is not None else None
+        coords = [None] * len(states) if coords is None else coords
+        kwargs = {
+            'kvalue': sm.kvalue,
+            'tvalue': sm.tvalue,
+            **sm.options,
+        }
+        cls = type(self)
+        return (
+            cls(st, equilibrium=eq, coords=coo, check=False, **kwargs) 
+            for st, eq, coo in zip(states, equibm, coords)
+        )
+    
+    def _stack(self, seq, *, axis=0):
+        return type(self).stack([self] + list(seq), axis=axis)
+    
+    def _unstack(self, *, axis=0):
+        return type(self).unstack(self, axis=axis)
+        
 
 # private functions
 
