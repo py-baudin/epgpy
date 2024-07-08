@@ -441,6 +441,7 @@ class ArrayCollection:
         self._expand_axis = int(expand_axis)
         self._layouts = {}
         self._arrays = {}
+        self._shapes = {}
         self._default = (1,) if default is None else tuple(default)
         self.xp = common.get_array_module()
         self._update_shape()
@@ -456,61 +457,17 @@ class ArrayCollection:
 
     def __contains__(self, name):
         return name in self._arrays
-        
-    @staticmethod
-    def _get_shared_axes(shape, layout):
-        """ return part of shape that will be broadcast"""
-        start = layout.index(Ellipsis)
-        end = len(shape) - (len(layout) - start - 1)
-        return shape[start:end]
-    
-    @staticmethod
-    def _get_shared_shape(ndim, shape, axis):
-        """ return shape after broadcasting """
-        if axis < 0:
-            axis = ndim - axis + 1
-        return shape[:axis] + (1,) * max(ndim - len(shape), 0) + shape[axis:]
-
-    @staticmethod
-    def _get_named_axes(ndim, layout):
-        """ return axes names and index """
-        idx = layout.index(Ellipsis)
-        diff = ndim - len(layout)
-        return [
-            (i + (i > idx) * diff, ax)
-            for i, ax in enumerate(layout) 
-            if i != idx and isinstance(ax, str)
-        ]
-        
-    @staticmethod
-    def _get_broadcast_shape(shared, shape, layout):
-        """ return shape after broadcasting """
-        shape = list(shape)
-        start = layout.index(Ellipsis)
-        end = len(shape) - (len(layout) - start - 1)
-        shape[start:end] = shared
-        return tuple(shape)
 
     @property
     def ndim(self):
         """broadcast ndim"""
         return len(self._shape)
-        # arrays, layouts = self._arrays, self._layouts
-        # ndims = [arrays[k].ndim - len(layouts[k]) + 1 for k in arrays] + [len(self._default)]
-        # return max(ndims + [0])
 
     @property
     def shape(self):
         """return broadcast shape"""
         return self._shape
     
-    def _update_shape(self):
-        arrays, layouts = self._arrays, self._layouts
-        shared = [self._get_shared_axes(arrays[k].shape, layouts[k]) for k in arrays] + [self._default]
-        ndim = max(len(shape) for shape in shared)
-        shapes = [self._get_shared_shape(ndim, shape, self._expand_axis) for shape in shared]
-        self._shape = tuple(max(shape[i] for shape in shapes) for i in range(ndim))
-
     @property
     def expand_axis(self):
         ax = self._expand_axis
@@ -525,8 +482,11 @@ class ArrayCollection:
         """ get (broadcast) array from collection """
         if not name in self._arrays:
             return default
-        layout = self._layouts[name]
         array = self._arrays[name]
+        if array.shape == self._shapes[name]:
+            # skip broadcasting
+            return array
+        layout = self._layouts[name]
         return self._broadcast_array(array, layout)
     
     def update(self, name, array, *, resize=False):
@@ -557,7 +517,7 @@ class ArrayCollection:
             for idx, ax in self._get_named_axes(array.ndim, layout):
                 size = array.shape[idx]
                 if ax in axes and size != axes[ax]:
-                    array = resize_array(array, axes[ax] - size, axis=idx)
+                    array = self.resize_array(array, axes[ax] - size, axis=idx)
         if check:
             self.check_shape(array.shape, layout, ignore=name)
         self._arrays[name] = array
@@ -578,11 +538,13 @@ class ArrayCollection:
     def copy(self):
         """ copy collection """
         coll = self.__new__(type(self))
+        layouts, arrays = self._layouts, self._arrays
         coll.xp = self.xp
-        coll._shape = self._shape
         coll._expand_axis = self._expand_axis
-        coll._layouts = {name: tuple(self._layouts[name]) for name in self}
-        coll._arrays = {name: self._arrays[name].copy() for name in self}
+        coll._shape = self._shape
+        coll._layouts = {name: tuple(layouts[name]) for name in layouts}
+        coll._arrays = {name: arrays[name].copy() for name in arrays}
+        coll._shapes = {name: shape for name, shape in self._shapes.items()}
         coll._default = tuple(self._default)
         return coll
     
@@ -659,8 +621,9 @@ class ArrayCollection:
             axis = layout.index(ax)
             if 0 <= layout.index(Ellipsis) < axis:
                 axis = arr.ndim - len(layout) + axis
-            arr = resize_array(arr, diff, axis=axis, constant=constant)
+            arr = self.resize_array(arr, diff, axis=axis, constant=constant)
             self._arrays[name] = arr
+            self._shapes[name] = self._get_broadcast_shape(self._shape, arr.shape, layout)
 
     def expand(self, ndim):
         """add dimensions to broadcast shape"""
@@ -690,17 +653,58 @@ class ArrayCollection:
 
     # private
 
+        
+    @staticmethod
+    def _get_shared_axes(shape, layout):
+        """ return part of shape that will be broadcast"""
+        start = layout.index(Ellipsis)
+        end = len(shape) - (len(layout) - start - 1)
+        return shape[start:end]
+    
+    @staticmethod
+    def _get_shared_shape(ndim, shape, axis):
+        """ return shape after broadcasting """
+        if axis < 0:
+            axis = ndim - axis + 1
+        return shape[:axis] + (1,) * max(ndim - len(shape), 0) + shape[axis:]
+
+    @staticmethod
+    def _get_named_axes(ndim, layout):
+        """ return axes names and index """
+        idx = layout.index(Ellipsis)
+        diff = ndim - len(layout)
+        return [
+            (i + (i > idx) * diff, ax)
+            for i, ax in enumerate(layout) 
+            if i != idx and isinstance(ax, str)
+        ]
+        
+    @staticmethod
+    def _get_broadcast_shape(shared, shape, layout):
+        """ return shape after broadcasting """
+        shape = list(shape)
+        start = layout.index(Ellipsis)
+        end = len(shape) - (len(layout) - start - 1)
+        shape[start:end] = shared
+        return tuple(shape)
+
+    def _update_shape(self):
+        arrays, layouts = self._arrays, self._layouts
+        shared = [self._get_shared_axes(arrays[name].shape, layouts[name]) for name in arrays] + [self._default]
+        ndim = max(len(shape) for shape in shared)
+        shapes = [self._get_shared_shape(ndim, shape, self._expand_axis) for shape in shared]
+        self._shape = tuple(max(shape[i] for shape in shapes) for i in range(ndim))
+        self._shapes = {
+            name: self._get_broadcast_shape(self._shape, arrays[name].shape, layouts[name])
+            for name in arrays
+            }
+
     def _broadcast_array(self, array, layout):
         """expand and broadcast array to shared shape"""
         xp = self.xp
 
         # common shape
         shared = self.shape
-
-        # broadcast shape
-        shape = self._get_broadcast_shape(shared, array.shape, layout)
-        if array.shape == shape:
-            return array
 
         # expand dimensions
         diff = len(shared) - (array.ndim - len(layout) + 1)
@@ -723,15 +727,15 @@ class ArrayCollection:
         return array
 
 
-def resize_array(array, diff, axis=0, *, constant=0):
-    """ resize array at given axis """
-    xp = common.get_array_module(array)
-    if diff < 0:  # crop
-        slices = [slice(None) for _ in range(array.ndim)]
-        slices[axis] = slice(-diff // 2, array.shape[axis] - (-diff + 1) // 2)
-        array = array[tuple(slices)]
-    elif diff > 0:  # padd
-        pad = [(0, 0) for _ in range(array.ndim)]
-        pad[axis] = (diff // 2, (diff + 1) // 2)
-        array = xp.pad(array, pad, constant_values=constant)
-    return array
+    def resize_array(self, array, diff, axis=0, *, constant=0):
+        """ resize array at given axis """
+        xp = self.xp
+        if diff < 0:  # crop
+            slices = [slice(None) for _ in range(array.ndim)]
+            slices[axis] = slice(-diff // 2, array.shape[axis] - (-diff + 1) // 2)
+            array = array[tuple(slices)]
+        elif diff > 0:  # padd
+            pad = [(0, 0) for _ in range(array.ndim)]
+            pad[axis] = (diff // 2, (diff + 1) // 2)
+            array = xp.pad(array, pad, constant_values=constant)
+        return array

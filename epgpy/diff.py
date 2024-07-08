@@ -11,8 +11,9 @@ from . import operator, common, probe
 LOGGER = logging.getLogger(__name__)
 
 """ TODO
-- compute 2nd derivatives only once!
-- skip 2nd derivatives known to be 0
+- move custom variable calculation -> Jacobian/Sequence (keep aliases!)
+- less Pair() calls
+- parallel partial calculation
 
 """
 
@@ -103,21 +104,24 @@ class DiffOperator(operator.Operator, abc.ABC):
             for p2 in self.coeffs1.get(v2, [])
         } & self.PARAMETERS_ORDER2
 
-    def derive0(self, sm):
+    def derive0(self, sm, inplace=False):
         """ apply operator (without order1 and order2 differential operators)"""
-        sm = self.prepare(sm, inplace=False)
+        if not inplace:
+            sm = sm.copy()
         return self._apply(sm)
 
-    def derive1(self, sm, param):
+    def derive1(self, sm, param, inplace=False):
         """apply 1st order differential operator w/r to parameter `param` """
-        sm = self.prepare(sm, inplace=False)
+        if not inplace:
+            sm = sm.copy()
         sm_d1 = self._derive1(sm, param)
         sm_d1.arrays.update('equilibrium', 0) # remove equilibrium
         return sm_d1
 
-    def derive2(self, sm, params):
+    def derive2(self, sm, params, inplace=False):
         """apply 2nd order differential operator w/r to parameters pair `params` """
-        sm = self.prepare(sm, inplace=False)
+        if not inplace:
+            sm = sm.copy()
         sm_d2 = self._derive2(sm, Pair(params))
         sm_d2.arrays.update('equilibrium', 0) # remove equilibrium
         return sm_d2
@@ -128,12 +132,15 @@ class DiffOperator(operator.Operator, abc.ABC):
         order1 = getattr(sm, "order1", {})
         order2 = getattr(sm, "order2", {})
 
+        # check and resize state matrix
+        sm = self.prepare(sm, inplace=inplace)
+
         if order1 or self.coeffs1 or order2 or self.coeffs2:
-            order2 = self._apply_order2(sm, order1, order2) # inplace=inplace
-            order1 = self._apply_order1(sm, order1) # inplace=inplace
+            order2 = self._apply_order2(sm, order1, order2, inplace=inplace)
+            order1 = self._apply_order1(sm, order1, inplace=inplace)
 
         # apply operator
-        sm = super().__call__(sm, inplace=inplace)
+        sm = self._apply(sm)
 
         # store derivatives
         sm.order1 = order1
@@ -268,7 +275,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         order1={},
         derive0=None,
         derive1=None,
-        # inplace=False,
+        inplace=False,
     ):
         """Apply 1st order derived operator"""
         derive0 = derive0 or self.derive0 # self.__call__
@@ -277,16 +284,13 @@ class DiffOperator(operator.Operator, abc.ABC):
         # operator's partial derivatives for involved parameters
         parameters = {param for var in self.coeffs1 for param in self.coeffs1[var]}
         # apply operator to previous 1st-order partials
-        order1_previous = {var: derive0(order1[var]) for var in order1}
+        order1_previous = {var: derive0(order1[var], inplace=inplace) for var in order1}
         # order1_previous = self._stacked_apply(order1, derive0)
         # apply derived opertors to previous element
-        order1_partials = {param: derive1(sm, param) for param in parameters}
+        order1_partials = {param: derive1(sm, param, inplace=False) for param in parameters}
         # combine_partials partial derivatives
         order1_current = combine_partials(self.coeffs1, order1_partials)
-        # if inplace:
-        #     # breakpoint()
-        #     order1 = accumulate(order1, order1_current)
-        # else:
+        # accumulate derivatives
         order1 = accumulate(order1_previous, order1_current)
 
         return order1
@@ -299,7 +303,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive0=None,
         derive1=None,
         derive2=None,
-        # inplace=False,
+        inplace=False,
     ):
         """Apply 2nd order derived operator"""
         derive0 = derive0 or self.derive0 
@@ -308,7 +312,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         # apply operator to previous 2nd order partials
         order2 = {Pair(pair): value for pair, value in order2.items()}
-        order2_previous = {pair: derive0(order2[pair]) for pair in order2}
+        order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
         # order2_previous = self._stacked_apply(order2, derive0)
 
         # 2nd derivatives of current operator
@@ -365,9 +369,6 @@ class DiffOperator(operator.Operator, abc.ABC):
             order2_cross = accumulate(order2_cross, _cross12, _cross11)
 
         # accumulate partial derivatives
-        # if inplace:
-        #     order2 = accumulate(order2, order2_params, order2_current, order2_cross)
-        # else:
         order2 = accumulate(order2_previous, order2_params, order2_current, order2_cross)
 
         # store 2nd order partials as (v1, v2) and (v2, v1)
@@ -378,13 +379,13 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         return order2
     
-    def _stacked_apply(self, partials, apply, *args):
-        if len(partials) < 2:
-            return {var: apply(partials[var], *args) for var in partials}
-        print(f'stacked apply: {len(partials)})')
-        stack = list(partials.values())
-        sm = apply(stack[0].stack(stack[1:]), *args)
-        return dict(zip(partials, sm.unstack()))
+    # def _stacked_apply(self, partials, apply, *args):
+    #     if len(partials) < 2:
+    #         return {var: apply(partials[var], *args) for var in partials}
+    #     print(f'stacked apply: {len(partials)})')
+    #     stack = list(partials.values())
+    #     sm = apply(stack[0].stack(stack[1:]), *args)
+    #     return dict(zip(partials, sm.unstack()))
 
 # Probe operators for Jacobian/Hessian
 

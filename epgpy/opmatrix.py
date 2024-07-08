@@ -38,14 +38,16 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         return self.mat.shape[:-2]
 
     def _apply(self, sm):
-        """Apply transform to state matrix (inplace)"""
+        """apply operator inplace"""
         return matrix_apply(self.mat, self.mat0, sm)
 
     def _derive1(self, sm, param):
+        """apply 1st order differential operator inplace"""
         dmat, dmat0 = self.dmats[param]
         return matrix_apply(dmat, dmat0, sm)
 
     def _derive2(self, sm, params):
+        """apply 1st order differential operator inplace"""
         d2mat, d2mat0 = self.d2mats[params]
         return matrix_apply(d2mat, d2mat0, sm)
     
@@ -68,18 +70,18 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         dmats = getattr(op1, 'dmats', {})
         d2mats = getattr(op1, 'd2mats', {})
             
-        def derive0(mats):
+        def derive0(mats, inplace=False):
             return matrix_combine(mats[0], op2.mat, mats[1], None)
         
-        def derive1(mats, param):
+        def derive1(mats, param, inplace=False):
             dmat, dmat0 = op2.dmats[param]
             return matrix_combine(mats[0], dmat, mats[1], dmat0)
         
-        def derive1_2(mats, param):
+        def derive1_2(mats, param, inplace=False):
             dmat, _ = op2.dmats[param]
             return matrix_combine(mats[0], dmat, mats[1], None)
             
-        def derive2(mats, params):
+        def derive2(mats, params, inplace=False):
             d2mat, d2mat0 = op2.d2mats[params]
             return matrix_combine(mats[0], d2mat, mats[1], d2mat0)
 
@@ -170,19 +172,18 @@ def matrix_prod(mat, states, *, inplace=False):
     xp = common.get_array_module()
 
     # expand mat dims if needed
-    # dims = tuple(range(mat.ndim - 2, states.ndim - 1))
     dims = tuple(range(mat.ndim - 2, states.ndim - 2))
     if dims:
         mat = xp.expand_dims(mat, dims)
 
-    # broadcastable
-    broadcastable = all(s1 <= s2 for s1, s2 in zip(mat.shape[:-2], states.shape[:-2]))
-
-    # use inplace mult only with numpy
-    inplace = inplace & (xp.__name__ == "numpy") & broadcastable
-
     mat = mat[..., NAX, :, :]
-    if inplace:
-        return xp.einsum("...ij,...j->...i", mat, states, out=states)
-    else:
+    # use inplace mult only with numpy
+    if not inplace or (xp.__name__ != "numpy"):
+        return xp.matmul(mat, states[..., xp.newaxis])[..., 0]
+
+    try:
+        # return xp.einsum("...ij,...j->...i", mat, states, out=states)
+        return xp.matmul(mat, states, axes=[(-2, -1), (-1, -2), (-1, -2)], out=states)
+    except ValueError:
+        # inplace not feasible
         return xp.matmul(mat, states[..., xp.newaxis])[..., 0]

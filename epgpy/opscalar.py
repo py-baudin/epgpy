@@ -50,14 +50,16 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         return {vars: common.ArrayTuple(map(as_matrix, arrs)) for vars, arrs in self.d2arrs.items()}    
     
     def _apply(self, sm):
-        """apply inplace"""
+        """apply operator inplace"""
         return scalar_apply(self.arr, self.arr0, sm)
     
     def _derive1(self, sm, param):
+        """apply 1st order differential operator inplace"""
         darr, darr0 = self.darrs[param]
         return scalar_apply(darr, darr0, sm)
     
     def _derive2(self, sm, params):
+        """apply 2nd order differential operator inplace"""
         d2arr, d2arr0 = self.d2arrs[params]
         return scalar_apply(d2arr, d2arr0, sm)
     
@@ -77,18 +79,18 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         darrs = getattr(op1, 'darrs', {})
         d2arrs = getattr(op1, 'd2arrs', {})
             
-        def derive0(arrs):
+        def derive0(arrs, inplace=False):
             return scalar_combine(arrs[0], op2.arr, arrs[1], None)
         
-        def derive1(arrs, param):
+        def derive1(arrs, param, inplace=False):
             darr, darr0 = op2.darrs[param]
             return scalar_combine(arrs[0], darr, arrs[1], darr0)
         
-        def derive1_2(arrs, param):
+        def derive1_2(arrs, param, inplace=False):
             darr, _ = op2.darrs[param]
             return scalar_combine(arrs[0], darr, arrs[1], None)
             
-        def derive2(arrs, params):
+        def derive2(arrs, params, inplace=False):
             d2arr, d2arr0 = op2.d2arrs[params]
             return scalar_combine(arrs[0], d2arr, arrs[1], d2arr0)
 
@@ -186,14 +188,14 @@ def scalar_prod(arr, states, *, inplace=False):
     if dims:
         arr = xp.expand_dims(arr, dims)
 
-    # broadcastable
-    broadcastable = all(s1 <= s2 for s1, s2 in zip(arr.shape[:-1], states.shape[:-2]))
-
-    # multiply
-    if inplace and broadcastable:
+    if not inplace:
+        return states * arr[..., NAX, :]
+    
+    try:
         states *= arr[..., NAX, :]
-    else:
-        states = states * arr[..., NAX, :]
-    return states
+        return states
+    except ValueError:
+        # requires broadcasting
+        return states * arr[..., NAX, :]
 
 
