@@ -71,8 +71,8 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         """ combine multiple scalar operators"""
         
         # merge parameters and coefficients
-        coeffs1 = {var: op.coeffs1[var] for op in (op1, op2) for var in op.coeffs1}
-        coeffs2 = {vars: op.coeffs2[vars] for op in (op1, op2) for vars in op.coeffs2}
+        order1 = {param: op.order1[param] for op in (op1, op2) for param in op.order1}
+        order2 = {pair for op in (op1, op2) for pair in op.order2}
 
         # combine arrays
         arrs = op1.arr, op1.arr0
@@ -95,7 +95,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
             return scalar_combine(arrs[0], d2arr, arrs[1], d2arr0)
 
         # combine operators
-        if darrs or op2.coeffs1 or d2arrs or op2.coeffs2:
+        if darrs or op2.order1 or d2arrs or op2.order2:
             # combine differential operators
             d2arrs = op2._apply_order2(arrs, darrs, d2arrs, derive0=derive0, derive1=derive1_2, derive2=derive2)
             darrs = op2._apply_order1(arrs, darrs, derive0=derive0, derive1=derive1)
@@ -105,8 +105,8 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
         return ScalarOp(
             arrs[0], arrs[1], 
             darrs=darrs, d2arrs=d2arrs,
-            order1=coeffs1,
-            order2=coeffs2,
+            order1=order1,
+            order2=order2,
             **kwargs,
         )
 

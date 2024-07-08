@@ -154,8 +154,8 @@ def test_ScalarOp_diff2():
     # order2
     op = ScalarOp(
         arr, arr0, darrs=darrs, d2arrs=d2arrs,
-        order1={'r2': {'r2': 1}, 'r1': {'r1': 1}, 't': {'t': 1}},
-        order2={('t', 'r2'): {}, ('t', 'r1'): {}},
+        order1=['t', 'r1', 'r2'],
+        order2={('t', 'r2'), ('t', 'r1')},
         name='op1',
     )
 
@@ -171,7 +171,7 @@ def test_ScalarOp_diff2():
     op_t = ScalarOp(
         arr_t, arr0_t, 
         name='op_t', 
-        order1={'r2': {'r2': 1}, 'r1': {'r1': 1}}, 
+        order1=['r1', 'r1'], 
         darrs={
             'r2': ([-(1 + dt) * r2 * dr2, -(1 + dt) * r2 * dr2, 0], None), 
             'r1': ([0, 0, -(1 + dt) * r1 * dr1], [0, 0, (1 + dt) * r1 * dr1])},

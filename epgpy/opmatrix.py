@@ -62,8 +62,8 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         """ combine multiple scalar operators"""
         
         # merge parameters and coefficients
-        coeffs1 = {var: op.coeffs1[var] for op in (op1, op2) for var in op.coeffs1}
-        coeffs2 = {vars: op.coeffs2[vars] for op in (op1, op2) for vars in op.coeffs2}
+        order1 = {var: op.order1[var] for op in (op1, op2) for var in op.order1}
+        order2 = {vars: op.order2[vars] for op in (op1, op2) for vars in op.order2}
 
         # combine arrays
         mats = op1.mat, op1.mat0
@@ -86,7 +86,7 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
             return matrix_combine(mats[0], d2mat, mats[1], d2mat0)
 
         # combine operators
-        if dmats or op2.coeffs1 or d2mats or op2.coeffs2:
+        if dmats or op2.order1 or d2mats or op2.order2:
             # combine differential operators
             d2mats = op2._apply_order2(mats, dmats, d2mats, derive0=derive0, derive1=derive1_2, derive2=derive2)
             dmats = op2._apply_order1(mats, dmats, derive0=derive0, derive1=derive1)
@@ -96,8 +96,8 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         return MatrixOp(
             mats[0], mats[1], 
             dmats=dmats, d2mats=d2mats,
-            order1=coeffs1,
-            order2=coeffs2,
+            order1=order1,
+            order2=order2,
             **kwargs,
         )
 

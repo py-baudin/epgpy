@@ -17,57 +17,54 @@ def test_parse_partials():
     # dummy operator
     op = Op()
 
-    coeffs1, coeffs2 = op._parse_partials()
-    assert not coeffs1 and not coeffs2
+    order1, order2 = op._parse_partials()
+    assert not order1 and not order2
 
     # all order1 derivatives
-    coeffs1, coeffs2 = op._parse_partials(order1=True)
-    assert not coeffs2
-    assert coeffs1 == {"x": {"x": 1}, "y": {"y": 1}}
+    order1, order2 = op._parse_partials(order1=True)
+    assert not order2
+    assert order1 == {"x": 'x', "y": 'y'}
 
     # selected order1 derivatives
-    coeffs1, coeffs2 = op._parse_partials(order1="x")
-    assert not coeffs2
-    assert coeffs1 == {"x": {"x": 1}}
+    order1, order2 = op._parse_partials(order1="x")
+    assert not order2
+    assert order1 == {"x": 'x'}
 
     # selected aliased order1 derivatives 
-    coeffs1, coeffs2 = op._parse_partials(order1={"x1": "x"})
-    assert not coeffs2
-    assert coeffs1 == {"x1": {"x": 1}}
-
-    # custom variable order1 derivatives
-    coeffs1, coeffs2 = op._parse_partials(order1={"z": {"x": 2, "y": 3}})
-    assert not coeffs2
-    assert coeffs1 == {"z": {"x": 2, "y": 3}}
+    order1, order2 = op._parse_partials(order1={"x1": "x"})
+    assert not order2
+    assert order1 == {"x1": 'x'}
 
     with pytest.raises(ValueError):
         op._parse_partials(order1="unknown")
 
     with pytest.raises(ValueError):
-        op._parse_partials(order1={"z": {"unknown": 1}})
+        op._parse_partials(order1={"z": "unknown"})
 
-    coeffs1, coeffs2 = op._parse_partials(order2=True)
-    assert coeffs1 == {"x": {"x": 1}, "y": {"y": 1}}
-    assert coeffs2 == {
-        ("x", "x"): {},
-        ("x", "y"): {},
-        ("y", "y"): {},
+    order1, order2 = op._parse_partials(order2=True)
+    assert order1 == {"x": 'x', "y": 'y'}
+    assert order2 == {
+        ("x", "x"), 
+        ("x", "y"), 
+        ("y", "y"), 
     }
 
-    coeffs1, coeffs2 = op._parse_partials(order1="x", order2="x")
-    assert coeffs1 == {"x": {"x": 1}}
-    assert coeffs2 == {("x", "x"): {}}
+    order1, order2 = op._parse_partials(order1="x", order2="x")
+    assert order1 == {"x": "x"}
+    assert order2 == {("x", "x")}
 
-    coeffs1, coeffs2 = op._parse_partials(
-        order1={"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}},
-        order2={("foo", "bar"): {"x": 2, "y": 3}},
+    order1, order2 = op._parse_partials(
+        order1={"x1": "x", "y1": 'y'},
+        order2=[("x1", 'y1')],
     )
-    assert coeffs1 == {"foo": {"x": 1, "y": 2}, "bar": {"x": 1, "y": 2}}
-    assert coeffs2 == {("bar", "foo"): {"x": 2, "y": 3}}
+    assert order1 == {"x1": 'x', 'y1': 'y'}
+    assert order2 == {("x1", "y1")}
 
     with pytest.raises(ValueError):
-        op._parse_partials(order2={("foo", "bar"): {"x": 2, "y": 3}})
+        op._parse_partials(order2={("x", "y")})
 
+    with pytest.raises(ValueError):
+        op._parse_partials(order2={("wrong", "y1")})
 
 def test_order12():
     """ Test order 1 and 2 partials"""
@@ -86,8 +83,8 @@ def test_order12():
 
     # order 1
     op = Op(order1=True)
-    assert op.coeffs1 == {'x': {'x': 1}, 'y': {"y": 1}}
-    assert not op.coeffs2
+    assert op.order1 == {'x': 'x', 'y': 'y'}
+    assert not op.order2
     assert op.parameters_order1 == {"x", "y"}
 
     # nd state matrix
@@ -102,14 +99,15 @@ def test_order12():
     # order 2
     op = Op(order2=True)
     # order 1 is filled by default
-    assert op.coeffs1 == {"x": {"x": 1}, "y": {"y": 1}} 
-    assert op.coeffs2 == {
-        ("x", "x"): {},
-        ("x", "y"): {},
-        ("y", "y"): {},
+    assert op.order1 == {"x": 'x', 'y': 'y'} 
+    assert op.order2 == {
+        ("x", "x"),
+        ("x", "y"),
+        ("y", "y"),
     }
     assert op.parameters_order1 == {"x", "y"}
-    assert op.parameters_order2 == {('x', 'y'), ('x', 'x'), ('y', 'y')} # {"x", "y"}
+    assert op.parameters_order2 == {('x', 'y'), ('x', 'x'), ('y', 'y')}
+
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states) # sm is unchanged
@@ -124,26 +122,13 @@ def test_order12():
     assert np.allclose(sm.order2["y", "y"], 6 * sm0.states)
 
 
-    # Arbitrary variable `a`
-    op = Op(order1={"a": {"x": 0.1, "y": 0.2}}, order2={("a", "a"): {"x": 0.3}})
-    assert op.parameters_order1 == {'x', 'y'}
-    assert op.parameters_order2 == {('x', 'y'), ('x', 'x'), ('y', 'y')} 
-    # apply operator
-    sm = op(sm0)
-    assert np.allclose(sm.order1["a"], (0.1 * 2 + 0.2 * 3) * sm0.states)
-    assert np.allclose(
-        sm.order2[("a", "a")],
-        (4 * 0.1 ** 2 + 2 * 5 * 0.1 * 0.2 + 6 * 0.2 ** 2 + 0.3 * 2) * sm0.states,
-    )
-
-
 def test_diff_chain():
     """ chain multiple differentiable operators """
     class Op(diff.DiffOperator):
         PARAMETERS_ORDER1 = {"x", "y"}
         PARAMETERS_ORDER2 = {('x', 'y'), ('x', 'x'), ('y', 'y')}
         def _apply(self, sm): 
-            return 0.9 * sm
+            return sm
         def _derive1(self, sm, param):
             op1 = {'x': 2, 'y': 3}[param]
             return op1 * sm
@@ -153,32 +138,30 @@ def test_diff_chain():
             return op2 * sm
         
     # order 1
-    op1 = Op(order1={'a': {'x': 0.1}, 'b': {'y': 0.2}})
-    op2 = Op(order1={'a': {'y': 0.3}, 'b': {'x': 0.4}})
+    op1 = Op(order1={'a': 'x', 'b': 'y'})
+    op2 = Op(order1={'a': 'y', 'b': 'x'})
     sm0 = statematrix.StateMatrix([1, 1, 0.5])
-    sm1 = op2(op1(sm0))
-    assert set(sm1.order1) == {'a', 'b'}
-    assert np.allclose(sm1.states, 0.9**2 * sm0.states) # order 0
+    sm2 = op2(op1(sm0))
+    assert set(sm2.order1) == {'a', 'b'}
+    assert np.allclose(sm2.states, sm0.states) # order 0
     # op2/d1 * op1 + op2 * op1/d1
-    assert np.allclose(sm1.order1['a'].states, (0.1 * 2 + 0.3 * 3) * 0.9 * sm0.states)
-    assert np.allclose(sm1.order1['b'].states, (0.2 * 3 + 0.4 * 2) * 0.9 * sm0.states)
+    assert np.allclose(sm2.order1['a'].states, (2 + 3) * sm0.states)
+    assert np.allclose(sm2.order1['b'].states, (3 + 2) * sm0.states)
 
     # order 2
-    op1 = Op(order1={'a': {'x': 0.1}, 'b': {'y': 0.2}}, order2={('a', 'b'): {}})
+    op1 = Op(order1={'a': 'x', 'b': 'y'}, order2=[('a', 'b')])
     sm0 = statematrix.StateMatrix([1, 1, 0.5])
     sm1 = op1(sm0)
-     # op1/d1d2
     assert set(sm1.order2) == {('a', 'b'), ('b', 'a')}
-    assert np.allclose(sm1.order2[('a', 'b')].states, (0.1 * 0.2 * 5) * sm0.states)
+    assert np.allclose(sm1.order2[('a', 'b')].states, 5 * sm0.states)
     assert np.allclose(sm1.order2[('a', 'b')].states, sm1.order2[('b', 'a')].states)
 
-    op2 = Op(order1={'a': {'y': 0.3}, 'b': {'x': 0.4}}, order2={('a', 'b'): {}})
+    op2 = Op(order1={'a': 'y', 'b': 'x'}, order2=[('a', 'b')])
     sm2 = op2(sm1)
     assert set(sm2.order2) == {('a', 'b'), ('b', 'a')}
-    # (op2/d12 * op1) + (op2/d1 * op1/d2) + (op2/d2 * op1/d1) + (op2 * op1/d12)
     assert np.allclose(
         sm2.order2[('a', 'b')].states, 
-        ((0.3 * 0.4 * 5 * 0.9) + (0.3 * 0.2 * 3  * 3) + (0.4 * 0.1 * 2 * 2) + (0.1 * 0.2 * 5 * 0.9)) * sm0.states,
+        (5 + 3 * 3 + 2 * 2 + 5) * sm0.states,
     )
     assert np.allclose(sm2.order2[('a', 'b')].states, sm2.order2[('b', 'a')])
     
@@ -492,7 +475,7 @@ def test_hessian_class():
     params = [f'alpha_{i:02d}' for i in range(necho)]
     alphas = np.sin(np.arange(necho) * np.pi * 1.3 / necho - np.pi / 2) * 5 + 35
 
-    rfs = lambda alpha, param: operators.T(alpha, 90, order1={param: {'alpha': 1}}, order2=[('T2', param)])
+    rfs = lambda alpha, param: operators.T(alpha, 90, order1={param: 'alpha'}, order2=[('T2', param)])
     rlx = operators.E(5, 1e3, 30, order1='T2', order2='T2')
     grd = operators.S(1)
     adc = operators.ADC
