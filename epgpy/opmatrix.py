@@ -3,6 +3,7 @@ import numpy as np
 from . import common, operator, diff, opscalar
 
 NAX = np.newaxis
+SL = slice(None)
 
 
 class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
@@ -173,7 +174,8 @@ def matrix_prod(mat, states, *, inplace=False):
 
     # expand mat dims
     ndim = states.ndim - mat.ndim + 1
-    mat = mat[..., *(NAX,)*ndim, :, :] if ndim > 1 else mat[..., NAX, :, :]
+    # mat = mat[..., *(NAX,)*ndim, :, :] if ndim > 1 else mat[..., NAX, :, :]
+    mat = mat[(...,) + (NAX,)*ndim + (SL, SL)] if ndim > 1 else mat[..., NAX, :, :]
 
     # use inplace mult only with numpy
     if not inplace or (xp.__name__ != "numpy"):

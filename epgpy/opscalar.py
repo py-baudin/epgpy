@@ -4,6 +4,7 @@ import numpy as np
 from . import common, operator, diff
 
 NAX = np.newaxis
+SL = slice(None)
 
 
 class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
@@ -185,7 +186,8 @@ def scalar_prod(arr, states, *, inplace=False):
 
     # add axes to match states
     ndim = states.ndim - arr.ndim
-    arr = arr[..., *(NAX,)*ndim, :] if ndim > 1 else arr[..., NAX, :]
+    # arr = arr[..., *(NAX,)*ndim, :] if ndim > 1 else arr[..., NAX, :]
+    arr = arr[(...,) + (NAX,)*ndim + (SL,)] if ndim > 1 else arr[..., NAX, :]
     
 
     if not inplace:
