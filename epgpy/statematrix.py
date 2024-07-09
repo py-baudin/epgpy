@@ -114,24 +114,24 @@ class StateMatrix:
     @property
     def size(self):
         """return size of phase array"""
-        return np.prod(self.states.shape[:-2])
+        return np.prod(self.shape)
 
     @property
     def nstate(self):
         """return number of phase states"""
-        return (self.states.shape[-2] - 1) // 2
+        return (self.arrays.axes['nstate'] - 1) // 2
 
     @property
     def kdim(self):
         """number of coords dimensions"""
-        return 1 if self.coords is None else self.coords.shape[-1]
+        return 1 if self.coords is None else self.arrays.axes['kdim']
 
     @property
     def i0(self):
         """index/indices of F0 state(s)"""
         if self.kdim < 4:
             return self.nstate
-        xp = common.get_array_module(self.states)
+        xp = common.get_array_module()
         return xp.all(xp.isclose(self.coords[..., :3], 0), axis=-1)
 
     @property
@@ -197,7 +197,8 @@ class StateMatrix:
 
     @property
     def writeable(self):
-        return getattr(self.states.flags, "writeable", False)
+        return True
+        # return getattr(self.states.flags, "writeable", False)
     
     @property
     def array_module(self):
@@ -252,13 +253,10 @@ class StateMatrix:
         sm = self.__new__(type(self))
         coll = self.arrays.copy()
         if states is not None:
-            # coll.set('states', states, resize=True)
             coll.update('states', states, resize=True)
         if 'equilibrium' in kwargs:
-            # coll.set('equilibrium', kwargs.pop('equilibrium'), resize=True)
             coll.update('equilibrium', kwargs.pop('equilibrium'), resize=True)
         if 'coords' in kwargs:
-            # coll.set('coords', kwargs.pop('coords'), resize=True)
             coll.update('coords', kwargs.pop('coords'), resize=True)
         sm.arrays = coll
         sm.kvalue = kwargs.pop('kvalue', self.kvalue)
@@ -442,6 +440,7 @@ class ArrayCollection:
         self._layouts = {}
         self._arrays = {}
         self._shapes = {}
+        self._axes = {}
         self._default = (1,) if default is None else tuple(default)
         self.xp = common.get_array_module()
         self._update_shape()
@@ -476,7 +475,7 @@ class ArrayCollection:
     @property
     def axes(self):
         """dictionary of named axes"""
-        return self.get_named_axes()
+        return self._axes
 
     def get(self, name, default=None):
         """ get (broadcast) array from collection """
@@ -523,6 +522,7 @@ class ArrayCollection:
         self._arrays[name] = array
         self._layouts[name] = tuple(layout)
         self._update_shape()
+        self._axes = self.get_named_axes()
 
             
     def pop(self, name, default=None):
@@ -545,6 +545,7 @@ class ArrayCollection:
         coll._layouts = {name: tuple(layouts[name]) for name in layouts}
         coll._arrays = {name: arrays[name].copy() for name in arrays}
         coll._shapes = {name: shape for name, shape in self._shapes.items()}
+        coll._axes = dict(self.axes)
         coll._default = tuple(self._default)
         return coll
     
@@ -624,6 +625,7 @@ class ArrayCollection:
             arr = self.resize_array(arr, diff, axis=axis, constant=constant)
             self._arrays[name] = arr
             self._shapes[name] = self._get_broadcast_shape(self._shape, arr.shape, layout)
+        self._axes = self.get_named_axes()
 
     def expand(self, ndim):
         """add dimensions to broadcast shape"""

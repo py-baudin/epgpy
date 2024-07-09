@@ -95,9 +95,9 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
             return scalar_combine(arrs[0], d2arr, arrs[1], d2arr0)
 
         # combine operators
-        if darrs or op2.order1 or d2arrs or op2.order2:
-            # combine differential operators
+        if d2arrs or op2.order2:
             d2arrs = op2._apply_order2(arrs, darrs, d2arrs, derive0=derive0, derive1=derive1_2, derive2=derive2)
+        if darrs or op2.order1:
             darrs = op2._apply_order1(arrs, darrs, derive0=derive0, derive1=derive1)
 
         arrs = scalar_combine(arrs[0], op2.arr, arrs[1], op2.arr0)
@@ -183,19 +183,19 @@ def scalar_prod(arr, states, *, inplace=False):
     """element-wise product product"""
     xp = common.get_array_module()
 
-    # expand mat dims if needed
-    dims = tuple(range(arr.ndim - 1, states.ndim - 2))
-    if dims:
-        arr = xp.expand_dims(arr, dims)
+    # add axes to match states
+    ndim = states.ndim - arr.ndim
+    arr = arr[..., *(NAX,)*ndim, :] if ndim > 1 else arr[..., NAX, :]
+    
 
     if not inplace:
-        return states * arr[..., NAX, :]
+        return states * arr
     
     try:
-        states *= arr[..., NAX, :]
+        states *= arr
         return states
     except ValueError:
         # requires broadcasting
-        return states * arr[..., NAX, :]
+        return states * arr
 
 

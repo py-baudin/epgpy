@@ -62,8 +62,8 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         """ combine multiple scalar operators"""
         
         # merge parameters and coefficients
-        order1 = {var: op.order1[var] for op in (op1, op2) for var in op.order1}
-        order2 = {vars: op.order2[vars] for op in (op1, op2) for vars in op.order2}
+        order1 = {param: op.order1[param] for op in (op1, op2) for param in op.order1}
+        order2 = {pair for op in (op1, op2) for pair in op.order2}
 
         # combine arrays
         mats = op1.mat, op1.mat0
@@ -86,9 +86,9 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
             return matrix_combine(mats[0], d2mat, mats[1], d2mat0)
 
         # combine operators
-        if dmats or op2.order1 or d2mats or op2.order2:
-            # combine differential operators
+        if d2mats or op2.order2:
             d2mats = op2._apply_order2(mats, dmats, d2mats, derive0=derive0, derive1=derive1_2, derive2=derive2)
+        if dmats or op2.order1:
             dmats = op2._apply_order1(mats, dmats, derive0=derive0, derive1=derive1)
 
         mats = matrix_combine(mats[0], op2.mat, mats[1], op2.mat0)
@@ -171,12 +171,10 @@ def matrix_prod(mat, states, *, inplace=False):
     """matrix multiplication"""
     xp = common.get_array_module()
 
-    # expand mat dims if needed
-    dims = tuple(range(mat.ndim - 2, states.ndim - 2))
-    if dims:
-        mat = xp.expand_dims(mat, dims)
+    # expand mat dims
+    ndim = states.ndim - mat.ndim + 1
+    mat = mat[..., *(NAX,)*ndim, :, :] if ndim > 1 else mat[..., NAX, :, :]
 
-    mat = mat[..., NAX, :, :]
     # use inplace mult only with numpy
     if not inplace or (xp.__name__ != "numpy"):
         return xp.matmul(mat, states[..., xp.newaxis])[..., 0]

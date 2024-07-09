@@ -6,15 +6,12 @@ import itertools
 import abc
 import logging
 import numpy as np
-from . import operator, common, probe
+from . import operator, common, probe, parallel
 
 LOGGER = logging.getLogger(__name__)
 
 """ TODO
-- move custom variable calculation -> Jacobian/Sequence (keep aliases!)
-- less Pair() calls
 - parallel partial calculation
-
 """
 
 
@@ -73,7 +70,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         # parse keywords
         self.order1, self.order2 = self._parse_partials(order1, order2)
-
+        # activate auto cross derivatives if order2 was not passed in full
         self.auto_cross_derivatives = isinstance(order2, (bool, str)) or all(isinstance(item, str) for item in order2)
     
     @property
@@ -121,8 +118,9 @@ class DiffOperator(operator.Operator, abc.ABC):
         # check and resize state matrix
         sm = self.prepare(sm, inplace=inplace)
 
-        if order1 or self.order1 or order2 or self.order2:
+        if order2 or self.order2:
             order2 = self._apply_order2(sm, order1, order2, inplace=inplace)
+        if order1 or self.order1:
             order1 = self._apply_order1(sm, order1, inplace=inplace)
 
         # apply operator
@@ -227,9 +225,11 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive1 = derive1 or self.derive1
 
         # apply operator to previous 1st-order partials
-        order1_previous = {param: derive0(order1[param], inplace=inplace) for param in order1}
+        # order1_previous = {param: derive0(order1[param], inplace=inplace) for param in order1}
+        order1_previous = parallel.apply(derive0, order1, inplace=True, single=True)
         # apply derived opertors to previous element
-        order1_current = {param: derive1(sm, self.order1[param], inplace=False) for param in self.order1}
+        # order1_current = {param: derive1(sm, self.order1[param], inplace=False) for param in self.order1}
+        order1_current = parallel.apply(derive1, {param: (sm, self.order1[param]) for param in self.order1})
         # accumulate derivatives
         order1 = accumulate(order1_previous, order1_current)
 
@@ -254,7 +254,8 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = {Pair(pair): order2[pair] for pair in order2}
 
         # apply operator to previous 2nd order partials
-        order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
+        #order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
+        order2_previous = parallel.apply(derive0, order2, inplace=inplace, single=True)
 
         # 2nd derivatives of current operator
         params_order2 = {
@@ -263,20 +264,22 @@ class DiffOperator(operator.Operator, abc.ABC):
             for p2 in self.order1 
             if Pair(p1, p2) in self.order2
         }
-        order2_current = {
-            pair: derive2(sm, params_order2[pair]) 
-            for pair in params_order2
-        }
+        # order2_current = {
+        #     pair: derive2(sm, params_order2[pair]) 
+        #     for pair in params_order2
+        # }
+        order2_current =parallel.apply(derive2, {pair: (sm, params) for pair, params in params_order2.items()})
 
         # cross derivatives
         params_cross = {(p1, p2) for p1 in order1 for p2 in self.order1}
         if not self.auto_cross_derivatives:
             # keep only selected pairs
             params_cross = {pair for pair in params_cross if Pair(pair) in self.order2}
-        order2_cross = {
-            (p1, p2): derive1(order1[p1], self.order1[p2])
-            for p1, p2 in params_cross
-        }
+        # order2_cross = {
+        #     (p1, p2): derive1(order1[p1], self.order1[p2])
+        #     for p1, p2 in params_cross
+        # }
+        order2_cross = parallel.apply(derive1, {(p1, p2): (order1[p1], self.order1[p2]) for p1, p2 in params_cross})
         order2_cross1 = {(p1, p2): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 <= p2}
         order2_cross2 = {(p2, p1): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 >= p2}
 
@@ -431,20 +434,16 @@ class PartialsPruner:
         
 
 
-
-
 #
 # utilities
 
-def Pair(*args):
-    """ return sorted tuple"""
-    if len(args) == 1:
-        assert len(args[0]) == 2, 'A pair must have 2 values'
-        return tuple(sorted(args[0]))
-    elif len(args) == 2:
-        return tuple(sorted(args))
-    else:
-        raise AssertionError('A pair musst have 2 values')
+def Pair(p1, p2=None):
+    """ return sorted pair"""
+    if p2 is None:
+        p1, p2 = p1
+    if p1 > p2:
+        return (p2, p1)
+    return (p1, p2)
 
 def get_combinations(seq1, seq2=None, sort=True):
     """return set of unique 2-combinations of 2 lists of items"""
