@@ -6,7 +6,7 @@ import itertools
 import abc
 import logging
 import numpy as np
-from . import operator, common, probe, parallel
+from . import operator, common, probe
 
 LOGGER = logging.getLogger(__name__)
 
@@ -225,11 +225,9 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive1 = derive1 or self.derive1
 
         # apply operator to previous 1st-order partials
-        # order1_previous = {param: derive0(order1[param], inplace=inplace) for param in order1}
-        order1_previous = parallel.apply(derive0, order1, inplace=True, single=True)
+        order1_previous = {param: derive0(order1[param], inplace=inplace) for param in order1}
         # apply derived opertors to previous element
-        # order1_current = {param: derive1(sm, self.order1[param], inplace=False) for param in self.order1}
-        order1_current = parallel.apply(derive1, {param: (sm, self.order1[param]) for param in self.order1})
+        order1_current = {param: derive1(sm, self.order1[param], inplace=False) for param in self.order1}
         # accumulate derivatives
         order1 = accumulate(order1_previous, order1_current)
 
@@ -254,8 +252,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = {Pair(pair): order2[pair] for pair in order2}
 
         # apply operator to previous 2nd order partials
-        #order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
-        order2_previous = parallel.apply(derive0, order2, inplace=inplace, single=True)
+        order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
 
         # 2nd derivatives of current operator
         params_order2 = {
@@ -264,22 +261,20 @@ class DiffOperator(operator.Operator, abc.ABC):
             for p2 in self.order1 
             if Pair(p1, p2) in self.order2
         }
-        # order2_current = {
-        #     pair: derive2(sm, params_order2[pair]) 
-        #     for pair in params_order2
-        # }
-        order2_current =parallel.apply(derive2, {pair: (sm, params) for pair, params in params_order2.items()})
+        order2_current = {
+            pair: derive2(sm, params_order2[pair]) 
+            for pair in params_order2
+        }
 
         # cross derivatives
         params_cross = {(p1, p2) for p1 in order1 for p2 in self.order1}
         if not self.auto_cross_derivatives:
             # keep only selected pairs
             params_cross = {pair for pair in params_cross if Pair(pair) in self.order2}
-        # order2_cross = {
-        #     (p1, p2): derive1(order1[p1], self.order1[p2])
-        #     for p1, p2 in params_cross
-        # }
-        order2_cross = parallel.apply(derive1, {(p1, p2): (order1[p1], self.order1[p2]) for p1, p2 in params_cross})
+        order2_cross = {
+            (p1, p2): derive1(order1[p1], self.order1[p2])
+            for p1, p2 in params_cross
+        }
         order2_cross1 = {(p1, p2): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 <= p2}
         order2_cross2 = {(p2, p1): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 >= p2}
 

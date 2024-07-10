@@ -163,27 +163,22 @@ def matrix_combine_multi(mats):
     return mat
 
 def matrix_apply(mat, mat0, sm):
-    sm.states = matrix_prod(mat, sm.states, inplace=True)
+    states = sm.states
+    states = matrix_prod(mat, states, inplace=True)
     if mat0 is not None:
-        sm.states += matrix_prod(mat0, sm.equilibrium, inplace=False)
+        states += matrix_prod(mat0, sm.equilibrium)
+    sm.states = states
     return sm
 
-def matrix_prod(mat, states, *, inplace=False):
+def matrix_prod(mat, states, inplace=False):
     """matrix multiplication"""
     xp = common.get_array_module()
-
-    # expand mat dims
     ndim = states.ndim - mat.ndim + 1
-    # mat = mat[..., *(NAX,)*ndim, :, :] if ndim > 1 else mat[..., NAX, :, :]
     mat = mat[(...,) + (NAX,)*ndim + (SL, SL)] if ndim > 1 else mat[..., NAX, :, :]
 
-    # use inplace mult only with numpy
-    if not inplace or (xp.__name__ != "numpy"):
-        return xp.matmul(mat, states[..., xp.newaxis])[..., 0]
-
-    try:
-        # return xp.einsum("...ij,...j->...i", mat, states, out=states)
-        return xp.matmul(mat, states, axes=[(-2, -1), (-1, -2), (-1, -2)], out=states)
-    except ValueError:
-        # inplace not feasible
-        return xp.matmul(mat, states[..., xp.newaxis])[..., 0]
+    if inplace:
+        try:
+            return xp.matmul(mat, states, axes=[(-2, -1), (-1, -2), (-1, -2)], out=states)
+        except ValueError: 
+            pass # inplace not feasible
+    return xp.matmul(mat, states[..., xp.newaxis])[..., 0]

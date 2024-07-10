@@ -244,11 +244,11 @@ def get_nmax(shifts):
 def shift1d(states, n, *, inplace=False, nmax=None):
     """shift states by n"""
     if not inplace:
-        xp = common.get_array_module()
         ndim = max(states.ndim - 2, 0)
         nstate = (states.shape[-2] - 1) // 2
         diff = abs(n) if nmax is None else min(abs(n), nmax - nstate)
         if diff > 0:
+            xp = common.get_array_module()
             states = xp.pad(states, [(0, 0)] * ndim + [(diff, diff), (0, 0)])
         elif diff < 0:
             states = states[..., diff:-diff, :]

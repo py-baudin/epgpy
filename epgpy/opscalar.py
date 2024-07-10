@@ -174,30 +174,23 @@ def scalar_combine(arr_1, arr_2, arr0_1=None, arr0_2=None):
 
 
 def scalar_apply(arr, arr0, sm):
-    sm.states = scalar_prod(arr, sm.states, inplace=True)
+    states = sm.states
+    states = scalar_prod(arr, states, inplace=True)
     if arr0 is not None:
-        sm.states += scalar_prod(arr0, sm.equilibrium, inplace=False)
+        states += scalar_prod(arr0, sm.equilibrium)
+    sm.states = states
     return sm
 
-
-def scalar_prod(arr, states, *, inplace=False):
+def scalar_prod(arr, states, inplace=False):
     """element-wise product product"""
-    xp = common.get_array_module()
-
-    # add axes to match states
     ndim = states.ndim - arr.ndim
-    # arr = arr[..., *(NAX,)*ndim, :] if ndim > 1 else arr[..., NAX, :]
     arr = arr[(...,) + (NAX,)*ndim + (SL,)] if ndim > 1 else arr[..., NAX, :]
-    
-
-    if not inplace:
-        return states * arr
-    
-    try:
-        states *= arr
-        return states
-    except ValueError:
-        # requires broadcasting
-        return states * arr
+    if inplace:
+        try:
+            states *= arr
+            return states
+        except ValueError: 
+            pass # inplace not feasible
+    return states * arr
 
 

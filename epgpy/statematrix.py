@@ -542,11 +542,11 @@ class ArrayCollection:
         coll.xp = self.xp
         coll._expand_axis = self._expand_axis
         coll._shape = self._shape
-        coll._layouts = {name: tuple(layouts[name]) for name in layouts}
-        coll._arrays = {name: arrays[name].copy() for name in arrays}
-        coll._shapes = {name: shape for name, shape in self._shapes.items()}
-        coll._axes = dict(self.axes)
-        coll._default = tuple(self._default)
+        coll._arrays = {name: coll.xp.array(arrays[name]) for name in arrays}
+        coll._layouts = dict(layouts)
+        coll._shapes = dict(self._shapes)
+        coll._axes = dict(self._axes)
+        coll._default = self._default
         return coll
     
     def get_named_axes(self, *, ignore=None):
