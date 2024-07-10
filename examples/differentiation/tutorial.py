@@ -160,17 +160,21 @@ dof = nobs - nparam
 # variance-covariance matrix
 # V = np.linalg.inv((J.T @ J).real) # 1st order
 V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real) # 2nd order
+V *= sse / dof
  
 # c.int of reduced t statistics (mean=0, variance=1)
 tval = np.asarray(stats.t.interval(0.95, dof))[1]
 
 # confidence interval of alpha=150° and T2=30ms given above residuals
-cint_alpha = np.sqrt(sse / dof * V[0, 0]) * tval
-cint_T2 = np.sqrt(sse / dof * V[1, 1]) * tval
+cint_alpha = np.sqrt(V[0, 0]) * tval
+cint_T2 = np.sqrt(V[1, 1]) * tval
 
-# confidence bands for the prediction
+# confidence bands
 predvar = np.einsum('np,pq,nq->n', J, V, J).real
-cband = np.sqrt(sse / dof * predvar) * tval
+cband = np.sqrt(predvar) * tval
+
+# prediction bands
+pband = np.sqrt(sse / dof + predvar) * tval
 
 print(rf"c.int alpha: 150 +/- {cint_alpha}")
 print(rf"c.int T2: 30 +/- {cint_T2}")
@@ -179,8 +183,10 @@ plt.figure("mse-cint")
 plt.plot(times, obs, 'b+', label='observation')
 plt.plot(times, pred, 'b', label='prediction')
 plt.fill_between(
-    times, pred - 3*cband, pred + 3*cband, alpha=0.3, label='95% confidence band (3$\\sigma$)'
+    times, pred - cband, pred + cband, alpha=0.3, label='95% confidence band'
 )
+plt.plot(times, pred - pband, "k:", label='95% prediction band')
+plt.plot(times, pred + pband, "k:")
 
 plt.title(
     f"MSE: confidence and prediction intervals\n"
