@@ -1,4 +1,5 @@
 """ base operator classes """
+
 # Python core imports
 import abc
 import logging
@@ -40,7 +41,6 @@ class Operator(abc.ABC):
         """does nothing: TO IMPLEMENT"""
         return sm
 
-
     @classmethod
     def from_list(cls, sequence):
         """create new operator from a sequence of operators"""
@@ -69,9 +69,9 @@ class Operator(abc.ABC):
     def __mul__(self, other):
         """return MultiOperator operator"""
         return Operator.from_list([self, other])
-    
+
     def prepare(self, sm, inplace=False):
-        """ check, resize and copy state matrix"""
+        """check, resize and copy state matrix"""
 
         if not isinstance(sm, statematrix.StateMatrix):
             # check type
@@ -82,7 +82,7 @@ class Operator(abc.ABC):
             raise ValueError(
                 f"Incompatible StateMatrix and operator shapes: {sm.shape}, {self.shape}"
             )
-        
+
         # make new state matrix ?
         if not inplace or not sm.writeable:
             sm = sm.copy()
@@ -91,7 +91,7 @@ class Operator(abc.ABC):
             # check ndims
             sm.expand(self.ndim)
 
-        return sm    
+        return sm
 
     def __call__(self, sm, *, inplace=False):
         """apply operator"""
@@ -102,7 +102,7 @@ class Operator(abc.ABC):
         # apply
         sm = self._apply(sm)
         return sm
-    
+
     # def copy(self, name=None, duration=None, **kwargs):
     #     """return copy of self"""
     #     raise NotImplementedError()
@@ -198,13 +198,12 @@ class MultiOperator(Operator):
         self.duration += op.duration
 
 
-
 class CombinableOperator(Operator, abc.ABC):
     """Base class for combinable operators"""
 
     @abc.abstractmethod
-    def combinable(self,  other):
-        """ check if operator is combinable """
+    def combinable(self, other):
+        """check if operator is combinable"""
         pass
 
     @classmethod
@@ -215,27 +214,26 @@ class CombinableOperator(Operator, abc.ABC):
     def combine(self, other, *, right=False, name=None, duration=None, **kwargs):
         # check types
         if not isinstance(other, CombinableOperator):
-            raise TypeError(f'Non-combinable operator: {other}')
+            raise TypeError(f"Non-combinable operator: {other}")
         elif not self.combinable(other):
             return NotImplemented
-        
+
         op1, op2 = (other, self) if right else (self, other)
 
         if name is None:
-            name = f'{op1.name}|{op2.name}'
+            name = f"{op1.name}|{op2.name}"
         if duration is None:
             duration = op1.duration + op2.duration
 
         return self._combine(op1, op2, name=name, duration=duration, **kwargs)
 
     def __matmul__(self, other):
-        """ combine other with self"""
+        """combine other with self"""
         return self.combine(other)
 
     def __rmatmul__(self, other):
-        """ combine other with self"""
+        """combine other with self"""
         return self.combine(other, right=True)
-
 
 
 #
@@ -300,6 +298,3 @@ class Reset(Operator):
 
 # Spoiler instance
 RESET = Reset(name="Reset")
-
-
-

@@ -59,8 +59,8 @@ def test_ScalarOp_class():
     op = ScalarOp(arr) @ ScalarOp(arr_)
     assert np.allclose(op.arr, arr_ * arr)
     assert op.arr0 is None
-    
-    op = ScalarOp(arr, arr0, name='a') @ ScalarOp(arr_, name='b')
+
+    op = ScalarOp(arr, arr0, name="a") @ ScalarOp(arr_, name="b")
     assert np.allclose(op.arr, arr_ * arr)
     assert np.allclose(op.arr0, arr_ * arr0)
 
@@ -80,61 +80,59 @@ def test_ScalarOp_diff1():
     arr = [r2, r2, r1]
     arr0 = [0, 0, 1 - r1]
     darrs = {
-        'r2': ([-r2, -r2, 0], None), 
-        'r1': ([0, 0, -r1], [0, 0, r1]), 
+        "r2": ([-r2, -r2, 0], None),
+        "r1": ([0, 0, -r1], [0, 0, r1]),
     }
 
     # order1
-    op = ScalarOp(arr, arr0, darrs=darrs, order1=['r1', 'r2'], name='op1')
+    op = ScalarOp(arr, arr0, darrs=darrs, order1=["r1", "r2"], name="op1")
 
     sm0 = StateMatrix([1, 1, 0])
     sm1 = op(sm0)
-    
+
     # finite differences
 
     # r2
     arr_r2 = [r2 * np.exp(-1e-5 * 1j), r2 * np.exp(1e-5 * 1j), r1]
-    op_r2 = ScalarOp(arr_r2, arr0, name='op_r2')
+    op_r2 = ScalarOp(arr_r2, arr0, name="op_r2")
     diff_r2 = (op_r2(sm0).states - sm1.states).imag * 1e5
-    assert np.allclose(diff_r2[..., (0, 2)], sm1.order1['r2'].states[..., (0, 2)])
+    assert np.allclose(diff_r2[..., (0, 2)], sm1.order1["r2"].states[..., (0, 2)])
 
     # r1
     arr_r1 = [r2, r2, r1 * np.exp(-1j * 1e-5)]
     arr0_r1 = [0, 0, 1 - r1 * np.exp(-1j * 1e-5)]
-    op_r1 = ScalarOp(arr_r1, arr0_r1, name='op_r1', check=False)
+    op_r1 = ScalarOp(arr_r1, arr0_r1, name="op_r1", check=False)
     diff_r1 = (op_r1(sm0).states - sm1.states).imag * 1e5
-    assert np.allclose(diff_r1, sm1.order1['r1'].states)
-
+    assert np.allclose(diff_r1, sm1.order1["r1"].states)
 
     # combine
     op2 = op @ op
     sm2 = op2(sm0)
     assert np.allclose(sm2.states, op(op(sm0)).states)
-    assert np.allclose(sm2.order1['r2'].states, op(op(sm0)).order1['r2'].states)
-    assert np.allclose(sm2.order1['r2'], [- 2 * r2**2, - 2 * r2**2, 0])
-    assert np.allclose(sm2.order1['r1'].states, op(op(sm0)).order1['r1'].states)
-    assert np.allclose(sm2.order1['r1'], [0, 0, 2 * r1**2])
+    assert np.allclose(sm2.order1["r2"].states, op(op(sm0)).order1["r2"].states)
+    assert np.allclose(sm2.order1["r2"], [-2 * r2**2, -2 * r2**2, 0])
+    assert np.allclose(sm2.order1["r1"].states, op(op(sm0)).order1["r1"].states)
+    assert np.allclose(sm2.order1["r1"], [0, 0, 2 * r1**2])
 
     sm3 = (op @ op2)(sm0)
     sm3_ = op(op(op(sm0)))
     assert np.allclose(sm3.states, sm3_.states)
-    assert np.allclose(sm3.order1['r1'].states, sm3_.order1['r1'].states)
-    assert np.allclose(sm3.order1['r2'].states, sm3_.order1['r2'].states)
+    assert np.allclose(sm3.order1["r1"].states, sm3_.order1["r1"].states)
+    assert np.allclose(sm3.order1["r2"].states, sm3_.order1["r2"].states)
 
     # finite differences
 
     # r2
     op3_r2 = op_r2.combine(op_r2).combine(op_r2)
     diff_r2 = (op3_r2(sm0).states - sm3.states).imag * 1e5
-    assert np.allclose(diff_r2[..., (0, 2)], sm3.order1['r2'].states[..., (0, 2)])
-    
+    assert np.allclose(diff_r2[..., (0, 2)], sm3.order1["r2"].states[..., (0, 2)])
+
     # r1
     op3_r1 = op_r1.combine(op_r1, check=False).combine(op_r1, check=False)
     diff_r1 = (op3_r1(sm0).states - sm1.states).imag * 1e5
-    assert np.allclose(diff_r1, sm3.order1['r1'].states)
+    assert np.allclose(diff_r1, sm3.order1["r1"].states)
 
 
-    
 def test_ScalarOp_diff2():
     ScalarOp = opscalar.ScalarOp
 
@@ -142,21 +140,24 @@ def test_ScalarOp_diff2():
     arr = [r2, r2, r1]
     arr0 = [0, 0, 1 - r1]
     darrs = {
-        'r2': ([-r2, -r2, 0], None), 
-        'r1': ([0, 0, -r1], [0, 0, r1]), 
-        't': ([-0.5 * r2, -0.5 * r2, -0.1 * r1], [0, 0, 0.1 * r1])
+        "r2": ([-r2, -r2, 0], None),
+        "r1": ([0, 0, -r1], [0, 0, r1]),
+        "t": ([-0.5 * r2, -0.5 * r2, -0.1 * r1], [0, 0, 0.1 * r1]),
     }
     d2arrs = {
-        ('t', 'r2'): ([(0.5 - 1) * r2, (0.5 - 1) * r2, 0], None),
-        ('t', 'r1'): ([0, 0, (0.1 - 1) * r1], [0, 0, -(0.1 - 1) * r1]),
+        ("t", "r2"): ([(0.5 - 1) * r2, (0.5 - 1) * r2, 0], None),
+        ("t", "r1"): ([0, 0, (0.1 - 1) * r1], [0, 0, -(0.1 - 1) * r1]),
     }
 
     # order2
     op = ScalarOp(
-        arr, arr0, darrs=darrs, d2arrs=d2arrs,
-        order1=['t', 'r1', 'r2'],
-        order2={('t', 'r2'), ('t', 'r1')},
-        name='op1',
+        arr,
+        arr0,
+        darrs=darrs,
+        d2arrs=d2arrs,
+        order1=["t", "r1", "r2"],
+        order2={("t", "r2"), ("t", "r1")},
+        name="op1",
     )
 
     sm0 = StateMatrix([1, 1, 0])
@@ -169,46 +170,54 @@ def test_ScalarOp_diff2():
     arr_t = [r2 * dr2, r2 * dr2, r1 * dr1]
     arr0_t = [0, 0, 1 - r1 * dr1]
     op_t = ScalarOp(
-        arr_t, arr0_t, 
-        name='op_t', 
-        order1=['r1', 'r2'], 
+        arr_t,
+        arr0_t,
+        name="op_t",
+        order1=["r1", "r2"],
         darrs={
-            'r2': ([-(1 + dt) * r2 * dr2, -(1 + dt) * r2 * dr2, 0], None), 
-            'r1': ([0, 0, -(1 + dt) * r1 * dr1], [0, 0, (1 + dt) * r1 * dr1])},
+            "r2": ([-(1 + dt) * r2 * dr2, -(1 + dt) * r2 * dr2, 0], None),
+            "r1": ([0, 0, -(1 + dt) * r1 * dr1], [0, 0, (1 + dt) * r1 * dr1]),
+        },
         check=False,
     )
 
     # order 1
     diff_t = (op_t(sm0).states - sm1.states).imag * 1e5
-    assert np.allclose(diff_t[..., (0, 2)], sm1.order1['t'].states[..., (0, 2)])
+    assert np.allclose(diff_t[..., (0, 2)], sm1.order1["t"].states[..., (0, 2)])
 
     # order 2
-    diff_t_r2 = (op_t.derive1(sm0, 'r2').states - op.derive1(sm0, 'r2').states).imag * 1e5
-    assert np.allclose(sm1.order2[('r2', 't')].states, diff_t_r2)
+    diff_t_r2 = (
+        op_t.derive1(sm0, "r2").states - op.derive1(sm0, "r2").states
+    ).imag * 1e5
+    assert np.allclose(sm1.order2[("r2", "t")].states, diff_t_r2)
 
-    diff_t_r1 = (op_t.derive1(sm0, 'r1').states - op.derive1(sm0, 'r1').states).imag * 1e5
-    assert np.allclose(sm1.order2[('r1', 't')].states, diff_t_r1)
-
+    diff_t_r1 = (
+        op_t.derive1(sm0, "r1").states - op.derive1(sm0, "r1").states
+    ).imag * 1e5
+    assert np.allclose(sm1.order2[("r1", "t")].states, diff_t_r1)
 
     # combine
     op3 = op @ op @ op
     sm3 = op3(sm0)
     sm3_ = op(op(op(sm0)))
     assert np.allclose(sm3.states, sm3_.states)
-    assert np.allclose(sm3.order2[('r2', 't')], sm3_.order2[('r2', 't')])
-    assert np.allclose(sm3.order2[('r1', 't')], sm3_.order2[('r1', 't')])
+    assert np.allclose(sm3.order2[("r2", "t")], sm3_.order2[("r2", "t")])
+    assert np.allclose(sm3.order2[("r1", "t")], sm3_.order2[("r1", "t")])
 
     # finite diff
     op3_t = op_t.combine(op_t, check=False).combine(op_t, check=False)
     diff3_t = (op3_t(sm0).states - sm3.states).imag * 1e5
-    assert np.allclose(diff3_t[..., (0, 2)], sm3.order1['t'].states[..., (0, 2)])
+    assert np.allclose(diff3_t[..., (0, 2)], sm3.order1["t"].states[..., (0, 2)])
 
-    diff3_t_r2 = (op3_t.derive1(sm0, 'r2').states - op3.derive1(sm0, 'r2').states).imag * 1e5
-    assert np.allclose(sm3.order2[('r2', 't')].states, diff3_t_r2)
+    diff3_t_r2 = (
+        op3_t.derive1(sm0, "r2").states - op3.derive1(sm0, "r2").states
+    ).imag * 1e5
+    assert np.allclose(sm3.order2[("r2", "t")].states, diff3_t_r2)
 
-    diff3_t_r1 = (op3_t.derive1(sm0, 'r1').states - op3.derive1(sm0, 'r1').states).imag * 1e5
-    assert np.allclose(sm3.order2[('r1', 't')].states, diff3_t_r1)
-    
+    diff3_t_r1 = (
+        op3_t.derive1(sm0, "r1").states - op3.derive1(sm0, "r1").states
+    ).imag * 1e5
+    assert np.allclose(sm3.order2[("r1", "t")].states, diff3_t_r1)
 
 
 def test_scalarop_ndim():
@@ -222,25 +231,29 @@ def test_scalarop_ndim():
     arr = stack(r2, r2, r1)
     arr0 = stack(0, 0, 1 - r1)
     darrs = {
-        'r2': (stack(-r2, -r2, 0), None), 
-        'r1': (stack(0, 0, -r1), stack(0, 0, r1)), 
+        "r2": (stack(-r2, -r2, 0), None),
+        "r1": (stack(0, 0, -r1), stack(0, 0, r1)),
     }
     d2arrs = {
-        ('r2', 'r2'): (stack(r2, r2, 0), None), 
-        ('r1', 'r1'): (stack(0, 0, r1), stack(0, 0, -r1)),
+        ("r2", "r2"): (stack(r2, r2, 0), None),
+        ("r1", "r1"): (stack(0, 0, r1), stack(0, 0, -r1)),
     }
 
     # order1
-    op = ScalarOp(arr, arr0, darrs=darrs, d2arrs=d2arrs, order2=True, name='op1')
+    op = ScalarOp(arr, arr0, darrs=darrs, d2arrs=d2arrs, order2=True, name="op1")
     sm0 = statematrix.StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
-    
-    assert sm1.shape == op.shape == (3, 2)
-    assert sm1.order1['r1'].shape == sm1.order1['r2'].shape == (3, 2)
-    assert sm1.order2[('r1', 'r1')].shape == sm1.order2[('r2', 'r2')].shape == (3, 2)
 
-    assert np.allclose(sm1.states, sm1.states[0,0])
-    assert np.allclose(sm1.order1['r1'].states, sm1.order1['r1'].states[0, 0])
-    assert np.allclose(sm1.order1['r2'].states, sm1.order1['r2'].states[0, 0])
-    assert np.allclose(sm1.order2[('r1', 'r1')].states, sm1.order2[('r1', 'r1')].states[0, 0])
-    assert np.allclose(sm1.order2[('r2', 'r2')].states, sm1.order2[('r2', 'r2')].states[0, 0])
+    assert sm1.shape == op.shape == (3, 2)
+    assert sm1.order1["r1"].shape == sm1.order1["r2"].shape == (3, 2)
+    assert sm1.order2[("r1", "r1")].shape == sm1.order2[("r2", "r2")].shape == (3, 2)
+
+    assert np.allclose(sm1.states, sm1.states[0, 0])
+    assert np.allclose(sm1.order1["r1"].states, sm1.order1["r1"].states[0, 0])
+    assert np.allclose(sm1.order1["r2"].states, sm1.order1["r2"].states[0, 0])
+    assert np.allclose(
+        sm1.order2[("r1", "r1")].states, sm1.order2[("r1", "r1")].states[0, 0]
+    )
+    assert np.allclose(
+        sm1.order2[("r2", "r2")].states, sm1.order2[("r2", "r2")].states[0, 0]
+    )

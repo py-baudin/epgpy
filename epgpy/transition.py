@@ -1,4 +1,5 @@
 """ EPG Transition operator and functions"""
+
 import numpy as np
 from . import common, opmatrix
 
@@ -6,8 +7,8 @@ from . import common, opmatrix
 class T(opmatrix.MatrixOp):
     """n-dimensional transition operator (instantaneous RF-pulse)"""
 
-    PARAMETERS_ORDER1 = {'alpha', 'phi'}
-    PARAMETERS_ORDER2 = {('alpha', 'alpha'), ('alpha', 'phi'), ('phi', 'phi')}
+    PARAMETERS_ORDER1 = {"alpha", "phi"}
+    PARAMETERS_ORDER2 = {("alpha", "alpha"), ("alpha", "phi"), ("phi", "phi")}
 
     def __init__(self, alpha, phi, *, axes=None, name=None, duration=None, **kwargs):
         """Init instantaneous RF-pulse operator
@@ -32,7 +33,9 @@ class T(opmatrix.MatrixOp):
         self.phi = params["phi"]
 
         # init operator
-        opmatrix.diff.DiffOperator.__init__(self, name=name, duration=duration, **kwargs)
+        opmatrix.diff.DiffOperator.__init__(
+            self, name=name, duration=duration, **kwargs
+        )
 
         # init arrays
         mat = rotation_operator(self.alpha, self.phi)
@@ -42,16 +45,22 @@ class T(opmatrix.MatrixOp):
         dmats, d2mats = {}, {}
         order1, order2 = self.parameters_order1, self.parameters_order2
         if order1 or order2:
-            if 'alpha' in order1:
-                dmats['alpha'] = rotation_d_alpha(self.alpha, self.phi), None
-            if 'phi' in order1:
-                dmats['phi'] = rotation_d_phi(self.alpha, self.phi), None
-            if ('alpha', 'alpha') in order2:
-                d2mats[('alpha', 'alpha')] = rotation_d2_alpha(self.alpha, self.phi), None
-            if ('phi', 'phi') in order2:
-                d2mats[('phi', 'phi')] = rotation_d2_phi(self.alpha, self.phi), None
-            if ('alpha', 'phi') in order2:
-                d2mats[('alpha', 'phi')] = rotation_d_alpha_phi(self.alpha, self.phi), None
+            if "alpha" in order1:
+                dmats["alpha"] = rotation_d_alpha(self.alpha, self.phi), None
+            if "phi" in order1:
+                dmats["phi"] = rotation_d_phi(self.alpha, self.phi), None
+            if ("alpha", "alpha") in order2:
+                d2mats[("alpha", "alpha")] = (
+                    rotation_d2_alpha(self.alpha, self.phi),
+                    None,
+                )
+            if ("phi", "phi") in order2:
+                d2mats[("phi", "phi")] = rotation_d2_phi(self.alpha, self.phi), None
+            if ("alpha", "phi") in order2:
+                d2mats[("alpha", "phi")] = (
+                    rotation_d_alpha_phi(self.alpha, self.phi),
+                    None,
+                )
 
         self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes)
 
@@ -70,17 +79,19 @@ class Ty(T):
 class Phi(opmatrix.MatrixOp):
     """Add phase offset"""
 
-    PARAMETERS_ORDER1 = {'phi'}
-    PARAMETERS_ORDER2 = {('phi', 'phi')}
+    PARAMETERS_ORDER1 = {"phi"}
+    PARAMETERS_ORDER2 = {("phi", "phi")}
 
     def __init__(self, phi, *, axes=None, name=None, duration=0, **kwargs):
         params = common.map_arrays(phi=phi)
         if not name:
             name = common.repr_operator("Phi", ["phi"], [phi], [".1f"])
         self.phi = params["phi"]
-        
+
         # init operator
-        opmatrix.diff.DiffOperator.__init__(self, name=name, duration=duration, **kwargs)
+        opmatrix.diff.DiffOperator.__init__(
+            self, name=name, duration=duration, **kwargs
+        )
 
         # init arrays
         mat = rotation_phi(self.phi)
@@ -89,10 +100,10 @@ class Phi(opmatrix.MatrixOp):
         # derivatives
         dmats, d2mats = {}, {}
         if self.parameters_order1:
-            if 'phi' in self.parameters_order1:
-                dmats['phi'] = rotation_phi_d(self.phi), None
-            if ('phi', 'phi') in self.parameters_order2:
-                d2mats[('phi', 'phi')] = rotation_phi_d2(self.phi), None
+            if "phi" in self.parameters_order1:
+                dmats["phi"] = rotation_phi_d(self.phi), None
+            if ("phi", "phi") in self.parameters_order2:
+                d2mats[("phi", "phi")] = rotation_phi_d2(self.phi), None
 
         self._init(mat, mat0, dmats=dmats, d2mats=d2mats, axes=axes)
 

@@ -14,6 +14,7 @@ _xp = None
 #
 # array module getters/setters
 
+
 def set_array_module(xp=None):
     """set array module (eg. numpy, cupy)"""
     global _xp
@@ -149,50 +150,69 @@ def map_arrays(arrays=None, func=np.asarray, *, xp=np, **kwargs):
 
 
 class ArrayTuple(tuple):
-    """ summable tuples"""
+    """summable tuples"""
+
     def __neg__(self):
         return ArrayTuple(None if a is None else -a for a in self)
+
     def __add__(self, other):
         if isscalar(other):
             return ArrayTuple(other if a is None else a + other for a in self)
-        return ArrayTuple(a if b is None else b if a is None else a + b for a, b in zip(self, other, strict=True))
+        return ArrayTuple(
+            a if b is None else b if a is None else a + b
+            for a, b in zip(self, other, strict=True)
+        )
+
     def __radd__(self, other):
         return self.__add__(other)
+
     def __iadd__(self, other):
         if isscalar(other):
             return ArrayTuple(other if a is None else a.__iadd__(other) for a in self)
         return ArrayTuple(
-            a if b is None else 
-            b if a is None else 
-            a + b if isscalar(a) 
-            else a.__iadd__(b) 
+            (
+                a
+                if b is None
+                else b if a is None else a + b if isscalar(a) else a.__iadd__(b)
+            )
             for a, b in zip(self, other, strict=True)
         )
+
     def __mul__(self, other):
         if isscalar(other):
             # return ArrayTuple(0 * other if a is None else a * other for a in self)
             return ArrayTuple(None if a is None else a * other for a in self)
         return ArrayTuple(
-            None if (a is None) or (b is None) else
-            # 0 * a if b is None else 
-            # 0 * b if a is None else 
-            a * b 
+            (
+                None
+                if (a is None) or (b is None)
+                else
+                # 0 * a if b is None else
+                # 0 * b if a is None else
+                a * b
+            )
             for a, b in zip(self, other, strict=True)
         )
+
     def __rmul__(self, other):
         return self.__mul__(other)
+
     def __imul__(self, other):
         if isscalar(other):
             # return ArrayTuple(other * 0 if a is None else a.__imul__(other) for a in self)
             return ArrayTuple(None if a is None else a.__imul__(other) for a in self)
         return ArrayTuple(
-            None if (a is None) or (b is None) else
-            # 0 * a if b is None else
-            # 0 * b if a is None else
-            a * b if isscalar(a) else 
-            a.__imul__(b) 
+            (
+                None
+                if (a is None) or (b is None)
+                else
+                # 0 * a if b is None else
+                # 0 * b if a is None else
+                a * b if isscalar(a) else a.__imul__(b)
+            )
             for a, b in zip(self, other, strict=True)
         )
+
 
 #
 # wrapper of frequently used np/xp functions
@@ -294,20 +314,24 @@ def expand_arrays(*objs, append=False):
     ndim = max(len(shape) for shape in shapes)
 
     return tuple(
-        xp.expand_dims(
-            xp.asarray(arr),
-            tuple(range(ndim - len(shape)))
-            if not append
-            else tuple(range(len(shape), ndim)),
+        (
+            xp.expand_dims(
+                xp.asarray(arr),
+                (
+                    tuple(range(ndim - len(shape)))
+                    if not append
+                    else tuple(range(len(shape), ndim))
+                ),
+            )
+            if shape
+            else arr
         )
-        if shape
-        else arr
         for arr, shape in zip(objs, shapes)
     )
 
 
 def set_axes(ndim, arr, axes):
-    """ extend array given list of axes"""
+    """extend array given list of axes"""
     ndim = arr.ndim - ndim
     if isinstance(axes, int):
         axes = tuple(range(axes, axes + ndim))

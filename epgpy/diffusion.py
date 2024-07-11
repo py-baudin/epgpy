@@ -6,6 +6,7 @@ based on:
   Journal of Magnetic Resonance 2010; 205:276–285.
 
 """
+
 import numpy as np
 from . import operator, common, utils
 

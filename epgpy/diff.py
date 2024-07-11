@@ -2,6 +2,7 @@
 
 Note: only works with linear/affine operators
 """
+
 import itertools
 import abc
 import logging
@@ -16,10 +17,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class DiffOperator(operator.Operator, abc.ABC):
-    """ Differential Operator 
-    
+    """Differential Operator
+
     Computes partial derivatives of the state matrix
-    
+
     """
 
     # parameters for which the differential operator exist
@@ -27,14 +28,13 @@ class DiffOperator(operator.Operator, abc.ABC):
     PARAMETERS_ORDER2 = set()
 
     def _derive1(self, sm, param):
-        """ TO IMPLEMENT """
+        """TO IMPLEMENT"""
         pass
 
     @abc.abstractmethod
     def _derive2(self, sm, params):
-        """ TO IMPLEMENT """
+        """TO IMPLEMENT"""
         pass
-
 
     def __init__(self, *args, order1=False, order2=False, **kwargs):
         """Init differential operator
@@ -45,7 +45,7 @@ class DiffOperator(operator.Operator, abc.ABC):
                 str <parameter name> (or list of): compute selected partial derivatives
                 dict of str {<alias1>: <param1>, ...}
                     rename parameters and compute selected partial derivatives
-                # dict of dict {<variable>: {<param1>: <coeff1>, ...}}: 
+                # dict of dict {<variable>: {<param1>: <coeff1>, ...}}:
                 #    compute combined partial derivatives, using the coefficients of the 1st order parameter's derivatives
 
             order2: # Specify 2nd order partial derivatives to compute
@@ -56,13 +56,15 @@ class DiffOperator(operator.Operator, abc.ABC):
                 #     compute combined partial derivatives, using the coefficients of the 2nd order parameter's derivatives
         """
         # set parameters for order1 and order2
-        if 'parameters_order1' in kwargs:
-            self.PARAMETERS_ORDER1 = set( kwargs.pop('parameters_order1'))
+        if "parameters_order1" in kwargs:
+            self.PARAMETERS_ORDER1 = set(kwargs.pop("parameters_order1"))
         else:
             self.PARAMETERS_ORDER1 = set(self.PARAMETERS_ORDER1)
 
-        if 'parameters_order2' in kwargs:
-            self.PARAMETERS_ORDER2 = {Pair(pair) for pair in kwargs.pop('parameters_order2')}
+        if "parameters_order2" in kwargs:
+            self.PARAMETERS_ORDER2 = {
+                Pair(pair) for pair in kwargs.pop("parameters_order2")
+            }
         else:
             self.PARAMETERS_ORDER2 = {Pair(pair) for pair in self.PARAMETERS_ORDER2}
 
@@ -71,8 +73,10 @@ class DiffOperator(operator.Operator, abc.ABC):
         # parse keywords
         self.order1, self.order2 = self._parse_partials(order1, order2)
         # activate auto cross derivatives if order2 was not passed in full
-        self.auto_cross_derivatives = isinstance(order2, (bool, str)) or all(isinstance(item, str) for item in order2)
-    
+        self.auto_cross_derivatives = isinstance(order2, (bool, str)) or all(
+            isinstance(item, str) for item in order2
+        )
+
     @property
     def parameters_order1(self):
         return set(self.order1.values())
@@ -82,31 +86,31 @@ class DiffOperator(operator.Operator, abc.ABC):
         """Pairs of parameters used in 2nd order derivatives"""
         return {
             Pair(p1, p2)
-            for v1, p1 in self.order1.items() 
+            for v1, p1 in self.order1.items()
             for v2, p2 in self.order1.items()
             if Pair(v1, v2) in self.order2
         }
 
     def derive0(self, sm, inplace=False):
-        """ apply operator (without order1 and order2 differential operators)"""
+        """apply operator (without order1 and order2 differential operators)"""
         if not inplace:
             sm = sm.copy()
         return self._apply(sm)
 
     def derive1(self, sm, param, inplace=False):
-        """apply 1st order differential operator w/r to parameter `param` """
+        """apply 1st order differential operator w/r to parameter `param`"""
         if not inplace:
             sm = sm.copy()
         sm_d1 = self._derive1(sm, param)
-        sm_d1.arrays.update('equilibrium', 0) # remove equilibrium
+        sm_d1.arrays.update("equilibrium", 0)  # remove equilibrium
         return sm_d1
 
     def derive2(self, sm, params, inplace=False):
-        """apply 2nd order differential operator w/r to parameters pair `params` """
+        """apply 2nd order differential operator w/r to parameters pair `params`"""
         if not inplace:
             sm = sm.copy()
         sm_d2 = self._derive2(sm, Pair(params))
-        sm_d2.arrays.update('equilibrium', 0) # remove equilibrium
+        sm_d2.arrays.update("equilibrium", 0)  # remove equilibrium
         return sm_d2
 
     def __call__(self, sm, *, inplace=False):
@@ -131,11 +135,11 @@ class DiffOperator(operator.Operator, abc.ABC):
         sm.order2 = order2
         return sm
 
-    # 
+    #
     # private
 
     def _parse_partials(self, order1=None, order2=None):
-        """ Parse order1 and order2 arguments """
+        """Parse order1 and order2 arguments"""
 
         # 1st order derivatives
         parameters = set(self.PARAMETERS_ORDER1)
@@ -146,7 +150,6 @@ class DiffOperator(operator.Operator, abc.ABC):
         if isinstance(order1, str):
             # single variable
             order1 = [order1]
-
 
         if not order1:
             order1 = {}
@@ -166,54 +169,57 @@ class DiffOperator(operator.Operator, abc.ABC):
             isinstance(param, str) for param in order1.values()
         ):
             # use parameter aliases
-            invalid = {param for param in order1 if not order1[param] in parameters} 
+            invalid = {param for param in order1 if not order1[param] in parameters}
             if invalid:
                 raise ValueError(f"Unknown parameter(s): {invalid}")
-            
+
         else:
             raise ValueError(f"Invalid parameter 'order1' value: {order1}")
 
         if not order2:
             return order1, set()
-        
+
         if not order1:
-            raise ValueError('order1 must be set.')
+            raise ValueError("order1 must be set.")
 
         # 2nd order derivatives
         if order2 == True:
             # compute all 2nd order partial derivatives
             order2 = set(self.PARAMETERS_ORDER2)
-    
+
         elif isinstance(order2, str):
             # single variable
             if not order2 in order1:
-                raise ValueError(f'Unknown parameter in {self}: {order2}')
+                raise ValueError(f"Unknown parameter in {self}: {order2}")
             if not (order2, order2) in self.PARAMETERS_ORDER2:
-                raise ValueError(f'Invalid parameters pair in {self}: {order2, order2}')
+                raise ValueError(f"Invalid parameters pair in {self}: {order2, order2}")
             order2 = {(order2, order2)}
 
         elif all(isinstance(param, str) for param in order2):
             # list of variables: derivatives w/r to all variable pairs
             invalid = {param for param in order2 if not param in order1}
             if invalid:
-                raise ValueError(f'Unknown parameter(s) in {self}: {invalid}')
-            order2 = {Pair(pair) for pair in get_combinations(order2)} & self.PARAMETERS_ORDER2
+                raise ValueError(f"Unknown parameter(s) in {self}: {invalid}")
+            order2 = {
+                Pair(pair) for pair in get_combinations(order2)
+            } & self.PARAMETERS_ORDER2
 
-        elif all(isinstance(pair, tuple) and len(pair)==2 for pair in order2):
+        elif all(isinstance(pair, tuple) and len(pair) == 2 for pair in order2):
             # compute *some* 2nd order partial derivatives
             order2 = {Pair(pair) for pair in order2}
             invalid = {pair for pair in order2 if not set(pair) & set(order1)}
             if invalid:
-                raise ValueError(f'Unknown parameters pair(s) in {self}: {sorted(invalid)}')
+                raise ValueError(
+                    f"Unknown parameters pair(s) in {self}: {sorted(invalid)}"
+                )
 
         elif order2:
             raise ValueError(f"Invalid parameter 'order2' value: {order2}")
 
         return order1, order2
 
-
     def _apply_order1(
-        self, 
+        self,
         sm,
         order1={},
         derive0=None,
@@ -225,9 +231,14 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive1 = derive1 or self.derive1
 
         # apply operator to previous 1st-order partials
-        order1_previous = {param: derive0(order1[param], inplace=inplace) for param in order1}
+        order1_previous = {
+            param: derive0(order1[param], inplace=inplace) for param in order1
+        }
         # apply derived opertors to previous element
-        order1_current = {param: derive1(sm, self.order1[param], inplace=False) for param in self.order1}
+        order1_current = {
+            param: derive1(sm, self.order1[param], inplace=False)
+            for param in self.order1
+        }
         # accumulate derivatives
         order1 = accumulate(order1_previous, order1_current)
 
@@ -244,7 +255,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         inplace=False,
     ):
         """Apply 2nd order derived operator"""
-        derive0 = derive0 or self.derive0 
+        derive0 = derive0 or self.derive0
         derive1 = derive1 or self.derive1
         derive2 = derive2 or self.derive2
 
@@ -252,18 +263,19 @@ class DiffOperator(operator.Operator, abc.ABC):
         order2 = {Pair(pair): order2[pair] for pair in order2}
 
         # apply operator to previous 2nd order partials
-        order2_previous = {pair: derive0(order2[pair], inplace=inplace) for pair in order2}
+        order2_previous = {
+            pair: derive0(order2[pair], inplace=inplace) for pair in order2
+        }
 
         # 2nd derivatives of current operator
         params_order2 = {
             Pair(p1, p2): (self.order1[p1], self.order1[p2])
-            for p1 in self.order1 
-            for p2 in self.order1 
+            for p1 in self.order1
+            for p2 in self.order1
             if Pair(p1, p2) in self.order2
         }
         order2_current = {
-            pair: derive2(sm, params_order2[pair]) 
-            for pair in params_order2
+            pair: derive2(sm, params_order2[pair]) for pair in params_order2
         }
 
         # cross derivatives
@@ -272,14 +284,19 @@ class DiffOperator(operator.Operator, abc.ABC):
             # keep only selected pairs
             params_cross = {pair for pair in params_cross if Pair(pair) in self.order2}
         order2_cross = {
-            (p1, p2): derive1(order1[p1], self.order1[p2])
-            for p1, p2 in params_cross
+            (p1, p2): derive1(order1[p1], self.order1[p2]) for p1, p2 in params_cross
         }
-        order2_cross1 = {(p1, p2): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 <= p2}
-        order2_cross2 = {(p2, p1): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 >= p2}
+        order2_cross1 = {
+            (p1, p2): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 <= p2
+        }
+        order2_cross2 = {
+            (p2, p1): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 >= p2
+        }
 
         # accumulate partial derivatives
-        order2 = accumulate(order2_previous, order2_current, order2_cross1, order2_cross2)
+        order2 = accumulate(
+            order2_previous, order2_current, order2_cross1, order2_cross2
+        )
 
         # store 2nd order partials as (v1, v2) and (v2, v1)
         for pair in list(order2):
@@ -288,9 +305,10 @@ class DiffOperator(operator.Operator, abc.ABC):
             order2[pair[::-1]] = order2[pair]
 
         return order2
-    
+
 
 # Probe operators for Jacobian/Hessian
+
 
 class Jacobian(probe.Probe):
     """simplified probe operator for getting 1st derivatives"""
@@ -317,7 +335,7 @@ class Jacobian(probe.Probe):
         _variables = [var for var in self.variables if var != "magnitude"]
         # retrieve jacobian arrays except for magnitude
         arrays = [
-            getattr(sm.order1[var], self.probe) if var in sm.order1 else zeros 
+            getattr(sm.order1[var], self.probe) if var in sm.order1 else zeros
             for var in _variables
         ]
         if "magnitude" in self.variables:
@@ -362,15 +380,23 @@ class Hessian(probe.Probe):
             for v2 in self.variables2:
                 if "magnitude" == v1:
                     # hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
-                    hess = getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else zeros
+                    hess = (
+                        getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else zeros
+                    )
                 elif "magnitude" == v2:
                     # hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
-                    hess = getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else zeros
+                    hess = (
+                        getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else zeros
+                    )
                 else:
-                    #hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
+                    # hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                     v12 = Pair(v1, v2)
-                    hess = getattr(sm.order2[v12], self.probe) if v12 in sm.order2 else zeros
-                    
+                    hess = (
+                        getattr(sm.order2[v12], self.probe)
+                        if v12 in sm.order2
+                        else zeros
+                    )
+
                 arrays[-1].append(hess)
             arrays[-1] = xp.stack(arrays[-1])
 
@@ -426,19 +452,20 @@ class PartialsPruner:
         for pair in pairs:
             if np.all(self.condition(order2[pair])):
                 order2.pop(pair)
-        
 
 
 #
 # utilities
 
+
 def Pair(p1, p2=None):
-    """ return sorted pair"""
+    """return sorted pair"""
     if p2 is None:
         p1, p2 = p1
     if p1 > p2:
         return (p2, p1)
     return (p1, p2)
+
 
 def get_combinations(seq1, seq2=None, sort=True):
     """return set of unique 2-combinations of 2 lists of items"""

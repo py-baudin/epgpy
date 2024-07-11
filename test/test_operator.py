@@ -141,25 +141,25 @@ def test_combinable_class():
     class OP_C(operator.CombinableOperator):
         def _apply(self, sm):
             return sm
-        
+
         @classmethod
         def combinable(cls, other):
             return True
-        
+
         @classmethod
         def _combine(cls, op1, op2, **kwargs):
             return OP_C(**kwargs)
-        
-    op1 = OP_C(name='op1', duration=1)
-    op2 = OP_C(name='op2', duration=2)
-    opnc = OP_NC(name='opnc')
+
+    op1 = OP_C(name="op1", duration=1)
+    op2 = OP_C(name="op2", duration=2)
+    opnc = OP_NC(name="opnc")
 
     opc = op1 @ op2
-    assert opc.name == 'op1|op2'
+    assert opc.name == "op1|op2"
     assert opc.duration == op1.duration + op2.duration
 
     opc = op2.combine(op1, right=True, duration=2)
-    assert opc.name == 'op1|op2'
+    assert opc.name == "op1|op2"
     assert opc.duration == 2
 
     with pytest.raises(TypeError):

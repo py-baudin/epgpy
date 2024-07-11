@@ -112,42 +112,48 @@ def test_MatrixOp_diff():
     MatrixOp = opmatrix.MatrixOp
 
     rstate = np.random.RandomState(0)
-    A = rstate.uniform(-1, 1, (3, 3)); A += A[[1,0,2], :][:, [1,0,2]].conj()
-    B = rstate.uniform(-1, 1, (3, 3)); B += B[[1,0,2], :][:, [1,0,2]].conj()
-    dA = rstate.uniform(-1, 1, (3, 3)); dA += dA[[1,0,2], :][:, [1,0,2]].conj()
-    dB = rstate.uniform(-1, 1, (3, 3)); dB += dB[[1,0,2], :][:, [1,0,2]].conj()
+    A = rstate.uniform(-1, 1, (3, 3))
+    A += A[[1, 0, 2], :][:, [1, 0, 2]].conj()
+    B = rstate.uniform(-1, 1, (3, 3))
+    B += B[[1, 0, 2], :][:, [1, 0, 2]].conj()
+    dA = rstate.uniform(-1, 1, (3, 3))
+    dA += dA[[1, 0, 2], :][:, [1, 0, 2]].conj()
+    dB = rstate.uniform(-1, 1, (3, 3))
+    dB += dB[[1, 0, 2], :][:, [1, 0, 2]].conj()
 
-    a = rstate.uniform(-1, 1, 3); a += a[[1,0,2]].conj()
-    b = rstate.uniform(-1, 1, 3); b += b[[1,0,2]].conj()
-    da = rstate.uniform(-1, 1, 3); da += da[[1,0,2]].conj()
-    db = rstate.uniform(-1, 1, 3); db += db[[1,0,2]].conj()
+    a = rstate.uniform(-1, 1, 3)
+    a += a[[1, 0, 2]].conj()
+    b = rstate.uniform(-1, 1, 3)
+    b += b[[1, 0, 2]].conj()
+    da = rstate.uniform(-1, 1, 3)
+    da += da[[1, 0, 2]].conj()
+    db = rstate.uniform(-1, 1, 3)
+    db += db[[1, 0, 2]].conj()
 
-    
-    op1 = MatrixOp(A, B, dmats={'x': (dA, dB)}, order1='x', order2=[('x', 'y')])
-    op2 = ScalarOp(a, b, darrs={'y': (da, db)}, order1='y', order2=[('x', 'y')])
+    op1 = MatrixOp(A, B, dmats={"x": (dA, dB)}, order1="x", order2=[("x", "y")])
+    op2 = ScalarOp(a, b, darrs={"y": (da, db)}, order1="y", order2=[("x", "y")])
 
     sm0 = StateMatrix([1, 1, 0])
     sm2 = op1(op2(op1(sm0)))
 
     # combine
     op12 = op1 @ op2 @ op1
-    assert op12.parameters_order1 == {'x', 'y'}
+    assert op12.parameters_order1 == {"x", "y"}
     sm2_ = op12(sm0)
     assert np.allclose(sm2.states, sm2_.states)
-    assert np.allclose(sm2.order1['x'].states, sm2_.order1['x'].states)
-    assert np.allclose(sm2.order1['y'].states, sm2_.order1['y'].states)
-    assert np.allclose(sm2.order2[('x', 'y')].states, sm2_.order2[('x', 'y')].states)
+    assert np.allclose(sm2.order1["x"].states, sm2_.order1["x"].states)
+    assert np.allclose(sm2.order1["y"].states, sm2_.order1["y"].states)
+    assert np.allclose(sm2.order2[("x", "y")].states, sm2_.order2[("x", "y")].states)
 
     # finite diffs
     dx = 1e-5j
     A_x = A + dx * dA
     B_x = B + dx * dB
-    op1_x =  MatrixOp(A_x, B_x, check=False)
+    op1_x = MatrixOp(A_x, B_x, check=False)
     op12_x = op1_x.combine(op2, check=False).combine(op1_x, check=False)
     sm2_x = op12_x(sm0)
     fdiff_x = (sm2_x.states - sm2.states).imag * 1e5
-    assert np.allclose(fdiff_x, sm2.order1['x'].states)
+    assert np.allclose(fdiff_x, sm2.order1["x"].states)
 
-    fdiff2_xy = (sm2_x.order1['y'].states - sm2.order1['y'].states).imag * 1e5
-    assert np.allclose(fdiff2_xy, sm2.order2[('x', 'y')].states)
-
+    fdiff2_xy = (sm2_x.order1["y"].states - sm2.order1["y"].states).imag * 1e5
+    assert np.allclose(fdiff2_xy, sm2.order2[("x", "y")].states)

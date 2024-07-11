@@ -75,8 +75,12 @@ def test_T_diff():
     T = transition.T
 
     op = T(45, 45, order1=True, order2=True)
-    assert op.parameters_order1 == {'alpha', 'phi'}
-    assert op.parameters_order2 == {('alpha', 'alpha'), ('phi', 'phi'), ('alpha', 'phi')}
+    assert op.parameters_order1 == {"alpha", "phi"}
+    assert op.parameters_order2 == {
+        ("alpha", "alpha"),
+        ("phi", "phi"),
+        ("alpha", "phi"),
+    }
 
     sm0 = StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
@@ -89,34 +93,40 @@ def test_T_diff():
     # order1
     op_alpha = T(45 + da, 45, order1=True)
     sm1_alpha = op_alpha(sm0)
-    assert np.allclose((sm1_alpha.states - sm1.states) / da, sm1.order1['alpha'], atol=1e-6)
+    assert np.allclose(
+        (sm1_alpha.states - sm1.states) / da, sm1.order1["alpha"], atol=1e-6
+    )
 
     op_phi = T(45, 45 + da, order1=True)
     sm1_phi = op_phi(sm0)
-    assert np.allclose((sm1_phi.states - sm1.states) / da, sm1.order1['phi'], atol=1e-6)
+    assert np.allclose((sm1_phi.states - sm1.states) / da, sm1.order1["phi"], atol=1e-6)
 
     # order2
     assert np.allclose(
-        (sm1_alpha.order1['alpha'].states - sm1.order1['alpha'].states) / da, 
-        sm1.order2[('alpha', 'alpha')], atol=1e-6,
+        (sm1_alpha.order1["alpha"].states - sm1.order1["alpha"].states) / da,
+        sm1.order2[("alpha", "alpha")],
+        atol=1e-6,
     )
 
     assert np.allclose(
-        (sm1_phi.order1['phi'].states - sm1.order1['phi'].states) / da, 
-        sm1.order2[('phi', 'phi')], atol=1e-6,
+        (sm1_phi.order1["phi"].states - sm1.order1["phi"].states) / da,
+        sm1.order2[("phi", "phi")],
+        atol=1e-6,
     )
 
     assert np.allclose(
-        (sm1_alpha.order1['phi'].states - sm1.order1['phi'].states) / da, 
-        sm1.order2[('alpha', 'phi')], atol=1e-6,
+        (sm1_alpha.order1["phi"].states - sm1.order1["phi"].states) / da,
+        sm1.order2[("alpha", "phi")],
+        atol=1e-6,
     )
+
 
 def test_Phi_diff():
     Phi = transition.Phi
 
     op = Phi(45, order1=True, order2=True)
-    assert op.parameters_order1 == {'phi'}
-    assert op.parameters_order2 == {('phi', 'phi')}
+    assert op.parameters_order1 == {"phi"}
+    assert op.parameters_order2 == {("phi", "phi")}
 
     sm0 = StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
@@ -129,9 +139,10 @@ def test_Phi_diff():
     # order1
     op_phi = Phi(45 + da, order1=True)
     sm1_phi = op_phi(sm0)
-    assert np.allclose((sm1_phi.states - sm1.states) / da, sm1.order1['phi'], atol=1e-6)
+    assert np.allclose((sm1_phi.states - sm1.states) / da, sm1.order1["phi"], atol=1e-6)
 
     assert np.allclose(
-        (sm1_phi.order1['phi'].states - sm1.order1['phi'].states) / da, 
-        sm1.order2[('phi', 'phi')], atol=1e-6,
+        (sm1_phi.order1["phi"].states - sm1.order1["phi"].states) / da,
+        sm1.order2[("phi", "phi")],
+        atol=1e-6,
     )

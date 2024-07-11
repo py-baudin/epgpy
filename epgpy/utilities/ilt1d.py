@@ -210,7 +210,7 @@ def ilt1d_crb(times, signal, rates, amps):
     dxidrda += 2 * dprod(dt * IJ * Z, (Y - D.sum(0))[NAX])
 
     dxidr2 = 2 * tprod(dt * IJ * D, dt * IJ * D)
-    dxidr2 += -2 * dprod(dt ** 2 * IJ ** 2 * D, (Y - D.sum(0))[NAX])
+    dxidr2 += -2 * dprod(dt**2 * IJ**2 * D, (Y - D.sum(0))[NAX])
     # H = np.block([[dxidr2, dxidrda], [dxidrda.T, dxida2]]) #/ (m-1)**2
     H = dxidr2
 
@@ -264,7 +264,7 @@ def qcr(bounds, r, a, widths, *, num=None):
         sigma = np.log(widths[i])
         nconv = int(5 * sigma / logres + 0.5)
         xvals = np.arange(-nconv, nconv + 1) * logres
-        gauss = np.exp(-0.5 * xvals ** 2 / sigma ** 2)
+        gauss = np.exp(-0.5 * xvals**2 / sigma**2)
         # convolve spikes and gaussian and trim render to bounds
         render_i = np.convolve(spikes, gauss, mode="full")
         render = render + render_i[nconv:-nconv]

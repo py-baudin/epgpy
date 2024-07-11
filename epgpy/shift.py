@@ -1,4 +1,5 @@
 """ Shift functions """
+
 import numpy as np
 from . import common, diff, utils
 
@@ -135,10 +136,10 @@ class S(diff.DiffOperator):
 
     def _derive1(self, sm, param):
         raise NotImplementedError()
-    
+
     def _derive2(self, sm, param):
         raise NotImplementedError()
-    
+
     # todo: def combine(self, ...)?
 
 
@@ -449,7 +450,7 @@ def unique_1d(values, axis=0):
     # "hash" rows (faster)
     unique_set = {}
     vrange = np.ptp(values) + 1
-    hash = np.dot(values - values.min(), [vrange ** i for i in range(values.shape[1])])
+    hash = np.dot(values - values.min(), [vrange**i for i in range(values.shape[1])])
     inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
 
     # build `unique` array from inverse

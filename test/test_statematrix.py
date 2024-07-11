@@ -46,9 +46,9 @@ def test_arraycollection_class():
         coll.set("arr5", array(5, 3))
 
     # replace axis
-    coll.set('arr7', array(1, 5), layout=(..., 'ax7'))
-    coll.set('arr7', array(1, 6))
-    assert coll.get('arr7').shape == (2, 3, 6)
+    coll.set("arr7", array(1, 5), layout=(..., "ax7"))
+    coll.set("arr7", array(1, 6))
+    assert coll.get("arr7").shape == (2, 3, 6)
 
     # resize axis
     coll.resize("ax", 6)
@@ -91,19 +91,18 @@ def test_arraycollection_class():
     assert coll.get("arr1").shape == (2, 4, 3)
 
     # resize on set
-    coll.set('arr3', array(1, 5), layout=(..., 'ax1'))
+    coll.set("arr3", array(1, 5), layout=(..., "ax1"))
     with pytest.raises(ValueError):
-        coll.set('arr4', array(1, 2), layout=(..., 'ax1'))
-    coll.set('arr4', array(1, 2), layout=(..., 'ax1'), resize=True)
-    assert coll.get('arr4').shape == coll.shape + (5,)
+        coll.set("arr4", array(1, 2), layout=(..., "ax1"))
+    coll.set("arr4", array(1, 2), layout=(..., "ax1"), resize=True)
+    assert coll.get("arr4").shape == coll.shape + (5,)
     # arr4 was padded with zeros
-    assert np.all(coll.get('arr4')[0, 0] == np.r_[array(1)*0, array(2), array(2)*0])
-    with pytest.raises(ValueError): #
-        coll.set('arr5', array(1, 7), layout=(..., 'ax1'))
-    coll.set('arr5', array(1, 7), layout=(..., 'ax1'), resize=True)
+    assert np.all(coll.get("arr4")[0, 0] == np.r_[array(1) * 0, array(2), array(2) * 0])
+    with pytest.raises(ValueError):  #
+        coll.set("arr5", array(1, 7), layout=(..., "ax1"))
+    coll.set("arr5", array(1, 7), layout=(..., "ax1"), resize=True)
     # arr5 was cropped
-    assert np.all(coll.get('arr5')[0, 0] == array(7)[1:-1])
-
+    assert np.all(coll.get("arr5")[0, 0] == array(7)[1:-1])
 
 
 def test_state_matrix_class():
@@ -215,14 +214,14 @@ def test_state_matrix_class():
     assert sm.options == {"max_nstate": 3, "kgrid": 2}
 
     # stack / unstack
-    opts = {'opt1': 'foobar'}
+    opts = {"opt1": "foobar"}
     sm = statematrix.StateMatrix(
         [[[1, 1, 0]], [[0, 0, 2]]],
         equilibrium=[[[0, 0, 1]], [[0, 0, 2]]],
         coords=[[[1, 2, 3]], [[4, 5, 6]]],
         shape=(2, 1),
         **opts
-        )
+    )
     sm_s = list(sm.unstack(axis=0))
     for i in range(len(sm_s)):
         sm_s[i].shape == sm.shape[1:]

@@ -36,6 +36,7 @@ seq.hessian([var1, var3], [var2, var3]) # different variables in rows and column
 seq.crlb([var1, var2], gradient=["var3"]) # gradient can be True/False or a list of variables
 
 """
+
 import abc
 import types
 import inspect
@@ -549,6 +550,7 @@ class operators(types.SimpleNamespace):
 
 """
 
+
 def as_function(func=None, *, repr=None, derivative=None):
     """return Function object"""
 
@@ -643,7 +645,6 @@ class Function:
             return self.partials[index](*args, **kwargs)
         else:
             raise RuntimeError(f"No derivative provided for argument #{index}")
-
 
 
 class Expression:
@@ -872,7 +873,7 @@ class math(types.SimpleNamespace):
         return a1 / a2
 
     div.set_derivative(lambda a1, a2: 1 / a2 + 0 * a1, index=0)
-    div.set_derivative(lambda a1, a2: -a1 / a2 ** 2, index=1)
+    div.set_derivative(lambda a1, a2: -a1 / a2**2, index=1)
 
     @as_function(repr="{0}**{1}")
     def pow(a1, a2):

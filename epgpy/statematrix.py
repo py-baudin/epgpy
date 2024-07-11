@@ -55,7 +55,9 @@ class StateMatrix:
         self.arrays.set("states", init, layout=[..., "nstate", 3])
 
         # set equilibrium
-        self.arrays.set("equilibrium", equilibrium, layout=[..., "nstate", 3], resize=True)
+        self.arrays.set(
+            "equilibrium", equilibrium, layout=[..., "nstate", 3], resize=True
+        )
 
         # set frequency coordinates
         if coords is not None:
@@ -68,7 +70,7 @@ class StateMatrix:
         if shape:
             # broadcast and copy states
             self.arrays.broadcast(shape)
-            self.arrays.set('states', self.arrays.get('states'))
+            self.arrays.set("states", self.arrays.get("states"))
 
         # additional metadata (eg. kgrid, max_nstate)
         self.options = options
@@ -82,7 +84,7 @@ class StateMatrix:
     @states.setter
     def states(self, value):
         # self.arrays.set("states", value, check=False)
-        self.arrays.update('states', value)
+        self.arrays.update("states", value)
 
     @property
     def density(self):
@@ -119,12 +121,12 @@ class StateMatrix:
     @property
     def nstate(self):
         """return number of phase states"""
-        return (self.arrays.axes['nstate'] - 1) // 2
+        return (self.arrays.axes["nstate"] - 1) // 2
 
     @property
     def kdim(self):
         """number of coords dimensions"""
-        return 1 if self.coords is None else self.arrays.axes['kdim']
+        return 1 if self.coords is None else self.arrays.axes["kdim"]
 
     @property
     def i0(self):
@@ -188,7 +190,7 @@ class StateMatrix:
     def norm(self):
         """state matrix norm"""
         # return np.sqrt(np.sum(np.abs(self.states[..., 1:]) ** 2, axis=(-2, -1)))
-        return self.arrays.apply('states', utils.get_norm)
+        return self.arrays.apply("states", utils.get_norm)
 
     @property
     def zeros(self):
@@ -199,7 +201,7 @@ class StateMatrix:
     def writeable(self):
         return True
         # return getattr(self.states.flags, "writeable", False)
-    
+
     @property
     def array_module(self):
         return self.arrays.xp
@@ -253,14 +255,14 @@ class StateMatrix:
         sm = self.__new__(type(self))
         coll = self.arrays.copy()
         if states is not None:
-            coll.update('states', states, resize=True)
-        if 'equilibrium' in kwargs:
-            coll.update('equilibrium', kwargs.pop('equilibrium'), resize=True)
-        if 'coords' in kwargs:
-            coll.update('coords', kwargs.pop('coords'), resize=True)
+            coll.update("states", states, resize=True)
+        if "equilibrium" in kwargs:
+            coll.update("equilibrium", kwargs.pop("equilibrium"), resize=True)
+        if "coords" in kwargs:
+            coll.update("coords", kwargs.pop("coords"), resize=True)
         sm.arrays = coll
-        sm.kvalue = kwargs.pop('kvalue', self.kvalue)
-        sm.tvalue = kwargs.pop('tvalue', self.tvalue)
+        sm.kvalue = kwargs.pop("kvalue", self.kvalue)
+        sm.tvalue = kwargs.pop("tvalue", self.tvalue)
         sm.options = {**self.options, **kwargs}
         return sm
 
@@ -303,7 +305,7 @@ class StateMatrix:
         self.arrays.set("coords", coords, layout=[..., "nstate", "kdim"])
 
     def stack(self, seq, *, axis=0):
-        """ stack state matrices"""
+        """stack state matrices"""
         xp = common.get_array_module()
         seq = [self] + list(seq)
         states = xp.stack([sm.states for sm in seq], axis=axis)
@@ -312,13 +314,13 @@ class StateMatrix:
         if seq[0].coords is not None:
             coords = xp.stack([sm.coords for sm in seq], axis=axis)
         kwargs = {
-            'kvalue': seq[0].kvalue,
-            'tvalue': seq[0].tvalue,
+            "kvalue": seq[0].kvalue,
+            "tvalue": seq[0].tvalue,
             **seq[0].options,
         }
         cls = type(self)
         return cls(states, equilibrium=equibm, coords=coords, check=False, **kwargs)
-    
+
     def unstack(self, sm=None, *, axis=0):
         """split state matrices at given axis"""
         xp = common.get_array_module()
@@ -330,22 +332,22 @@ class StateMatrix:
             coords = xp.moveaxis(coords, axis, 0) if coords is not None else None
         coords = [None] * len(states) if coords is None else coords
         kwargs = {
-            'kvalue': sm.kvalue,
-            'tvalue': sm.tvalue,
+            "kvalue": sm.kvalue,
+            "tvalue": sm.tvalue,
             **sm.options,
         }
         cls = type(self)
         return (
-            cls(st, equilibrium=eq, coords=coo, check=False, **kwargs) 
+            cls(st, equilibrium=eq, coords=coo, check=False, **kwargs)
             for st, eq, coo in zip(states, equibm, coords)
         )
-    
+
     def _stack(self, seq, *, axis=0):
         return type(self).stack([self] + list(seq), axis=axis)
-    
+
     def _unstack(self, *, axis=0):
         return type(self).unstack(self, axis=axis)
-        
+
 
 # private functions
 
@@ -357,6 +359,7 @@ def _init_states(density=1):
     init = xp.array([[[0, 0, 1]]])
     states = density * init
     return states
+
 
 def _format_states(states, check=True):
     """format and check states matrix"""
@@ -414,8 +417,8 @@ class ArrayCollection:
     Each array has a layout whose items define the broadcastable structure:
     Items:
         Ellipsis/...: broadcastable axes
-        <int>: fixed axis 
-        <str>: named axis 
+        <int>: fixed axis
+        <str>: named axis
         None: free axis
 
     Example:
@@ -466,7 +469,7 @@ class ArrayCollection:
     def shape(self):
         """return broadcast shape"""
         return self._shape
-    
+
     @property
     def expand_axis(self):
         ax = self._expand_axis
@@ -478,7 +481,7 @@ class ArrayCollection:
         return self._axes
 
     def get(self, name, default=None):
-        """ get (broadcast) array from collection """
+        """get (broadcast) array from collection"""
         if not name in self._arrays:
             return default
         array = self._arrays[name]
@@ -487,27 +490,27 @@ class ArrayCollection:
             return array
         layout = self._layouts[name]
         return self._broadcast_array(array, layout)
-    
+
     def update(self, name, array, *, resize=False):
-        """ update array inplace """
+        """update array inplace"""
         try:
             self._arrays[name][:] = array
         except ValueError:
             self.set(name, array, check=False, resize=resize)
 
     def apply(self, name, func):
-        """ apply function to raw array"""
+        """apply function to raw array"""
         return func(self._arrays[name])
 
     def set(self, name, array, *, layout=None, resize=False, check=True):
-        """ add array to collection"""
+        """add array to collection"""
         xp = self.xp
         array = xp.array(array)  # copy array
 
         if name in self._arrays:
-            if layout is None: # keep existing layout
+            if layout is None:  # keep existing layout
                 layout = self._layouts[name]
-        elif layout is None: # set default layout
+        elif layout is None:  # set default layout
             layout = [Ellipsis]
 
         self.check_layout(layout)
@@ -524,9 +527,8 @@ class ArrayCollection:
         self._update_shape()
         self._axes = self.get_named_axes()
 
-            
     def pop(self, name, default=None):
-        """ remove array from collection """
+        """remove array from collection"""
         if not name in self._arrays:
             return default
         self._layouts.pop(name)
@@ -536,7 +538,7 @@ class ArrayCollection:
 
     # utilities
     def copy(self):
-        """ copy collection """
+        """copy collection"""
         coll = self.__new__(type(self))
         layouts, arrays = self._layouts, self._arrays
         coll.xp = self.xp
@@ -548,24 +550,25 @@ class ArrayCollection:
         coll._axes = dict(self._axes)
         coll._default = self._default
         return coll
-    
+
     def get_named_axes(self, *, ignore=None):
-        """ get named axes dimensions"""
+        """get named axes dimensions"""
         arrays, layouts = self._arrays, self._layouts
         return {
-            ax: arr.shape[idx] 
-            for name, arr in arrays.items() if name != ignore
+            ax: arr.shape[idx]
+            for name, arr in arrays.items()
+            if name != ignore
             for idx, ax in self._get_named_axes(arr.ndim, layouts[name])
         }
-    
+
     def check_layout(self, layout):
-        """ check layout """
-        counts = [i for i,ax in enumerate(layout) if ax is Ellipsis]
+        """check layout"""
+        counts = [i for i, ax in enumerate(layout) if ax is Ellipsis]
         if not counts:
             raise ValueError(f"`layout` must contain one Ellipsis: {layout}")
         elif len(counts) > 1:
             raise ValueError(f"`layout` must contain only one Ellipsis: {layout}")
-        
+
     def check_shape(self, shape, layout, *, ignore=None):
         """check shape"""
         shape = tuple(shape)
@@ -595,10 +598,16 @@ class ArrayCollection:
         if diff < 0:
             common[ax : ax - diff] = []
         elif diff > 0:
-            common = common[:ax] + [1,] * diff + common[ax:]
+            common = (
+                common[:ax]
+                + [
+                    1,
+                ]
+                * diff
+                + common[ax:]
+            )
         if any(1 != d1 != d2 != 1 for d1, d2 in zip(common, shared)):
             raise ValueError(f"Incompatible shape: {shape} and {shared}")
-
 
     def check(self, shape, layout, *, ignore=None):
         """check shape and layout"""
@@ -624,7 +633,9 @@ class ArrayCollection:
                 axis = arr.ndim - len(layout) + axis
             arr = self.resize_array(arr, diff, axis=axis, constant=constant)
             self._arrays[name] = arr
-            self._shapes[name] = self._get_broadcast_shape(self._shape, arr.shape, layout)
+            self._shapes[name] = self._get_broadcast_shape(
+                self._shape, arr.shape, layout
+            )
         self._axes = self.get_named_axes()
 
     def expand(self, ndim):
@@ -646,44 +657,43 @@ class ArrayCollection:
         shape = list(self.shape)
         axis = self._expand_axis
         if axis >= 0:
-            shape[axis:axis + ndim] = []
+            shape[axis : axis + ndim] = []
         else:
             axis = len(shape) + axis + 1
-            shape[axis - ndim: axis + 1] = []
+            shape[axis - ndim : axis + 1] = []
         self._default = tuple(shape)
         self._update_shape()
 
     # private
 
-        
     @staticmethod
     def _get_shared_axes(shape, layout):
-        """ return part of shape that will be broadcast"""
+        """return part of shape that will be broadcast"""
         start = layout.index(Ellipsis)
         end = len(shape) - (len(layout) - start - 1)
         return shape[start:end]
-    
+
     @staticmethod
     def _get_shared_shape(ndim, shape, axis):
-        """ return shape after broadcasting """
+        """return shape after broadcasting"""
         if axis < 0:
             axis = ndim - axis + 1
         return shape[:axis] + (1,) * max(ndim - len(shape), 0) + shape[axis:]
 
     @staticmethod
     def _get_named_axes(ndim, layout):
-        """ return axes names and index """
+        """return axes names and index"""
         idx = layout.index(Ellipsis)
         diff = ndim - len(layout)
         return [
             (i + (i > idx) * diff, ax)
-            for i, ax in enumerate(layout) 
+            for i, ax in enumerate(layout)
             if i != idx and isinstance(ax, str)
         ]
-        
+
     @staticmethod
     def _get_broadcast_shape(shared, shape, layout):
-        """ return shape after broadcasting """
+        """return shape after broadcasting"""
         shape = list(shape)
         start = layout.index(Ellipsis)
         end = len(shape) - (len(layout) - start - 1)
@@ -692,14 +702,20 @@ class ArrayCollection:
 
     def _update_shape(self):
         arrays, layouts = self._arrays, self._layouts
-        shared = [self._get_shared_axes(arrays[name].shape, layouts[name]) for name in arrays] + [self._default]
+        shared = [
+            self._get_shared_axes(arrays[name].shape, layouts[name]) for name in arrays
+        ] + [self._default]
         ndim = max(len(shape) for shape in shared)
-        shapes = [self._get_shared_shape(ndim, shape, self._expand_axis) for shape in shared]
+        shapes = [
+            self._get_shared_shape(ndim, shape, self._expand_axis) for shape in shared
+        ]
         self._shape = tuple(max(shape[i] for shape in shapes) for i in range(ndim))
         self._shapes = {
-            name: self._get_broadcast_shape(self._shape, arrays[name].shape, layouts[name])
+            name: self._get_broadcast_shape(
+                self._shape, arrays[name].shape, layouts[name]
+            )
             for name in arrays
-            }
+        }
 
     def _broadcast_array(self, array, layout):
         """expand and broadcast array to shared shape"""
@@ -728,9 +744,8 @@ class ArrayCollection:
             array = xp.broadcast_to(array, shape)
         return array
 
-
     def resize_array(self, array, diff, axis=0, *, constant=0):
-        """ resize array at given axis """
+        """resize array at given axis"""
         xp = self.xp
         if diff < 0:  # crop
             slices = [slice(None) for _ in range(array.ndim)]

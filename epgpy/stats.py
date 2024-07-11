@@ -8,17 +8,17 @@ def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     """Cramer-Rao lower bound cost function"""
     xp = common.get_array_module(J)
 
-    # J.shape: ... x npoint x nparam 
+    # J.shape: ... x npoint x nparam
     J = xp.asarray(J)
 
     # Fisher information  matrix
     I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
 
     # or ?
-    #if np.iscomplexobj(J):
+    # if np.iscomplexobj(J):
     #    J = xp.concatenate([J.real, J.imag], axis=-2)
     # I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
-    
+
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
@@ -37,7 +37,7 @@ def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     # if np.iscomplexobj(H):
     #     H = xp.concatenate([H.real, H.imag], axis=-3)
     # grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
-    HJ = xp.einsum('...npx,...nq->...qpx', H.conj(), J) * 1 / sigma2 
+    HJ = xp.einsum("...npx,...nq->...qpx", H.conj(), J) * 1 / sigma2
     HJ += np.moveaxis(HJ, -3, -2).conj()
     grad = -xp.einsum("...pq,...qrx,...rp->...x", W * lb, HJ.real, lb)
     if not log:
@@ -67,7 +67,7 @@ def crlb_split(J, W=None, sigma2=1, log=False):
 
 
 def confint(obs, S, J, H=None, *, alpha=0.05):
-    """ Delta method for confidence intervals and confidence bands """
+    """Delta method for confidence intervals and confidence bands"""
     nobs, nparam = J.shape[-2:]
     dof = nobs - nparam
     res = S - obs
@@ -76,11 +76,11 @@ def confint(obs, S, J, H=None, *, alpha=0.05):
     # covariance matrix
     if H is not None:
         # hessian of MLE
-        Hmle = np.einsum('...nqp,...y->...pq', H.conj(), res).real
-        Hmle += np.einsum('...np,...nq->...pq', J.conj(), J).real
+        Hmle = np.einsum("...nqp,...y->...pq", H.conj(), res).real
+        Hmle += np.einsum("...np,...nq->...pq", J.conj(), J).real
         cov = np.linalg.inv(Hmle)
     else:
-        JJ = np.einsum('...np,...nq->...pq', J.conj(), J).real
+        JJ = np.einsum("...np,...nq->...pq", J.conj(), J).real
         cov = np.linalg.inv(JJ)
     # tvalue
     tval = get_tstat_interval(1 - alpha, dof)
@@ -88,10 +88,10 @@ def confint(obs, S, J, H=None, *, alpha=0.05):
     # confidence intervals for the parameters
     idiag = np.arange(nparam)
     cints = tval * cov[..., idiag, idiag] * sse / dof
-    
+
     # confidence band for the prediction
-    predvar = np.einsum('...np,...pq,...nq->...n', J, cov, J)
-    cband = tval * np.sqrt(predvar  * sse / dof)
+    predvar = np.einsum("...np,...pq,...nq->...n", J, cov, J)
+    cband = tval * np.sqrt(predvar * sse / dof)
 
     return cints, cband
 

@@ -1,4 +1,5 @@
 """ unittest for epgpy.sequence """
+
 import numpy as np
 import pytest
 from epgpy import sequence, core, diff
@@ -18,9 +19,9 @@ def test_expression_class():
     assert (2 - a)(a=1) == 1
     assert (a * 2)(a=1) == 2
     assert (1 / a)(a=2) == 0.5
-    assert (a ** 2.0)(a=2) == 4
-    assert (a ** 0.5)(a=4) == 2
-    assert (2 ** a)(a=3) == 8
+    assert (a**2.0)(a=2) == 4
+    assert (a**0.5)(a=4) == 2
+    assert (2**a)(a=3) == 8
 
     # multiple operators
     assert (a * 2 + 1)(a=1) == 3
@@ -31,7 +32,7 @@ def test_expression_class():
     assert (a - b)(a=1, b=2) == -1
     assert (a * b)(a=1, b=2) == 2
     assert (a / b)(a=1, b=2) == 0.5
-    assert (a ** b)(a=2, b=2) == 4
+    assert (a**b)(a=2, b=2) == 4
 
     # complicated
     assert (2 * a + 1 / b)(a=0.25, b=2) == 1
@@ -47,8 +48,8 @@ def test_expression_class():
     assert (a * 3).derive("a", a=2) == 3
     assert (1 - a).derive("a", a=2) == -1
     assert (1 / a).derive("a", a=2) == -0.25
-    assert (a ** 2).derive("a", a=3) == 6
-    assert (2 ** a).derive("a", a=2) == np.log(2) * 4
+    assert (a**2).derive("a", a=3) == 6
+    assert (2**a).derive("a", a=2) == np.log(2) * 4
 
     # multiple variables
     assert (a - b).derive("a", a=1, b=1) == 1
@@ -57,14 +58,14 @@ def test_expression_class():
     assert (a * b).derive("b", a=1, b=2) == 1
     assert (a / b).derive("a", a=1, b=2) == 0.5
     assert (a / b).derive("b", a=1, b=2) == -0.25
-    assert (a ** b).derive("a", a=3, b=2) == 6
-    assert (a ** b).derive("b", a=3, b=2) == np.log(3) * 9
+    assert (a**b).derive("a", a=3, b=2) == 6
+    assert (a**b).derive("b", a=3, b=2) == np.log(3) * 9
 
     # complicated
     # deriv_a = 2*a - 2/(2 * a - b)**2
-    assert (a ** 2 + 1 / (2 * a - b)).derive("a", a=1, b=1) == (2 - 2 / (2 - 1) ** 2)
+    assert (a**2 + 1 / (2 * a - b)).derive("a", a=1, b=1) == (2 - 2 / (2 - 1) ** 2)
     # deriv_b =  1/(2* a - b)
-    assert (a ** 2 + 1 / (2 * a - b)).derive("b", a=1, b=1) == 1 / (2 - 1) ** 2
+    assert (a**2 + 1 / (2 * a - b)).derive("b", a=1, b=1) == 1 / (2 - 1) ** 2
 
     #  math
     math = sequence.math
@@ -131,13 +132,13 @@ def test_function_class():
     assert np.isclose(log("a")(a=1), 0.0)
 
     custom = Function(
-        np.divide, derivative=[lambda x, y: 1 / y, lambda x, y: -x / y ** 2]
+        np.divide, derivative=[lambda x, y: 1 / y, lambda x, y: -x / y**2]
     )
     assert isinstance(custom("a", "b"), Expression)
     assert custom("a", "b").variables == {"a", "b"}
     assert np.isclose(custom("a", "b")(a=1, b=2), 0.5)
     assert np.isclose(custom("a", "b").derive("a", a=1, b=2), 0.5)
-    assert np.isclose(custom("a", "b").derive("b", a=1, b=2), -1 / 2 ** 2)
+    assert np.isclose(custom("a", "b").derive("b", a=1, b=2), -1 / 2**2)
     # assert np.allclose(custom("a", "b").gradient(a=1, b=2), [0.5, -1 / 2 ** 2])
 
     custom2 = Function(np.sum, axis=1)

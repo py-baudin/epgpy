@@ -33,7 +33,9 @@ def test_E_class():
 
     sm = evolution.E(10, [[1e10, 1e-10]], [[1e10], [1e-10]])(sm1)
     assert sm.shape == (2, 2)
-    assert np.allclose(sm.states[..., 0,:], [[[1, 1, 0], [1, 1, 1]], [[0, 0, 0], [0, 0, 1]]])
+    assert np.allclose(
+        sm.states[..., 0, :], [[[1, 1, 0], [1, 1, 1]], [[0, 0, 0], [0, 0, 1]]]
+    )
 
     with pytest.raises(ValueError):
         # incompatible shapes
@@ -118,43 +120,52 @@ def test_R_class():
 def test_R_diff():
     dr = 1e-8
     R = evolution.R
-    op = R(1/3, 1, r0=2, order1=True, order2=True)
-    assert op.parameters_order1 == {'rT', 'rL', 'r0'}
-    assert op.parameters_order2 == {('rT', 'rT'), ('rL', 'rL'), ('r0', 'r0')}
-    
+    op = R(1 / 3, 1, r0=2, order1=True, order2=True)
+    assert op.parameters_order1 == {"rT", "rL", "r0"}
+    assert op.parameters_order2 == {("rT", "rT"), ("rL", "rL"), ("r0", "r0")}
+
     sm0 = StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
 
-    assert set(sm1.order1) == {'rT', 'rL', 'r0'}
-    assert set(sm1.order2) == {('rT', 'rT'), ('rL', 'rL'), ('r0', 'r0')}
+    assert set(sm1.order1) == {"rT", "rL", "r0"}
+    assert set(sm1.order2) == {("rT", "rT"), ("rL", "rL"), ("r0", "r0")}
 
     # finite diffs
     # order1
-    op_rT = R(1/3 + dr, 1, r0=2, order1=True)
+    op_rT = R(1 / 3 + dr, 1, r0=2, order1=True)
     sm1_rT = op_rT(sm0)
-    assert np.allclose((sm1_rT.states - sm1.states) * 1e8, sm1.order1['rT'].states)
+    assert np.allclose((sm1_rT.states - sm1.states) * 1e8, sm1.order1["rT"].states)
 
-    op_rL = R(1/3, 1 + dr, r0=2, order1=True)
+    op_rL = R(1 / 3, 1 + dr, r0=2, order1=True)
     sm1_rL = op_rL(sm0)
-    assert np.allclose((sm1_rL.states - sm1.states) * 1e8, sm1.order1['rL'].states)
+    assert np.allclose((sm1_rL.states - sm1.states) * 1e8, sm1.order1["rL"].states)
 
-    op_r0 = R(1/3, 1, r0=2 + dr, order1=True)
+    op_r0 = R(1 / 3, 1, r0=2 + dr, order1=True)
     sm1_r0 = op_r0(sm0)
-    assert np.allclose((sm1_r0.states - sm1.states) * 1e8, sm1.order1['r0'].states)
+    assert np.allclose((sm1_r0.states - sm1.states) * 1e8, sm1.order1["r0"].states)
 
     # order2
-    assert np.allclose((sm1_rL.order1['rL'].states - sm1.order1['rL'].states) * 1e8, sm1.order2[('rL', 'rL')])
-    assert np.allclose((sm1_rT.order1['rT'].states - sm1.order1['rT'].states) * 1e8, sm1.order2[('rT', 'rT')])
-    assert np.allclose((sm1_r0.order1['r0'].states - sm1.order1['r0'].states) * 1e8, sm1.order2[('r0', 'r0')])
+    assert np.allclose(
+        (sm1_rL.order1["rL"].states - sm1.order1["rL"].states) * 1e8,
+        sm1.order2[("rL", "rL")],
+    )
+    assert np.allclose(
+        (sm1_rT.order1["rT"].states - sm1.order1["rT"].states) * 1e8,
+        sm1.order2[("rT", "rT")],
+    )
+    assert np.allclose(
+        (sm1_r0.order1["r0"].states - sm1.order1["r0"].states) * 1e8,
+        sm1.order2[("r0", "r0")],
+    )
 
 
 def test_P_diff():
     dt = 1e-8
     P = evolution.P
     op = P(10, 0.1, order1=True, order2=True)
-    assert op.parameters_order1 == {'tau', 'g'}
-    assert op.parameters_order2 == {('tau', 'tau'), ('g', 'g'), ('g', 'tau')}
-    
+    assert op.parameters_order1 == {"tau", "g"}
+    assert op.parameters_order2 == {("tau", "tau"), ("g", "g"), ("g", "tau")}
+
     sm0 = StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
 
@@ -165,30 +176,30 @@ def test_P_diff():
     # order1
     op_tau = P(10 + dt, 0.1, order1=True)
     sm1_tau = op_tau(sm0)
-    assert np.allclose((sm1_tau.states - sm1.states) * 1e8, sm1.order1['tau'].states)
+    assert np.allclose((sm1_tau.states - sm1.states) * 1e8, sm1.order1["tau"].states)
 
     op_g = P(10, 0.1 + dt, order1=True)
     sm1_g = op_g(sm0)
-    assert np.allclose((sm1_g.states - sm1.states) * 1e8, sm1.order1['g'].states)
+    assert np.allclose((sm1_g.states - sm1.states) * 1e8, sm1.order1["g"].states)
 
     # order2
     assert np.allclose(
-        (sm1_tau.order1['tau'].states - sm1.order1['tau'].states) * 1e8, 
-        sm1.order2[('tau', 'tau')].states,
+        (sm1_tau.order1["tau"].states - sm1.order1["tau"].states) * 1e8,
+        sm1.order2[("tau", "tau")].states,
     )
 
     assert np.allclose(
-        (sm1_g.order1['g'].states - sm1.order1['g'].states) * 1e8, 
-        sm1.order2[('g', 'g')].states,
+        (sm1_g.order1["g"].states - sm1.order1["g"].states) * 1e8,
+        sm1.order2[("g", "g")].states,
     )
 
     assert np.allclose(
-        (sm1_tau.order1['g'].states - sm1.order1['g'].states) * 1e8, 
-        sm1.order2[('g', 'tau')].states,
+        (sm1_tau.order1["g"].states - sm1.order1["g"].states) * 1e8,
+        sm1.order2[("g", "tau")].states,
     )
     assert np.allclose(
-        (sm1_g.order1['tau'].states - sm1.order1['tau'].states) * 1e8, 
-        sm1.order2[('g', 'tau')].states,
+        (sm1_g.order1["tau"].states - sm1.order1["tau"].states) * 1e8,
+        sm1.order2[("g", "tau")].states,
     )
 
 
@@ -196,88 +207,106 @@ def test_E_diff():
     dt = 1e-8
     E = evolution.E
     op = E(10, 20, 30, 0.1, order1=True, order2=True)
-    assert op.parameters_order1 == {'tau', 'T1', 'T2', 'g'}
+    assert op.parameters_order1 == {"tau", "T1", "T2", "g"}
     assert op.parameters_order2 == {
-        ('tau', 'tau'), ('T1', 'T1'), ('T2', 'T2'), ('g', 'g'),
-        ('T1', 'tau'), ('T2', 'tau'), ('g', 'tau'), ('T2', 'g'),
-        }
-    
+        ("tau", "tau"),
+        ("T1", "T1"),
+        ("T2", "T2"),
+        ("g", "g"),
+        ("T1", "tau"),
+        ("T2", "tau"),
+        ("g", "tau"),
+        ("T2", "g"),
+    }
+
     sm0 = StateMatrix([1, 1, 0.5])
     sm1 = op(sm0)
 
     assert set(sm1.order1) == op.parameters_order1
-    assert {tuple(sorted(pair)) for pair in sm1.order2} ==  op.parameters_order2
+    assert {tuple(sorted(pair)) for pair in sm1.order2} == op.parameters_order2
 
     # finite diffs
     # order1
     op_tau = E(10 + dt, 20, 30, 0.1, order1=True)
     sm1_tau = op_tau(sm0)
-    assert np.allclose((sm1_tau.states - sm1.states) * 1e8, sm1.order1['tau'].states)
+    assert np.allclose((sm1_tau.states - sm1.states) * 1e8, sm1.order1["tau"].states)
 
     op_T1 = E(10, 20 + dt, 30, 0.1, order1=True)
     sm1_T1 = op_T1(sm0)
-    assert np.allclose((sm1_T1.states - sm1.states) * 1e8, sm1.order1['T1'].states)
+    assert np.allclose((sm1_T1.states - sm1.states) * 1e8, sm1.order1["T1"].states)
 
     op_T2 = E(10, 20, 30 + dt, 0.1, order1=True)
     sm1_T2 = op_T2(sm0)
-    assert np.allclose((sm1_T2.states - sm1.states) * 1e8, sm1.order1['T2'].states)
+    assert np.allclose((sm1_T2.states - sm1.states) * 1e8, sm1.order1["T2"].states)
 
     op_g = E(10, 20, 30, 0.1 + dt, order1=True)
     sm1_g = op_g(sm0)
-    assert np.allclose((sm1_g.states - sm1.states) * 1e8, sm1.order1['g'].states)
+    assert np.allclose((sm1_g.states - sm1.states) * 1e8, sm1.order1["g"].states)
 
     # order2
     assert np.allclose(
-        (sm1_tau.order1['tau'].states - sm1.order1['tau']) * 1e8, 
-        sm1.order2[('tau', 'tau')].states,
+        (sm1_tau.order1["tau"].states - sm1.order1["tau"]) * 1e8,
+        sm1.order2[("tau", "tau")].states,
     )
     assert np.allclose(
-        (sm1_T1.order1['T1'].states - sm1.order1['T1']) * 1e8, 
-        sm1.order2[('T1', 'T1')].states,
+        (sm1_T1.order1["T1"].states - sm1.order1["T1"]) * 1e8,
+        sm1.order2[("T1", "T1")].states,
     )
     assert np.allclose(
-        (sm1_T2.order1['T2'].states - sm1.order1['T2']) * 1e8, 
-        sm1.order2[('T2', 'T2')].states,
+        (sm1_T2.order1["T2"].states - sm1.order1["T2"]) * 1e8,
+        sm1.order2[("T2", "T2")].states,
     )
     assert np.allclose(
-        (sm1_g.order1['g'].states - sm1.order1['g']) * 1e8, 
-        sm1.order2[('g', 'g')].states,
+        (sm1_g.order1["g"].states - sm1.order1["g"]) * 1e8,
+        sm1.order2[("g", "g")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1['T1'].states - sm1.order1['T1']) * 1e8, 
-        sm1.order2[('T1', 'tau')].states,
+        (sm1_tau.order1["T1"].states - sm1.order1["T1"]) * 1e8,
+        sm1.order2[("T1", "tau")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1['T2'].states - sm1.order1['T2']) * 1e8, 
-        sm1.order2[('T2', 'tau')].states,
+        (sm1_tau.order1["T2"].states - sm1.order1["T2"]) * 1e8,
+        sm1.order2[("T2", "tau")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1['g'].states - sm1.order1['g']) * 1e8, 
-        sm1.order2[('g', 'tau')].states,
+        (sm1_tau.order1["g"].states - sm1.order1["g"]) * 1e8,
+        sm1.order2[("g", "tau")].states,
     )
     assert np.allclose(
-        (sm1_T2.order1['g'].states - sm1.order1['g']) * 1e8, 
-        sm1.order2[('T2', 'g')].states,
+        (sm1_T2.order1["g"].states - sm1.order1["g"]) * 1e8,
+        sm1.order2[("T2", "g")].states,
     )
 
     # n dim
-    op = E([1, 1e10], 10, [[10] * 3], 0.1, order1=True, order2=[('tau', 'T1'), ('tau', 'T2')])
+    op = E(
+        [1, 1e10],
+        10,
+        [[10] * 3],
+        0.1,
+        order1=True,
+        order2=[("tau", "T1"), ("tau", "T2")],
+    )
     sm1 = op(sm0)
-    assert sm1.order1['tau'].shape == sm1.order1['T2'].shape == sm1.shape
-    assert sm1.order2[('T2', 'tau')].shape == sm1.order2[('T2', 'tau')].shape == sm1.shape
-    assert np.allclose(sm1.order1['tau'].states, sm1.order1['tau'].states[:, 0:1])
-    assert np.allclose(sm1.order1['T1'].states, sm1.order1['T1'].states[:, 0:1])
-    assert np.allclose(sm1.order1['T2'].states, sm1.order1['T2'].states[:, 0:1])
-    assert np.allclose(sm1.order2[('T1', 'tau')].states, sm1.order2[('T1', 'tau')].states[:, 0:1])
-    assert np.allclose(sm1.order2[('T2', 'tau')].states, sm1.order2[('T2', 'tau')].states[:, 0:1])
+    assert sm1.order1["tau"].shape == sm1.order1["T2"].shape == sm1.shape
+    assert (
+        sm1.order2[("T2", "tau")].shape == sm1.order2[("T2", "tau")].shape == sm1.shape
+    )
+    assert np.allclose(sm1.order1["tau"].states, sm1.order1["tau"].states[:, 0:1])
+    assert np.allclose(sm1.order1["T1"].states, sm1.order1["T1"].states[:, 0:1])
+    assert np.allclose(sm1.order1["T2"].states, sm1.order1["T2"].states[:, 0:1])
+    assert np.allclose(
+        sm1.order2[("T1", "tau")].states, sm1.order2[("T1", "tau")].states[:, 0:1]
+    )
+    assert np.allclose(
+        sm1.order2[("T2", "tau")].states, sm1.order2[("T2", "tau")].states[:, 0:1]
+    )
 
-    assert not np.allclose(sm1.order1['tau'].states[0], 0)
-    assert not np.allclose(sm1.order1['T1'].states[0], 0)
-    assert not np.allclose(sm1.order2[('T1', 'tau')].states[0], 0)
-    assert not np.allclose(sm1.order2[('T2', 'tau')].states[0], 0)
+    assert not np.allclose(sm1.order1["tau"].states[0], 0)
+    assert not np.allclose(sm1.order1["T1"].states[0], 0)
+    assert not np.allclose(sm1.order2[("T1", "tau")].states[0], 0)
+    assert not np.allclose(sm1.order2[("T2", "tau")].states[0], 0)
 
-     # infinite time -> derivative is 0
-    assert np.allclose(sm1.order1['tau'].states[1], 0)
-    assert np.allclose(sm1.order2[('T1', 'tau')].states[1], 0)
-    assert np.allclose(sm1.order2[('T2', 'tau')].states[1], 0)
-     
+    # infinite time -> derivative is 0
+    assert np.allclose(sm1.order1["tau"].states[1], 0)
+    assert np.allclose(sm1.order2[("T1", "tau")].states[1], 0)
+    assert np.allclose(sm1.order2[("T2", "tau")].states[1], 0)
