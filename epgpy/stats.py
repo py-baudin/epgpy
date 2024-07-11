@@ -37,7 +37,7 @@ def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     # if np.iscomplexobj(H):
     #     H = xp.concatenate([H.real, H.imag], axis=-3)
     # grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
-    HJ = xp.einsum('...npx,...nq->...qpx', H.conj(), J)
+    HJ = xp.einsum('...npx,...nq->...qpx', H.conj(), J) * 1 / sigma2 
     HJ += np.moveaxis(HJ, -3, -2).conj()
     grad = -xp.einsum("...pq,...qrx,...rp->...x", W * lb, HJ.real, lb)
     if not log:
