@@ -98,10 +98,11 @@ def Num(sm):
     # return number of computed partials derivatives
     return (len(sm.order1), len(sm.order2))
 
-# def condition(sm, th=1e-5):
-#     return sm.arrays.apply('states', lambda states: np.abs(states).max() < th)
 # remove phase states with little signal
-pruner = diff.PartialsPruner(condition=1e-6, variables=alphas + TRs)
+# def condition(sm, th=1e-7):
+#     return sm.arrays.apply('states', lambda states: np.abs(states).max() < th)
+# pruner = diff.PartialsPruner(condition=condition, variables=alphas + TRs)
+# pruner = diff.PartialsPruner(condition=1e-6, variables=alphas + TRs)
 
 # store parameters at each iteration
 iterations = []
@@ -161,7 +162,7 @@ def constraint_function(params):
 
 
 # initial FA between 10 and 60
-rstate = np.random.RandomState(0)
+random = np.random # np.random.RandomState(0)
 nFA = 300
 init_FA = []
 for i in range(nTR//nFA + 1):
@@ -177,7 +178,7 @@ def smoothstep(x):
     return 3* s**2 - 2 * s**3
 Np = nTR // 10 # 10 random values
 coords = np.arange(nTR)
-rdm = rstate.uniform(-1, 1, (nTR - 1) // Np + 2)
+rdm = random.uniform(-1, 1, (nTR - 1) // Np + 2)
 coeff1 = rdm[coords // Np] * (coords - Np * (coords // Np))
 coeff2 = rdm[coords // Np + 1] * (coords - Np * (coords // Np + 1))
 init_TR = coeff1 + smoothstep(coords/Np)*(coeff2 - coeff1)
@@ -209,34 +210,35 @@ tic = time.time()
 res = optimize.minimize(costfun, init, **config)
 
 duration = time.time() - tic
-print(f"Results: alphas={res.x[:nTR]}, TRs={res.x[nTR:]}")
 print(f"Optimization time: {duration/60:.1f} min")
 
+# compute crlb for each parameters
+jacs = [
+    epg.simulate(sequence(params[:nTR], params[nTR:]), probe=Jac, max_nstate=10)[..., 0]
+    for params in iterations
+]
+crb_tot = stats.crlb(jacs, W=weights, log=False, sigma2=sigma2)
+crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, log=False, sigma2=sigma2)
 
 #
 # plot
+plt.close('all')
 
 fig, axes = plt.subplots(nrows=2, num="mrf-optim", sharex=True)
-initconst = constraint_function(init).sum()
-resconst = constraint_function(res.x).sum()
-
 plt.sca(axes.flat[0])
-plt.plot(init[:nTR], label=f"initial (constraint cost: {initconst:.2f})")
-plt.plot(res.x[:nTR], label=f"optimized (constraint cost: {resconst:.2f})")
-plt.legend()
-plt.title("Flip angle values")
-plt.ylabel("flip angle (degree)")
+plt.plot(init[:nTR], label=f"initial")
+plt.plot(res.x[:nTR], label=f"optimized")
+plt.legend(loc='upper right')
+plt.ylabel("flip angle [degree]")
+plt.xlim(0, nTR)
 plt.ylim(0, 70)
-plt.grid()
 plt.sca(axes.flat[1])
 plt.plot(init[nTR:], label="initial")
 plt.plot(res.x[nTR:], label="optimized")
-plt.legend()
-plt.title("TR values")
-plt.ylabel("TR (ms)")
+plt.ylabel("TR [ms]")
 plt.xlabel("echo index")
 plt.ylim(10, 17)
-plt.grid()
+plt.suptitle('Sequence parameters')
 plt.tight_layout()
 
 
@@ -245,31 +247,30 @@ sig0 = signal(init)
 crb0 = costfun(init)
 sig1 = signal(res.x)
 crb1 = costfun(res.x)
-plt.plot(np.abs(sig0[:, 0]), label=f"initial (log10(CRB): {crb0:0.2f})")
-plt.plot(np.abs(sig1[:, 0]), label=f"optimized (log10(CRB): {crb1:0.2f})")
+plt.plot(np.abs(sig0[:, 0]), label=f"initial")
+plt.plot(np.abs(sig1[:, 0]), label=f"optimized")
 plt.xlabel("echo index")
-plt.ylabel("signal")
-plt.title(f"Fingerprint for T1={T1}ms, T2={T2}ms")
-plt.legend()
+plt.ylabel("signal [a.u.]")
+plt.title(f"MR ingerprint for T1={T1}ms, T2={T2}ms")
+plt.legend(loc='upper right')
 plt.grid()
 plt.tight_layout()
 
 
 plt.figure("mfr-iterations")
-jacs = [
-    epg.simulate(sequence(params[:nTR], params[nTR:]), probe=Jac, max_nstate=10)[..., 0]
-    for params in iterations
-]
-crb_tot = stats.crlb(jacs, W=weights, log=False, sigma2=sigma2)
-crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, log=False)
-plt.plot(crb_mag, ":", label="CRB magnitude")
-plt.plot(crb_T1, ":", label="CRB T1")
-plt.plot(crb_T2, ":", label="CRB T2")
-plt.plot(crb_tot, label="CRB total")
-plt.title("Evolution of CRB during optimization")
+plt.plot(crb_mag, ":", label="CRLB M0")
+plt.plot(crb_T1, ":", label="CRLB T1")
+plt.plot(crb_T2, ":", label="CRLB T2")
+plt.plot(crb_tot, label="CRLB total")
+plt.title(f"CRLB optimization (duration: {duration/60:.0f} min)")
 plt.xlabel("Iteration index")
-plt.ylabel("CRB")
-plt.legend()
+plt.ylabel("CRLB")
+plt.legend(loc='upper right')
 plt.tight_layout()
 
 plt.show()
+
+# for fig in plt.get_fignums():
+#     fig = plt.figure(fig)
+#     filename = fig.get_label().replace('-', '_').replace(' ', '_') + '.png'
+#     plt.savefig(filename, dpi=200)

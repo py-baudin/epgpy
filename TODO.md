@@ -5,7 +5,7 @@
 - other examples from PDG article
 
 ## optimization
-- multiprocessed simulate (esp. with Jacobian/Hessian operators)
+- multiprocessed parallel simulate (esp. with Jacobian/Hessian operators)
 
 ## Squeeze
 - simple squeeze (scalar and matrix operators)
