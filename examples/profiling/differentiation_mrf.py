@@ -2,6 +2,8 @@ import time
 import numpy as np
 import epgpy as epg
 from epgpy import diff
+import logging
+logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
 
