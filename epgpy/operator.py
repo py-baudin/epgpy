@@ -103,9 +103,14 @@ class Operator(abc.ABC):
         sm = self._apply(sm)
         return sm
 
-    # def copy(self, name=None, duration=None, **kwargs):
-    #     """return copy of self"""
-    #     raise NotImplementedError()
+    def copy(self, name=None, duration=None):
+        """return copy of self"""
+        name = name or self.name
+        duration = duration or self.duration
+        new = self.__new__(type(self))
+        new.name = name
+        new.duration = duration
+        return new
 
 
 #

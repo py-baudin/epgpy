@@ -71,6 +71,14 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
         """apply 1st order differential operator inplace"""
         d2mat, d2mat0 = self.d2mats[params]
         return matrix_apply(d2mat, d2mat0, sm)
+    
+    def copy(self, **kwargs):
+        new = super().copy(**kwargs)
+        new.mat = self.mat.copy()
+        new.mat0 = None if self.mat0 is None else self.mat0.copy()
+        new.dmats = self.dmats.copy()
+        new.d2mats = self.d2mats.copy()
+        return new
 
     # combine
 

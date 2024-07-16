@@ -89,6 +89,14 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
 
     def combinable(self, other):
         return isinstance(other, type(self))
+    
+    def copy(self, **kwargs):
+        new = super().copy(**kwargs)
+        new.arr = self.arr.copy()
+        new.arr0 = None if self.arr0 is None else self.arr0.copy()
+        new.darrs = self.darrs.copy()
+        new.d2arrs = self.d2arrs.copy()
+        return new
 
     @classmethod
     def _combine(cls, op1, op2, **kwargs):

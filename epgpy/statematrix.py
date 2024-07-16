@@ -445,7 +445,7 @@ class ArrayCollection:
         self._shapes = {}
         self._axes = {}
         self._default = (1,) if default is None else tuple(default)
-        self.xp = common.get_array_module()
+        # self.xp = common.get_array_module()
         self._update_shape()
 
     def __len__(self):
@@ -459,6 +459,10 @@ class ArrayCollection:
 
     def __contains__(self, name):
         return name in self._arrays
+    
+    @property
+    def xp(self):
+        return common.get_array_module()
 
     @property
     def ndim(self):
@@ -541,7 +545,7 @@ class ArrayCollection:
         """copy collection"""
         coll = self.__new__(type(self))
         layouts, arrays = self._layouts, self._arrays
-        coll.xp = self.xp
+        # coll.xp = self.xp
         coll._expand_axis = self._expand_axis
         coll._shape = self._shape
         coll._arrays = {name: coll.xp.array(arrays[name]) for name in arrays}

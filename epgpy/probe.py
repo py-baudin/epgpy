@@ -36,27 +36,31 @@ class Probe(operator.EmptyOperator):
         """
 
         if isinstance(obj, str):
-            # eval expression
-            def acquire(sm):
-                # expose StateMatrix attributes only if accessed
-                locals = utils.DeferredGetter(sm, self.SM_LOCALS)
-                locals.update(kwargs)
-                return eval(obj, vars(np), locals)
-                # return np.copy(eval(obj, vars(np), locals))
-
+            self._expr = obj
+            self._acquire = self._acquire_expr
         elif callable(obj):
-            # callable
-            def acquire(sm):
-                return obj(sm, *args)
-                # return np.copy(obj(sm, *args))
+            self._callable = obj
+            self._acquire = self._acquire_callable
+
+        self._args = args
+        self._kwargs = kwargs
 
         # probe function
-        self._acquire = acquire
+        
         self._post = post
         self._repr = f"'{obj}'"
 
         # init parent class
         super().__init__()
+
+    def _acquire_expr(self, sm):
+        # expose StateMatrix attributes only if accessed
+        locals = utils.DeferredGetter(sm, self.SM_LOCALS)
+        locals.update(self._kwargs)
+        return eval(self._expr, vars(np), locals)
+    
+    def _acquire_callable(self, sm):
+        return self._callable(sm, *self._args)
 
     def acquire(self, sm, post=None):
         """return object (copy onto CPU)"""
@@ -75,6 +79,7 @@ class Probe(operator.EmptyOperator):
 
     def __repr__(self):
         return f"Probe({self._repr})"
+
 
 
 class Adc(Probe):

@@ -1,6 +1,8 @@
 # Python core imports
+import os
+import signal
 import logging
-
+import multiprocessing as mp
 import numpy as np
 from . import common, operators, statematrix, utils
 from .probe import dft
@@ -54,6 +56,7 @@ def simulate(
     callback=None,
     asarray=True,
     disp=False,
+    parallel=False,
     **options,
 ):
     """simulate a sequence
@@ -144,27 +147,11 @@ def simulate(
     # ensure sm is writeable
     sm = sm.copy()
 
-    # display?
-    if disp:
-        sequence = utils.progressbar(sequence, "Simulating: ")
-
-    tic = 0
-    times = []
-    values = []
-    # for op in sequence:
-    for op in sequence:
-        # apply each operator in sequence
-        sm = op(sm, inplace=True)
-        tic = tic + op.duration
-        if isinstance(op, operators.Probe):
-            # substitute probing operator and store
-            values.append(
-                [probe.acquire(sm, post=op.post) for probe in (probes or [op])]
-            )
-
-            times.append(tic)
-        elif callback:
-            callback(sm)
+    # run simulation
+    if parallel:
+        values, times = simulate_parallel(sm, sequence, probes=probes, callback=callback, disp=disp)
+    else:
+        values, times = simulate_simple(sm, sequence, probes=probes, callback=callback, disp=disp)
 
     # split multiple measurements
     values = tuple(zip(*values))
@@ -181,6 +168,79 @@ def simulate(
     if adc_time:
         return times, values
     return values
+
+
+def simulate_simple(sm, sequence, probes=None, callback=None, disp=False):
+    """ simple sequence loop"""
+    if disp: # display?
+        sequence = utils.progressbar(sequence, "Simulating: ")
+
+    tic = 0
+    times, values = [], []
+    for op in sequence:
+        # apply each operator in sequence
+        sm = op(sm, inplace=True)
+        tic = tic + op.duration
+        if isinstance(op, operators.Probe):
+            # substitute probing operator and store
+            values.append([pb.acquire(sm, post=op.post) for pb in (probes or [op])])
+            times.append(tic)
+        elif callback:
+            callback(sm)
+    return values, times
+
+
+
+def mp_initializer():
+    """Ignore CTRL+C in the worker process."""
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+def simulate_parallel(sm, sequence, probes=None, callback=None, split='order2', njob=None, disp=False):
+    """ parallel sequence simulation"""
+    njob = njob or (os.cpu_count() - 1)
+    seqs = []
+    if split == 'order2': # split on order2 
+        LOGGER.info(f'order-2 parallel simulate with n.jobs: {njob}')
+        order1 = {param for op in sequence for param in getattr(op, 'order1', {})}
+        order2 = sorted({pair for op in sequence for pair in getattr(op, 'order2', {})})
+        for i in range(njob):
+            order2_i = set(order2[i::njob])
+            order1_i = order1 & {param for pair in order2_i for param in pair}
+            seq_i = []
+            for op in sequence:
+                if not (getattr(op, 'order1', None) or getattr(op, 'order2', None)):
+                    seq_i.append(op)
+                    continue
+                op2 = op.copy()
+                op2.order1 = {param: op2.order1[param] for param in set(op2.order1) & order1_i}
+                op2.order2 = set(op2.order2) & order2_i
+                seq_i.append(op2)
+            seqs.append(seq_i)
+    else:
+        raise ValueError(f'Unknown split argument: {split}')
+    
+    # parallel simulate
+    args = [(sm, seqs[i], probes, None, False) for i in range(njob)]
+    with mp.Pool(njob, initializer=mp_initializer) as pool:
+        try:
+            values = pool.starmap(simulate_simple, args)
+        except KeyboardInterrupt:
+            pool.terminate()
+            pool.join()
+            raise KeyboardInterrupt()
+    
+    # merge values
+    mp_values, times = zip(*values)
+    times = times[0]
+    values = mp_values[0]
+    for i in range(1, njob):
+        nadc = len(values)
+        for n in range(nadc):
+            nprobe = len(values[n])
+            for p in range(nprobe):
+                values[n][p] = values[n][p] + mp_values[i][n][p]
+    return values, times
+
 
 
 def modify(sequence, modifier=None, *, expand=True, **params):

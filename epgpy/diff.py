@@ -134,6 +134,15 @@ class DiffOperator(operator.Operator, abc.ABC):
         sm.order1 = order1
         sm.order2 = order2
         return sm
+    
+    def copy(self, **kwargs):
+        new = super().copy(**kwargs)
+        new.PARAMETERS_ORDER1 = self.PARAMETERS_ORDER1
+        new.PARAMETERS_ORDER2 = self.PARAMETERS_ORDER2
+        new.order1 = self.order1.copy()
+        new.order2 = self.order2.copy()
+        new.auto_cross_derivatives = self.auto_cross_derivatives
+        return new
 
     #
     # private

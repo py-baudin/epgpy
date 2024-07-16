@@ -72,6 +72,11 @@ def test_ScalarOp_class():
     assert np.allclose(op.arr, arr_ * arr)
     assert np.allclose(op.arr0, arr_ * arr0 + arr0_)
 
+    # copy
+    op2 = op.copy(name='op2')
+    assert np.allclose(op2.arr, op.arr)
+    assert np.allclose(op2.arr0, op.arr0)
+
 
 def test_ScalarOp_diff1():
     ScalarOp = opscalar.ScalarOp
@@ -218,6 +223,13 @@ def test_ScalarOp_diff2():
         op3_t.derive1(sm0, "r1").states - op3.derive1(sm0, "r1").states
     ).imag * 1e5
     assert np.allclose(sm3.order2[("r1", "t")].states, diff3_t_r1)
+
+    # copy
+    op2 = op.copy(name='op2')
+    assert np.allclose(op2.arr, op.arr)
+    assert np.allclose(op2.arr0, op.arr0)
+    assert [np.allclose(op2.darrs[param][0], op.darrs[param][0]) for param in op.darrs]
+    assert [np.allclose(op2.d2arrs[pair][0], op.d2arrs[pair][0]) for pair in op.d2arrs]
 
 
 def test_scalarop_ndim():

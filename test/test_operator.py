@@ -101,6 +101,13 @@ def test_operator_class():
     with pytest.raises(ValueError):
         MyOp(shape=[2, 3, 2])(sm, inplace=False)
 
+    # copy
+    op1 = MyOp(name='foobar', duration=1)
+    op2 = op1.copy()
+    assert isinstance(op, MyOp)
+    assert op1.name == 'foobar'
+    assert op2.duration == 1
+
 
 def test_multiop_class():
     op1 = MyOp(name="op1", duration=1, shape=(1, 3), nshift=2)

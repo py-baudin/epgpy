@@ -68,6 +68,14 @@ class S(diff.DiffOperator):
         if common.isscalar(self.k):
             return 1
         return self.k.shape[-1]
+    
+    def copy(self, **kwargs):
+        new = super().copy(**kwargs)
+        new.k = self.k
+        new.nmax = self.nmax
+        new.prune = self.prune
+        new.kgrid = self.kgrid
+        return new
 
     def _apply(self, sm):
         """Shift states"""
