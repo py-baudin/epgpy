@@ -6,38 +6,33 @@ Simulate several T2 values and B1-attenuations at once through vectorization.
 
 import time
 import numpy as np
-from epgpy import operators, functions
+import epgpy as epg
 
-# sequence
-necho = 18
-TE = 9.5
-
-num_t2 = 100
-num_b1 = 100
+num_t2 = 100 # number of T2 values
+num_b1 = 50 # number of B1 attenuation values
 
 # parameters
+necho = 18
+TE = 9.5
 T1 = 1400
 T2 = np.linspace(20, 60, num_t2)
 att = np.linspace(0.2, 1, num_b1)
 
 # build sequence
-exc = operators.T(90, 90)
-shift = operators.S(1)
-rfc = operators.T(180 * att, 0)  # B1 on 1st axis
-rlx = operators.E(TE / 2, T1, [T2])  # put T2 on 2d axis
-adc = operators.ADC
+exc = epg.T(90, 90)
+shift = epg.S(1)
+rfc = epg.T(180 * att, 0)  # B1 on 1st axis
+rlx = epg.E(TE / 2, T1, [T2])  # put T2 on 2d axis
+adc = epg.ADC
 seq = [exc] + [shift, rlx, rfc, shift, rlx, adc] * necho
 
-shape = functions.getshape(seq)
-nops = len(seq)
-print(f"Simulate: {nops} operators, {necho} time points, {np.prod(shape)} signals")
+# simulate
+shape = epg.getshape(seq) # get signal's shape
+print(f"Simulate {np.prod(shape)} signals")
 
 time0 = time.time()
-
-# simulate
-sim = functions.simulate(seq)
-
+signal = epg.simulate(seq)
 duration = time.time() - time0
 
-print("Done.")
-print(f"Duration: {duration: 0.2f}s")
+print(f"Duration: {duration:.2f}s")
+print(f"Output shape: {signal.shape}")

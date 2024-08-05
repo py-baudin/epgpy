@@ -196,7 +196,7 @@ def mp_initializer():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 def simulate_parallel(sm, sequence, probes=None, callback=None, split='order2', njob=None, disp=False):
-    """ parallel sequence simulation"""
+    """ parallel sequence simulation (experimental)"""
     njob = njob or (os.cpu_count() - 1)
     seqs = []
     if split == 'order2': # split on order2 

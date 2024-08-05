@@ -27,11 +27,6 @@ seq = [excit] + [shift, relax, invert, shift, relax, adc] * necho
 times, signal = epg.simulate(seq, adc_time=True)
 
 """
-The signal's derivatives are stored within the `gradient`
-attribute of the state matrix object.
-`sm.gradient` is a dict of state matrix derivatives
-indexed by (<operator object>, <parameter name>) pairs.
-
 An easy way to recover the Jacobian matrix
 (the matrix of signal's derivatives),
 is to use the `diff.Jacobian` probe operator.
@@ -87,12 +82,6 @@ plt.show()
 
 #
 # 2nd derivatives
-
-"""
-The 2nd derivatives are also available.
-They are activate by the hessian keyword in the operator's definition,
-and stored in the `hessian` dictionary attribute of the state matrix.
-"""
 
 invert = epg.T(150, 0, order2="alpha")
 relax = epg.E(4.5, 1400, 30, order2="T2")

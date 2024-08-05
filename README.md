@@ -17,11 +17,11 @@ A number of extensions are, or will be, implemented:
 - Arbitrary 3D gradients
 - Anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
-- (soon) Differentiability (e.g., for sequence optimization)
+- Differentiability (e.g., for sequence optimization)
 - (soon) GPU compatible (via `cupy`)
 - (soon) General operator merging for faster simulations
 
-Please look into the `examples` folder for concrete uses of the code.
+Please look into the `docs` and `examples` folders for usage examples.
 
 Disclaimer : this is a research project, and the authors give no guaranty on the validity of the generated results. 
 
@@ -30,7 +30,7 @@ Disclaimer : this is a research project, and the authors give no guaranty on the
 Simulate a multi-spin-echo NMR sequence using EPG operators:
 
 ```python
-from epgpy import operators, functions
+from epgpy import epg
 
 FA = 120 # flip angle (degrees)
 ESP = 10 # echo spacing (ms)
@@ -41,19 +41,19 @@ T1 = 150 # ms
 T2 = [30, 40, 50] # ms
 
 # operators
-exc = operators.T(90, 90) # excitation
-rfc = operators.T(FA, 0) # refocussing
-rlx = operators.E(ESP/2, T1, T2) # relaxation
-shift = operators.S(1, duration=ESP / 2) # spoiler gradients
-adc = operators.ADC # reading flag
+exc = epg.T(90, 90) # excitation
+rfc = epg.T(FA, 0) # refocussing
+rlx = epg.E(ESP/2, T1, T2) # relaxation
+shift = epg.S(1, duration=ESP / 2) # spoiler gradients
+adc = epg.ADC # reading flag
 
 # concatenate operators (in nested lists)
 seq = [exc] + [[shift, rlx, rfc, shift, rlx, adc]] * Nrf
 
 # simulate the signal
-signal = functions.simulate(seq)
+signal = epg.simulate(seq)
 # get adc times
-times = functions.get_adc_times(seq)
+times = epg.get_adc_times(seq)
 
 #
 # plot signal
