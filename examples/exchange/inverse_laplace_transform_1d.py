@@ -56,14 +56,14 @@ signals = [sig + noise for sig in signals]
 bounds = get_bounds(times)
 res, num = get_resolution(times, bounds)
 rates, kernel = get_kernel(times, bounds, num)
-print(f"Bounds: {bounds}, res: {res}")
+# print(f"Bounds: {bounds}, res: {res}")
 
 # ITL
 nsignal = len(signals)
 arm = []
 armls = []
 for i in range(nsignal):
-    print(f"signal {names[i]}")
+    # print(f"signal {names[i]}")
     # ARM
     r, a = ilt1d(times, signals[i], kernel=kernel, ls=False)
     ir, ia = ilt1d_crb(times, signals[i], r, a)
@@ -204,7 +204,7 @@ plt.tight_layout()
 
 #
 # resolution
-print("Get resolution for various tolerance values")
+# print("Get resolution for various tolerance values")
 tols = np.logspace(-5, -1, 20)
 resolutions = [get_resolution(times, bounds, tol=tol)[0] for tol in tols]
 
