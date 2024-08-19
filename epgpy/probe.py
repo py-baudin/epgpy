@@ -153,11 +153,7 @@ class DFT(Probe):
 
     def _acquire(self, sm):
         coords = self.coords if self.coords is not None else sm.system["coords"]
-        return utils.dft(
-            coords,
-            sm.F,
-            sm.k[..., :3],
-        )
+        return utils.dft(coords, sm.F, sm.k[..., :3])
 
 
 class Imaging(Probe):
