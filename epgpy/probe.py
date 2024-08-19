@@ -141,57 +141,54 @@ class Adc(Probe):
         return arr
 
 
+class DFT(Probe):
+    """ Discrete Fourier transform """
+    def __init__(self, coords=None, *, name=None):
+        if coords is not None:
+            xp = common.get_array_module()
+            coords = xp.asarray(coords)
+        self.coords = coords
+        self._repr = "DFT"
+        operator.Operator.__init__(self, name=name, duration=None)
+
+    def _acquire(self, sm):
+        coords = self.coords if self.coords is not None else sm.system['coords']
+        return utils.dft(
+            coords,
+            sm.F,
+            sm.k[..., :3],
+        )
+
 class Imaging(Probe):
     """Imaging ADC
 
     Discrete Fourier transform of the F-states
     """
 
-    def __init__(self, pos, *, name=None, expand=False, reduce=None):
-        self.xp = common.get_array_module()
-        pos = common.asarray(pos)
-        self.pos = pos[..., NAX] if pos.ndim == 1 else pos
-        self.kdim = self.pos.shape[-1]
-        self.expand = expand
-        self.reduce = reduce
+    def __init__(self, coords=None, *, name=None, **opts):
+        if coords is not None:
+            xp = common.get_array_module()
+            coords = xp.asarray(coords)
+        self.coords = coords
         self._repr = "Imaging"
+        self.opts = opts
         operator.Operator.__init__(self, name=name, duration=None)
 
     def _acquire(self, sm):
-        # discrete Fourier transform
-        return dft(
+        coords = self.coords if self.coords is not None else sm.system['coords']
+        modulation = sm.system.get('modulation')
+        weights = sm.system.get('weights')
+        # imaging functions
+        return utils.imaging(
+            coords,
             sm.F,
-            sm.k[..., : self.kdim],
-            self.pos,
-            expand=self.expand,
-            reduce=self.reduce,
+            sm.k[..., :3],
+            acctime=sm.t if sm.kdim == 4 else None,
+            modulation=modulation,
+            weights=weights,
+            **self.opts
         )
 
-
-# functions
-def dft(states, wavenumbers, positions, *, expand=False, reduce=None):
-    """Discrete Fourier transform
-
-    Args:
-        states:         ... x nstate
-        wavenumbers:    ... x nstate x ndim
-        positions:      ... x ndim
-
-    """
-    xp = common.get_array_module(states)
-    F = common.asarray(states)
-    k = common.asarray(wavenumbers)
-    pos = common.asarray(positions)
-    pos = pos if pos.ndim > 1 else pos[..., NAX]
-    if expand:
-        # insert pos dimensions into F and k
-        dims = np.arange(pos.ndim - 1)
-        k = xp.expand_dims(k, tuple(-3 - dims))
-        F = xp.expand_dims(F, tuple(-2 - dims))
-    s = xp.sum(F * xp.exp(1j * xp.einsum("...ni,...i->...n", k, pos)), axis=-1)
-    if reduce is not None:
-        s = np.sum(s, axis=reduce)
-    return s
 
 
 # ADC instance (returns F0)

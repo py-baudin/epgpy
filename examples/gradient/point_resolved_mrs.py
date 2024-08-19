@@ -51,7 +51,7 @@ gs1 = operators.G(TE1 / 2, Gs, duration=True)
 gs2 = operators.G(TE2 / 2, Gs, duration=True)
 gs500 = operators.G(500, Gs, duration=True)
 
-adc = operators.Imaging(grid)
+adc = operators.ADC
 seq = [
     [rf1],
     [gs1, gc, gy, rf2, gy, gc, gs1],
@@ -67,7 +67,7 @@ seq = [
 times = functions.get_adc_times(seq)
 Fs, ks = functions.simulate(seq, kgrid=Kg, probe=("F", "k"), asarray=False)
 keep = [np.all(np.abs(ks[i]) <= kfilt, axis=-1) for i in range(4)]  # filter ks
-sig = [functions.dft(Fs[i][keep[i]], ks[i][keep[i]], grid) for i in range(4)]
+sig = [functions.dft(grid, Fs[i][keep[i]], ks[i][keep[i]]) for i in range(4)]
 
 
 # DOTCOPS
@@ -87,7 +87,7 @@ seq = [
 ]
 Fs, ks = functions.simulate(seq, kgrid=Kg, probe=("F", "k"), asarray=False)
 keep = [np.all(np.abs(ks[i]) <= kfilt, axis=-1) for i in range(4)]
-sig_2 = [functions.dft(Fs[i][keep[i]], ks[i][keep[i]], grid) for i in range(4)]
+sig_2 = [functions.dft(grid, Fs[i][keep[i]], ks[i][keep[i]]) for i in range(4)]
 
 
 # plot

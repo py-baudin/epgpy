@@ -5,7 +5,7 @@ import logging
 import multiprocessing as mp
 import numpy as np
 from . import common, operators, statematrix, utils
-from .probe import dft
+from .utils import dft, imaging
 
 LOGGER = logging.getLogger(__name__)
 

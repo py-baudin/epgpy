@@ -190,3 +190,33 @@ def test_reset_class():
     sm1 = operator.RESET(sm0)
     assert np.allclose(sm0.F, 0.5)  # unchanged
     assert np.allclose(sm1.states, sm1.equilibrium)
+
+
+def test_pd_class():
+    sm0 = statematrix.StateMatrix([1, 1, 0])
+    sm = operator.PD(2, reset=False)(sm0)
+    assert np.allclose(sm.density, 2)
+    assert np.allclose(sm.equilibrium, [0, 0, 2])
+    assert np.allclose(sm.states, [[1, 1, 0]])
+
+    sm0 = statematrix.StateMatrix(shape=(2,))
+    sm = operator.PD([2, 3])(sm0)
+    assert np.allclose(sm.density, [2, 3])
+    assert np.allclose(sm.equilibrium, [[[0, 0, 2]], [[0, 0, 3]]])
+    assert np.allclose(sm.states, [[[0, 0, 2]], [[0, 0, 3]]]) # reset is True
+
+    with pytest.raises(ValueError): 
+        # incompatible shapes
+        sm = operator.PD([2, 3, 4])(sm0) 
+
+    
+def test_system_class():
+    sm0 = statematrix.StateMatrix(shape=(3, 2))
+    system = operator.System(scalar=1.0, array=[1,2,3])
+    sm = system(sm0)
+    assert sm.system['scalar'].shape == sm0.shape
+    assert sm.system['array'].shape == sm0.shape
+    with pytest.raises(ValueError):
+        # wrong shape
+        operator.System(arr=[1,2])(sm)
+    

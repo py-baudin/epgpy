@@ -3,9 +3,80 @@ import sys
 import numpy as np
 from . import common
 
+NAX = np.newaxis
+
 # constants
 gamma_1H = 42.576 * 1e3  # kHz/T
 gamma_23Na = 11.262 * 1e3  # kHz/T
+
+def imaging(positions, states, wavenumbers, acctime=None, *, weights=None, modulation=None, voxel_shape='box', voxel_size=1, expand=True, reduce=True):
+    """Discrete Fourier transform
+
+    Args:
+        states:         ... x nstate
+        wavenumbers:    ... x nstate x ndim
+        positions:      ... x ndim
+
+    """
+
+    xp = common.get_array_module(states)
+    F = xp.asarray(states)
+    k = xp.asarray(wavenumbers)
+    t = xp.asarray(acctime) if acctime is not None else None
+    pos = xp.asarray(positions)
+    pos = pos if pos.ndim > 1 else pos[..., NAX]
+    if expand:
+        # insert pos dimensions into F and k
+        dims = np.arange(pos.ndim - 1)
+        F = xp.expand_dims(F, tuple(-2 - dims))
+        k = xp.expand_dims(k, tuple(-3 - dims))
+        if t is not None:
+            t = xp.expand_dims(t, tuple(-2 - dims))
+
+    # voxel shape
+    if voxel_shape == 'point':
+        voxel = 1.0
+    elif voxel_shape == 'box':
+        voxel = xp.sinc(k * voxel_size / 2 / np.pi).prod(-1)
+        kmask = ~np.all(np.isclose(voxel, 0), axis=tuple(range(F.ndim - 1)))
+        F, k, voxel = F[..., kmask], k[..., kmask, :], voxel[..., kmask]
+        if t is not None:
+            t = t[..., kmask]
+    else:
+        raise ValueError(f'Unknown voxel shape: {voxel_shape}')
+    
+    # modulation
+    if t is not None and modulation is not None:
+        modulation = xp.asarray(modulation)[..., NAX]
+        amp, freq = modulation.real, modulation.imag
+        mod = xp.exp(amp * xp.abs(t) + 2j * np.pi * t * freq)
+        mmask = ~np.all(np.isclose(mod, 0), axis=tuple(range(F.ndim - 1)))
+        F, k, mod = F[..., mmask], k[..., mmask, ], mod[..., mmask]
+    else:
+        mod = 1.0
+    
+    # DFT
+    kdim = min(k.shape[-1], pos.shape[-1])
+    s = voxel * mod * F * xp.exp(1j * xp.einsum("...ni,...i->...n", k[..., :kdim], pos[..., :kdim]))
+
+    # add up states
+    s = s.sum(axis=-1)
+
+    # weights
+    if weights is not None:
+        s *= xp.asarray(weights)
+
+    # add up axes
+    if reduce is True:
+        return xp.sum(s)
+    elif reduce is not False:
+        return xp.sum(s, axis=reduce)
+    return s
+
+
+def dft(coords, states, wavenumbers, *, reduce=False):
+    """ simplified imaging function (discrete fourier transform)"""
+    return imaging(coords, states, wavenumbers, reduce=reduce, voxel_shape='point')
 
 
 def check_states(states):

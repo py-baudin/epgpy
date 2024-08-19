@@ -49,8 +49,7 @@ wfreqs = offres * 2 * np.pi * 1e3  # rad/s
 
 #
 # simulation
-# adc = operators.ADC
-adc = operators.Imaging(pos)
+adc = operators.DFT(pos)
 # rf1 pulse
 rf1 = operators.T(FA, 0)
 rf2 = operators.T(FA, 180)

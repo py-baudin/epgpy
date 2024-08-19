@@ -104,6 +104,14 @@ def test_arraycollection_class():
     # arr5 was cropped
     assert np.all(coll.get("arr5")[0, 0] == array(7)[1:-1])
 
+    # link another collectipn
+    coll2 = statematrix.ArrayCollection()
+    coll.link(coll2)
+    shape = tuple(coll.shape)
+    assert coll2.shape == shape
+    coll.pop('arr1') # update coll1.shape
+    assert coll2.shape == coll.shape != shape
+
 
 def test_state_matrix_class():
     sm = statematrix.StateMatrix(init=[0, 0, 1])

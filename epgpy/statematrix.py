@@ -75,6 +75,10 @@ class StateMatrix:
         # additional metadata (eg. kgrid, max_nstate)
         self.options = options
 
+        # add linked "system" collection
+        self.system = ArrayCollection(expand_axis=-1)
+        self.arrays.link(self.system) 
+
     # public attributes
 
     @property
@@ -264,6 +268,7 @@ class StateMatrix:
         sm.kvalue = kwargs.pop("kvalue", self.kvalue)
         sm.tvalue = kwargs.pop("tvalue", self.tvalue)
         sm.options = {**self.options, **kwargs}
+        sm.system = self.system
         return sm
 
     def resize(self, nstate):
@@ -445,7 +450,7 @@ class ArrayCollection:
         self._shapes = {}
         self._axes = {}
         self._default = (1,) if default is None else tuple(default)
-        # self.xp = common.get_array_module()
+        self._linked = set()
         self._update_shape()
 
     def __len__(self):
@@ -459,6 +464,12 @@ class ArrayCollection:
 
     def __contains__(self, name):
         return name in self._arrays
+    
+    def __getitem__(self, key):
+        retval = self.get(key, default=...)
+        if retval is Ellipsis:
+            raise KeyError(key)
+        return retval
     
     @property
     def xp(self):
@@ -519,6 +530,7 @@ class ArrayCollection:
 
         self.check_layout(layout)
         if resize:
+            # resize named axes to match current shape
             axes = self.get_named_axes(ignore=name)
             for idx, ax in self._get_named_axes(array.ndim, layout):
                 size = array.shape[idx]
@@ -553,6 +565,7 @@ class ArrayCollection:
         coll._shapes = dict(self._shapes)
         coll._axes = dict(self._axes)
         coll._default = self._default
+        coll._linked = self._linked
         return coll
 
     def get_named_axes(self, *, ignore=None):
@@ -668,6 +681,12 @@ class ArrayCollection:
         self._default = tuple(shape)
         self._update_shape()
 
+    def link(self, other):
+        if not isinstance(other, ArrayCollection):
+            raise ValueError(f'Not a collection: {other}')
+        self._linked.add(other)
+        self._update_shape()
+
     # private
 
     @staticmethod
@@ -720,6 +739,9 @@ class ArrayCollection:
             )
             for name in arrays
         }
+        for other in self._linked:
+            other._default = self._shape
+            other._update_shape()
 
     def _broadcast_array(self, array, layout):
         """expand and broadcast array to shared shape"""

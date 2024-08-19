@@ -89,7 +89,7 @@ class S(diff.DiffOperator):
 
             # first add new state (if max_nstate not reached)
             nmax = sm.options.get("max_nstate") or self.nmax or np.inf
-            sm.resize(min(sm.nstate + 1, nmax))
+            sm.resize(min(sm.nstate + abs(shift), nmax))
 
             # shift states (inplace)
             sm.states = shift1d(sm.states, shift, inplace=True)
@@ -131,7 +131,8 @@ class S(diff.DiffOperator):
 
             # apply (not inplace)
             coords = sm.coords * sm.ktvalue
-            opts = {"prune": bool(self.prune), "tol": self.prune, "grid": kgrid}
+            prune = sm.options.get('prune') or self.prune
+            opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
             states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
             sm.resize(nstate)
@@ -427,14 +428,13 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
 
     if prune:
         # prune empty phase-states
-        nonzero[(k2.shape[-2] - 1) // 2] = True  # keep 0
+        nonzero[(k2.shape[-2] - 1) // 2] = True  # keep F0
         sm2 = sm2[..., nonzero, :]
         k2 = k2[..., nonzero, :]
 
     if k2.shape[-2] % 2 == 0:
         # should not happen
         raise ValueError(f"Asymmetrical state matrix")
-
     return sm2, k2
 
 
@@ -461,7 +461,7 @@ def unique_1d(values, axis=0):
     hash = np.dot(values - values.min(), [vrange**i for i in range(values.shape[1])])
     inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
 
-    # build `unique` array from inverse
+    # build `unique`array from inverse
     inverse = xp.array(inverse)
     unique = np.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
     unique[inverse] = values

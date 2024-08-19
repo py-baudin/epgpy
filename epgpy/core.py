@@ -80,4 +80,4 @@
 from .utils import *
 from .statematrix import StateMatrix
 from .operators import *
-from .functions import simulate, modify, get_adc_times, getshape, getnshift
+from .functions import simulate, modify, get_adc_times, getshape, getnshift, imaging

@@ -300,7 +300,7 @@ def broadcast_shapes(*shapes, append=False):
 
 
 def expand_arrays(*objs, append=False):
-    """append new axes to arrays such that they all have the same number of dimensions
+    """prepend (or append) new axes to arrays such that they all have the same number of dimensions
 
     args:
         *objs: arrays to expand (scalars/objects are passed through)

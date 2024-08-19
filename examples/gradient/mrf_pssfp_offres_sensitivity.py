@@ -73,7 +73,7 @@ rf = [operators.T(FA[i], 180 * (i % 2)) for i in range(Nrf)]
 
 seq = [[rf[i], g1[i], rx1[i], adc, g2[i], rx2[i]] for i in range(Nrf)]
 
-# reference seq (Bloch sim, much faster)
+# reference (Bloch sim)
 # add offset frequency
 rxg1 = [null if i == 0 else operators.E(TE[i], T1, T2, g=offres) for i in range(Nrf)]
 rxg2 = [operators.E(TR[i] - TE[i], T1, T2, g=offres) for i in range(Nrf)]
@@ -97,7 +97,7 @@ for iter in range(100):
     Fs, ks = functions.simulate(seq, kgrid=Kg, probe=("F", "k"), asarray=False)
     duration = time.time() - tic
     # discrete Fourier transform
-    sig = functions.dft(Fs[-1], ks[-1], pos)
+    sig = functions.dft(pos[..., NAX], Fs[-1], ks[-1])
     if sims:
         prevK = min(sims)
         diff = np.linalg.norm(sig - sims[prevK]) / np.linalg.norm(sig)
