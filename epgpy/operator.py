@@ -274,8 +274,6 @@ class Offset(EmptyOperator):
         self.duration = duration
 
 
-        
-
 #
 # Spoiler
 
@@ -301,7 +299,7 @@ class Reset(Operator):
 
     def _apply(self, sm):
         # return sm.copy(sm.equilibrium)
-        sm.arrays.update('states', sm.equilibrium)
+        sm.arrays.update("states", sm.equilibrium)
         return sm
 
 
@@ -312,32 +310,37 @@ RESET = Reset(name="Reset")
 #
 # Proton density operator
 
+
 class PD(Operator):
-    """ set or update proton density """
+    """set or update proton density"""
+
     def __init__(self, pd, *, reset=True, name=None, **kwargs):
-        self.pd = common.map_arrays(pd=pd)['pd']
+        self.pd = common.map_arrays(pd=pd)["pd"]
         self.reset = reset
         if name is None:
-            name = common.repr_operator('PD', ['pd'], [self.pd], [".1f"])
+            name = common.repr_operator("PD", ["pd"], [self.pd], [".1f"])
         super().__init__(name=name, **kwargs)
 
     @property
     def shape(self):
-        return getattr(self.pd, 'shape', (1,))
-    
+        return getattr(self.pd, "shape", (1,))
+
     def _apply(self, sm):
         xp = common.get_array_module()
         eq = xp.array([0, 0, 1]) * xp.atleast_1d(self.pd)[..., np.newaxis, np.newaxis]
-        sm.arrays.update('equilibrium', eq, resize=True)
+        sm.arrays.update("equilibrium", eq, resize=True)
         if self.reset:
-            sm.arrays.update('states', sm.equilibrium)
+            sm.arrays.update("states", sm.equilibrium)
         return sm
+
 
 #
 # system properties
 
+
 class System(Operator):
-    """ Set system arrays """
+    """Set system arrays"""
+
     def __init__(self, name=None, **properties):
         super().__init__(name=name)
         self.properties = properties

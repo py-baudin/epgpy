@@ -134,7 +134,7 @@ class DiffOperator(operator.Operator, abc.ABC):
         sm.order1 = order1
         sm.order2 = order2
         return sm
-    
+
     def copy(self, **kwargs):
         new = super().copy(**kwargs)
         new.PARAMETERS_ORDER1 = self.PARAMETERS_ORDER1

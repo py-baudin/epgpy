@@ -89,7 +89,7 @@ class ScalarOp(diff.DiffOperator, operator.CombinableOperator):
 
     def combinable(self, other):
         return isinstance(other, type(self))
-    
+
     def copy(self, **kwargs):
         new = super().copy(**kwargs)
         new.arr = self.arr.copy()

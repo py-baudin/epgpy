@@ -9,7 +9,20 @@ NAX = np.newaxis
 gamma_1H = 42.576 * 1e3  # kHz/T
 gamma_23Na = 11.262 * 1e3  # kHz/T
 
-def imaging(positions, states, wavenumbers, acctime=None, *, weights=None, modulation=None, voxel_shape='box', voxel_size=1, expand=True, reduce=True):
+
+def imaging(
+    positions,
+    states,
+    wavenumbers,
+    acctime=None,
+    *,
+    weights=None,
+    modulation=None,
+    voxel_shape="box",
+    voxel_size=1,
+    expand=True,
+    reduce=True,
+):
     """Discrete Fourier transform
 
     Args:
@@ -34,30 +47,42 @@ def imaging(positions, states, wavenumbers, acctime=None, *, weights=None, modul
             t = xp.expand_dims(t, tuple(-2 - dims))
 
     # voxel shape
-    if voxel_shape == 'point':
+    if voxel_shape == "point":
         voxel = 1.0
-    elif voxel_shape == 'box':
+    elif voxel_shape == "box":
         voxel = xp.sinc(k * voxel_size / 2 / np.pi).prod(-1)
         kmask = ~np.all(np.isclose(voxel, 0), axis=tuple(range(F.ndim - 1)))
         F, k, voxel = F[..., kmask], k[..., kmask, :], voxel[..., kmask]
         if t is not None:
             t = t[..., kmask]
     else:
-        raise ValueError(f'Unknown voxel shape: {voxel_shape}')
-    
+        raise ValueError(f"Unknown voxel shape: {voxel_shape}")
+
     # modulation
     if t is not None and modulation is not None:
         modulation = xp.asarray(modulation)[..., NAX]
         amp, freq = modulation.real, modulation.imag
         mod = xp.exp(amp * xp.abs(t) + 2j * np.pi * t * freq)
         mmask = ~np.all(np.isclose(mod, 0), axis=tuple(range(F.ndim - 1)))
-        F, k, mod = F[..., mmask], k[..., mmask, ], mod[..., mmask]
+        F, k, mod = (
+            F[..., mmask],
+            k[
+                ...,
+                mmask,
+            ],
+            mod[..., mmask],
+        )
     else:
         mod = 1.0
-    
+
     # DFT
     kdim = min(k.shape[-1], pos.shape[-1])
-    s = voxel * mod * F * xp.exp(1j * xp.einsum("...ni,...i->...n", k[..., :kdim], pos[..., :kdim]))
+    s = (
+        voxel
+        * mod
+        * F
+        * xp.exp(1j * xp.einsum("...ni,...i->...n", k[..., :kdim], pos[..., :kdim]))
+    )
 
     # add up states
     s = s.sum(axis=-1)
@@ -75,8 +100,8 @@ def imaging(positions, states, wavenumbers, acctime=None, *, weights=None, modul
 
 
 def dft(coords, states, wavenumbers, *, reduce=False):
-    """ simplified imaging function (discrete fourier transform)"""
-    return imaging(coords, states, wavenumbers, reduce=reduce, voxel_shape='point')
+    """simplified imaging function (discrete fourier transform)"""
+    return imaging(coords, states, wavenumbers, reduce=reduce, voxel_shape="point")
 
 
 def check_states(states):

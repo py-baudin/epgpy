@@ -68,7 +68,7 @@ class S(diff.DiffOperator):
         if common.isscalar(self.k):
             return 1
         return self.k.shape[-1]
-    
+
     def copy(self, **kwargs):
         new = super().copy(**kwargs)
         new.k = self.k
@@ -131,7 +131,7 @@ class S(diff.DiffOperator):
 
             # apply (not inplace)
             coords = sm.coords * sm.ktvalue
-            prune = sm.options.get('prune') or self.prune
+            prune = sm.options.get("prune") or self.prune
             opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
             states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2

@@ -46,7 +46,7 @@ class Probe(operator.EmptyOperator):
         self._kwargs = kwargs
 
         # probe function
-        
+
         self._post = post
         self._repr = f"'{obj}'"
 
@@ -58,7 +58,7 @@ class Probe(operator.EmptyOperator):
         locals = utils.DeferredGetter(sm, self.SM_LOCALS)
         locals.update(self._kwargs)
         return eval(self._expr, vars(np), locals)
-    
+
     def _acquire_callable(self, sm):
         return self._callable(sm, *self._args)
 
@@ -79,7 +79,6 @@ class Probe(operator.EmptyOperator):
 
     def __repr__(self):
         return f"Probe({self._repr})"
-
 
 
 class Adc(Probe):
@@ -142,7 +141,8 @@ class Adc(Probe):
 
 
 class DFT(Probe):
-    """ Discrete Fourier transform """
+    """Discrete Fourier transform"""
+
     def __init__(self, coords=None, *, name=None):
         if coords is not None:
             xp = common.get_array_module()
@@ -152,12 +152,13 @@ class DFT(Probe):
         operator.Operator.__init__(self, name=name, duration=None)
 
     def _acquire(self, sm):
-        coords = self.coords if self.coords is not None else sm.system['coords']
+        coords = self.coords if self.coords is not None else sm.system["coords"]
         return utils.dft(
             coords,
             sm.F,
             sm.k[..., :3],
         )
+
 
 class Imaging(Probe):
     """Imaging ADC
@@ -175,9 +176,9 @@ class Imaging(Probe):
         operator.Operator.__init__(self, name=name, duration=None)
 
     def _acquire(self, sm):
-        coords = self.coords if self.coords is not None else sm.system['coords']
-        modulation = sm.system.get('modulation')
-        weights = sm.system.get('weights')
+        coords = self.coords if self.coords is not None else sm.system["coords"]
+        modulation = sm.system.get("modulation")
+        weights = sm.system.get("weights")
         # imaging functions
         return utils.imaging(
             coords,
@@ -186,9 +187,8 @@ class Imaging(Probe):
             acctime=sm.t if sm.kdim == 4 else None,
             modulation=modulation,
             weights=weights,
-            **self.opts
+            **self.opts,
         )
-
 
 
 # ADC instance (returns F0)

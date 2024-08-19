@@ -109,7 +109,7 @@ def test_arraycollection_class():
     coll.link(coll2)
     shape = tuple(coll.shape)
     assert coll2.shape == shape
-    coll.pop('arr1') # update coll1.shape
+    coll.pop("arr1")  # update coll1.shape
     assert coll2.shape == coll.shape != shape
 
 

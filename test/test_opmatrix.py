@@ -158,9 +158,10 @@ def test_MatrixOp_diff():
     fdiff2_xy = (sm2_x.order1["y"].states - sm2.order1["y"].states).imag * 1e5
     assert np.allclose(fdiff2_xy, sm2.order2[("x", "y")].states)
 
-
     # copy
-    op2 = op1.copy(name='op2')
+    op2 = op1.copy(name="op2")
     assert np.allclose(op2.mat, op1.mat)
     assert np.allclose(op2.mat0, op1.mat0)
-    assert [np.allclose(op2.dmats[param][0], op1.dmats[param][0]) for param in op1.dmats]
+    assert [
+        np.allclose(op2.dmats[param][0], op1.dmats[param][0]) for param in op1.dmats
+    ]

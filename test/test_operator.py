@@ -102,10 +102,10 @@ def test_operator_class():
         MyOp(shape=[2, 3, 2])(sm, inplace=False)
 
     # copy
-    op1 = MyOp(name='foobar', duration=1)
+    op1 = MyOp(name="foobar", duration=1)
     op2 = op1.copy()
     assert isinstance(op, MyOp)
-    assert op1.name == 'foobar'
+    assert op1.name == "foobar"
     assert op2.duration == 1
 
 
@@ -203,20 +203,19 @@ def test_pd_class():
     sm = operator.PD([2, 3])(sm0)
     assert np.allclose(sm.density, [2, 3])
     assert np.allclose(sm.equilibrium, [[[0, 0, 2]], [[0, 0, 3]]])
-    assert np.allclose(sm.states, [[[0, 0, 2]], [[0, 0, 3]]]) # reset is True
+    assert np.allclose(sm.states, [[[0, 0, 2]], [[0, 0, 3]]])  # reset is True
 
-    with pytest.raises(ValueError): 
+    with pytest.raises(ValueError):
         # incompatible shapes
-        sm = operator.PD([2, 3, 4])(sm0) 
+        sm = operator.PD([2, 3, 4])(sm0)
 
-    
+
 def test_system_class():
     sm0 = statematrix.StateMatrix(shape=(3, 2))
-    system = operator.System(scalar=1.0, array=[1,2,3])
+    system = operator.System(scalar=1.0, array=[1, 2, 3])
     sm = system(sm0)
-    assert sm.system['scalar'].shape == sm0.shape
-    assert sm.system['array'].shape == sm0.shape
+    assert sm.system["scalar"].shape == sm0.shape
+    assert sm.system["array"].shape == sm0.shape
     with pytest.raises(ValueError):
         # wrong shape
-        operator.System(arr=[1,2])(sm)
-    
+        operator.System(arr=[1, 2])(sm)

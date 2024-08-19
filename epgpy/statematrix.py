@@ -77,7 +77,7 @@ class StateMatrix:
 
         # add linked "system" collection
         self.system = ArrayCollection(expand_axis=-1)
-        self.arrays.link(self.system) 
+        self.arrays.link(self.system)
 
     # public attributes
 
@@ -464,13 +464,13 @@ class ArrayCollection:
 
     def __contains__(self, name):
         return name in self._arrays
-    
+
     def __getitem__(self, key):
         retval = self.get(key, default=...)
         if retval is Ellipsis:
             raise KeyError(key)
         return retval
-    
+
     @property
     def xp(self):
         return common.get_array_module()
@@ -683,7 +683,7 @@ class ArrayCollection:
 
     def link(self, other):
         if not isinstance(other, ArrayCollection):
-            raise ValueError(f'Not a collection: {other}')
+            raise ValueError(f"Not a collection: {other}")
         self._linked.add(other)
         self._update_shape()
 

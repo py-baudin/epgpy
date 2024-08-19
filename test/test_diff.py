@@ -136,9 +136,9 @@ def test_order12():
     assert np.allclose(sm.order2["y", "y"], 6 * sm0.states)
 
     # test copy
-    op2 = op.copy(name='op2')
+    op2 = op.copy(name="op2")
     assert isinstance(op2, type(op))
-    assert op2.name == 'op2'
+    assert op2.name == "op2"
     assert op2.order1 == op.order1
     assert op2.PARAMETERS_ORDER1 == op.PARAMETERS_ORDER1
     assert op2.order2 == op.order2
