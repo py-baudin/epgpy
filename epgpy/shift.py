@@ -443,11 +443,11 @@ def add_at(dest, indices, source):
 
 def unique_1d(values, axis=0):
     """faster unique, using python dictionary"""
+    xp = common.get_array_module()
 
     if not np.issubdtype(values.dtype, np.integer):
         raise ValueError("This function only works with integer arrays")
 
-    xp = common.get_array_module()
     values = xp.moveaxis(values, axis, 0)
     shape = values.shape[1:]
     values = values.reshape(len(values), -1)
@@ -459,7 +459,6 @@ def unique_1d(values, axis=0):
     # inverse = [unique_set.setdefault(tuple(row), len(unique_set)) for row in values.tolist()]
 
     # "hash" rows (faster)
-    unique_set = {}
     vrange = xp.ptp(values) + 1
     hash = xp.dot(values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])]))
     # inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]

@@ -101,7 +101,8 @@ class StateMatrix:
 
     @property
     def coords(self):
-        return self.arrays.get("coords", None)
+        # return self.arrays.get("coords", None)
+        return self.arrays.get("coords", None, broadcast=False)
 
     @coords.setter
     def coords(self, value):
