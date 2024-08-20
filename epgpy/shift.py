@@ -368,17 +368,17 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     """
     xp = common.get_array_module()
 
-    sm = common.asarray(states)
-    wavenums = common.asarray(wavenums)
-    shift = common.expand_dims(common.asarray(shift), -2)
-    grid = grid * np.ones(wavenums.shape[-1])
+    sm = xp.asarray(states)
+    wavenums = xp.asarray(wavenums)
+    shift = common.expand_dims(xp.asarray(shift), -2)
+    grid = grid * xp.ones(wavenums.shape[-1])
 
     # initial number of states
     n1 = sm.shape[-2]
 
     # add shift
     # (prevent rounding issues due to numerical errors)
-    kL = np.around(wavenums + 0 * shift, decimals=8)
+    kL = xp.around(wavenums + 0 * shift, decimals=8)
     k1T = kL + shift
     k2T = kL - shift
 
@@ -395,27 +395,21 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     sm2 = xp.zeros(sm.shape[:-2] + (q2.shape[-2], 3), dtype=sm.dtype)
 
     # update L and T states:
-    xp.add.at(sm2, (..., idxL, 2), sm[..., 2])
-    xp.add.at(sm2, (..., idx1T, 0), sm[..., 0])
+    add_at(sm2, (..., idxL, 2), sm[..., 2])
+    add_at(sm2, (..., idx1T, 0), sm[..., 0])
     sm2[..., 1] = sm2[..., ::-1, 0].conj()
-
-    # xp.add.at(sm2, (..., idxL, 2), 0.5 * sm[..., 2])
-    # xp.add.at(sm2, (..., idx1T, 0), 0.5 * sm[..., 0])
-    # xp.add.at(sm2, (..., idx2T, 1), 0.5 * sm[..., 1])
-    # reduce numerical errors by averaging
-    # sm2 += sm2[..., ::-1, (1, 0, 2)].conj()
 
     # compute k2 as weigthed sum of merged wavenumbers
     w = xp.sum(xp.abs(sm), axis=tuple(i for i in range(sm.ndim - 2)), keepdims=True)
     wnorm = xp.zeros(q2.shape[:-1])
-    xp.add.at(wnorm, (..., idxL), w[..., 2])
-    xp.add.at(wnorm, (..., idx1T), w[..., 0])
-    xp.add.at(wnorm, (..., idx2T), w[..., 1])
+    add_at(wnorm, (..., idxL), w[..., 2])
+    add_at(wnorm, (..., idx1T), w[..., 0])
+    add_at(wnorm, (..., idx2T), w[..., 1])
 
     k2 = xp.zeros(q2.shape, dtype=float)
-    xp.add.at(k2, (..., idxL, _S), kL * w[..., 2:3])
-    xp.add.at(k2, (..., idx1T, _S), k1T * w[..., 0:1])
-    xp.add.at(k2, (..., idx2T, _S), k2T * w[..., 1:2])
+    add_at(k2, (..., idxL, _S), kL * w[..., 2:3])
+    add_at(k2, (..., idx1T, _S), k1T * w[..., 0:1])
+    add_at(k2, (..., idx2T, _S), k2T * w[..., 1:2])
 
     # find non-zero phase states
     nonzero = ~xp.all(
@@ -424,7 +418,7 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
 
     # normalize
     wnorm[..., ~nonzero] = 1.0
-    k2 /= wnorm[..., np.newaxis]
+    k2 /= wnorm[..., xp.newaxis]
 
     if prune:
         # prune empty phase-states
@@ -436,6 +430,15 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
         # should not happen
         raise ValueError(f"Asymmetrical state matrix")
     return sm2, k2
+
+
+def add_at(dest, indices, source):
+    xp = common._xp
+    if xp.__name__ == 'cupy':
+        xp.add.at(dest.real, indices, source.real)
+        xp.add.at(dest.imag, indices, source.imag)
+    else:
+        xp.add.at(dest, indices, source)
 
 
 def unique_1d(values, axis=0):
@@ -457,13 +460,14 @@ def unique_1d(values, axis=0):
 
     # "hash" rows (faster)
     unique_set = {}
-    vrange = np.ptp(values) + 1
-    hash = np.dot(values - values.min(), [vrange**i for i in range(values.shape[1])])
-    inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
+    vrange = xp.ptp(values) + 1
+    hash = xp.dot(values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])]))
+    # inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
+    inverse = [unique_set.setdefault(row.tobytes(), len(unique_set)) for row in hash]
 
     # build `unique`array from inverse
     inverse = xp.array(inverse)
-    unique = np.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
+    unique = xp.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
     unique[inverse] = values
 
     # sort and return

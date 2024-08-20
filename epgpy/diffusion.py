@@ -59,16 +59,16 @@ class D(operator.Operator):
 
     def _apply(self, sm):
         # compute b-matrix for L and T states
+        xp = common.get_array_module()
         if self.k is None:
             bmatL = compute_bmatrix(self.tau, sm.k)
             bmatT = bmatL
         else:
-            shift = self.k * sm.kvalue
+            shift = xp.asarray(self.k * sm.kvalue)
             bmatL = compute_bmatrix(self.tau, sm.k)
             bmatT = compute_bmatrix(self.tau, sm.k - shift, sm.k)
 
         # get diffusion operator
-        # mat = diffusion_operator(bmatL, bmatT, self.D)
         DL, DT = diffusion_operator(bmatL, bmatT, self.D)
 
         # apply
@@ -134,11 +134,12 @@ def diffusion_operator(bL, bT, D):
     if common.isscalar(D):
         # isotropic diffusion exp(-Tr(b)D)
         bL, bT = common.expand_arrays(bL, bT, append=False)
-        idiag = np.arange(bT.shape[-1])
+        idiag = xp.arange(bT.shape[-1])
         DL = xp.exp(-xp.sum(bL[..., idiag, idiag], axis=-1) * D)
         DT = xp.exp(-xp.sum(bT[..., idiag, idiag], axis=-1) * D)
     else:
         # anisotrophic diffusion exp(-Tr(bD))
+        D = xp.asarray(D)
         bL, bT, D = common.expand_arrays(bL, bT, D, append=False)
         DL = xp.exp(-xp.sum(bL * D, axis=(-2, -1)))
         DT = xp.exp(-xp.sum(bT * D, axis=(-2, -1)))

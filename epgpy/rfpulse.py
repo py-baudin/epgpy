@@ -208,6 +208,7 @@ def estimate_alpha(values, rf):
     rotation_matrix = opmatrix.matrix_combine_multi(
         transition.rotation_operator(alphas, phis)
     )
+    rotation_matrix = common.asarray(rotation_matrix)
     equilibrium = statematrix.StateMatrix([0, 0, 1])
 
     # apply rotation

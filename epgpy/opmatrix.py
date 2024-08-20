@@ -140,10 +140,11 @@ class MatrixOp(diff.DiffOperator, operator.CombinableOperator):
 
 def matrix_setup(mat, mat0, axes=None, check=True):
     """setup matrix operator"""
+    xp = common.get_array_module()
     mat = matrix_format(mat, check=check)
     if mat0 is not None:
         mat0 = matrix_format(mat0, check=check)
-        mat, mat0 = np.broadcast_arrays(mat, mat0)
+        mat, mat0 = xp.broadcast_arrays(mat, mat0)
 
     # axes
     if axes is not None:
@@ -155,17 +156,17 @@ def matrix_setup(mat, mat0, axes=None, check=True):
 
 def matrix_format(mat, check=True):
     """setup matrix operator"""
-    mat = np.asarray(mat)
+    xp = common.get_array_module()
+    mat = xp.asarray(mat)
     if mat.ndim == 2:
         mat = mat[NAX]
     if mat.ndim < 3 or mat.shape[-2:] != (3, 3):
         raise ValueError(f"Expected ...x3x3 array shape, found: {mat.shape}")
     elif not check:
         return mat
-    elif not np.allclose(mat, mat[..., (1, 0, 2), :][..., (1, 0, 2)].conj()):
+    elif not xp.allclose(mat, mat[..., (1, 0, 2), :][..., (1, 0, 2)].conj()):
         raise ValueError(f"Invalid matrix coefficients: {mat}")
 
-    xp = common.get_array_module()
     return xp.asarray(mat)
 
 

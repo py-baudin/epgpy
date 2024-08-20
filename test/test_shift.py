@@ -1,11 +1,11 @@
 import pytest
 import numpy as np
-from epgpy import shift, statematrix
-from epgpy import operators, transition
+from epgpy import shift, statematrix, operators, transition, common
 
 
 def test_shift():
-    sm0 = np.asarray([[1, 1, 0]])
+    np = common.get_array_module()
+    sm0 = 1.0 * np.asarray([[1, 1, 0]])
 
     sm1 = shift.shift1d(sm0, 1, inplace=False)
     assert np.allclose(sm1, [[0, 1, 0], [0, 0, 0], [1, 0, 0]])
@@ -32,8 +32,10 @@ def test_shift():
 
 
 def test_shiftnd():
+    np = common.get_array_module()
+
     # initial conditions
-    sm0 = np.asarray([[1, 1, 0]])
+    sm0 = 1.0 * np.asarray([[1, 1, 0]])
     k0 = np.array([[0, 0, 0]])
 
     # 1d case
@@ -56,7 +58,7 @@ def test_shiftnd():
     assert np.allclose(k2, 0)
 
     # multi-dim shift
-    sm0 = np.asarray([[[1, 1, 0]], [[1j, -1j, 0]]])
+    sm0 = 1.0 * np.asarray([[[1, 1, 0]], [[1j, -1j, 0]]])
     k0 = np.array([[[0, 0]], [[0, 0]]])
 
     sm1, k1 = shift.shiftnd(sm0, k0, [[1, -1], [2, 0]])
@@ -72,7 +74,7 @@ def test_shiftnd():
 
 def test_shiftmerge():
     # initial conditions
-    sm0 = np.asarray([[1, 1, 0]])
+    sm0 = 1.0 * np.asarray([[1, 1, 0]])
     k0 = np.array([[0, 0, 0]])
 
     # ref
@@ -97,13 +99,13 @@ def test_shiftmerge():
     assert np.allclose(k2, 0)  # only zero-th state
 
     # merging phase states
-    sm0 = np.asarray([[0, 0, 1], [1, 1, 0], [0, 0, 1]])
+    sm0 = 1.0 * np.asarray([[0, 0, 1], [1, 1, 0], [0, 0, 1]])
     k0 = np.asarray([[-0.9, 0, 0], [0, 0, 0], [0.9, 0, 0]])
     sm1, k1 = shift.shiftmerge(sm0, k0, [1.1, 0, 0])
     assert np.allclose(sm1, [[0, 1, 1], [0, 0, 0], [1, 0, 1]])
     assert np.allclose(k1, [[-1, 0, 0], [0, 0, 0], [1, 0, 0]])
 
-    sm0 = np.asarray([[0.5, 0, 0], [1, 1, 0], [0, 0.5, 0]])
+    sm0 = 1.0 * np.asarray([[0.5, 0, 0], [1, 1, 0], [0, 0.5, 0]])
     k0 = np.asarray([[-2.1, 0, 0], [0, 0, 0], [2.1, 0, 0]])
     sm1, k1 = shift.shiftmerge(sm0, k0, [0.9, 0, 0])
     assert np.allclose(sm1, [[0.5, 1, 0], [0, 0, 0], [1, 0.5, 0]])
@@ -116,12 +118,15 @@ def test_shiftmerge():
 
     # hyper echo
     necho = 100
+    xp = common.get_array_module()
+
     rot1 = transition.rotation_operator(30, 45)[0]
     rot2 = transition.rotation_operator(-30, -45)[0]
     ref = transition.rotation_operator(180, 0)[0]
-    sh = np.array([1.9, -1.8, 0])
-    sm = np.array([[1, 1, 0]])
-    k = np.array([[0, 0, 0]])
+    rot1, rot2, ref = map(xp.asarray, [rot1, rot2, ref])
+    sh = xp.array([1.9, -1.8, 0])
+    sm = xp.array([[1, 1, 0]])
+    k = xp.array([[0, 0, 0]])
     for _ in range(necho):
         sm = sm @ rot1.T
         sm, k = shift.shiftmerge(sm, k, sh)

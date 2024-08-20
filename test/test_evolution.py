@@ -245,35 +245,35 @@ def test_E_diff():
 
     # order2
     assert np.allclose(
-        (sm1_tau.order1["tau"].states - sm1.order1["tau"]) * 1e8,
+        (sm1_tau.order1["tau"].states - sm1.order1["tau"].states) * 1e8,
         sm1.order2[("tau", "tau")].states,
     )
     assert np.allclose(
-        (sm1_T1.order1["T1"].states - sm1.order1["T1"]) * 1e8,
+        (sm1_T1.order1["T1"].states - sm1.order1["T1"].states) * 1e8,
         sm1.order2[("T1", "T1")].states,
     )
     assert np.allclose(
-        (sm1_T2.order1["T2"].states - sm1.order1["T2"]) * 1e8,
+        (sm1_T2.order1["T2"].states - sm1.order1["T2"].states) * 1e8,
         sm1.order2[("T2", "T2")].states,
     )
     assert np.allclose(
-        (sm1_g.order1["g"].states - sm1.order1["g"]) * 1e8,
+        (sm1_g.order1["g"].states - sm1.order1["g"].states) * 1e8,
         sm1.order2[("g", "g")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1["T1"].states - sm1.order1["T1"]) * 1e8,
+        (sm1_tau.order1["T1"].states - sm1.order1["T1"].states) * 1e8,
         sm1.order2[("T1", "tau")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1["T2"].states - sm1.order1["T2"]) * 1e8,
+        (sm1_tau.order1["T2"].states - sm1.order1["T2"].states) * 1e8,
         sm1.order2[("T2", "tau")].states,
     )
     assert np.allclose(
-        (sm1_tau.order1["g"].states - sm1.order1["g"]) * 1e8,
+        (sm1_tau.order1["g"].states - sm1.order1["g"].states) * 1e8,
         sm1.order2[("g", "tau")].states,
     )
     assert np.allclose(
-        (sm1_T2.order1["g"].states - sm1.order1["g"]) * 1e8,
+        (sm1_T2.order1["g"].states - sm1.order1["g"].states) * 1e8,
         sm1.order2[("T2", "g")].states,
     )
 

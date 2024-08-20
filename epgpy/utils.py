@@ -9,7 +9,6 @@ NAX = np.newaxis
 gamma_1H = 42.576 * 1e3  # kHz/T
 gamma_23Na = 11.262 * 1e3  # kHz/T
 
-# @profile
 def imaging(
     positions,
     states,

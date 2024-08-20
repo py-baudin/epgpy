@@ -1,6 +1,6 @@
 import logging
 
-import numpy as np
+import math
 from . import common, utils, common
 
 LOGGER = logging.getLogger(__name__)
@@ -120,7 +120,7 @@ class StateMatrix:
     @property
     def size(self):
         """return size of phase array"""
-        return np.prod(self.shape)
+        return math.prod(self.shape)
 
     @property
     def nstate(self):
@@ -188,12 +188,11 @@ class StateMatrix:
     def ktvalue(self):
         """concatenation of kvalue and tvalue (wavenumbers, accumulated time)"""
         coeff = [self.kvalue] * min(self.kdim, 3) + [self.tvalue] * (self.kdim == 4)
-        return np.array(coeff)
+        return common.asarray(coeff)
 
     @property
     def norm(self):
         """state matrix norm"""
-        # return np.sqrt(np.sum(np.abs(self.states[..., 1:]) ** 2, axis=(-2, -1)))
         return self.arrays.apply("states", utils.get_norm)
 
     @property
@@ -223,7 +222,7 @@ class StateMatrix:
         xp = common.get_array_module()
         if isinstance(other, StateMatrix):
             value = xp.asarray(other.states)
-        elif np.isscalar(other):
+        elif xp.isscalar(other):
             value = other
         else:  # array
             value = xp.asarray(other)
@@ -369,7 +368,8 @@ def _init_states(density=1):
 def _format_states(states, check=True):
     """format and check states matrix"""
     # init state matrix
-    states = common.asarray(states).astype(np.complex128)
+    xp = common.get_array_module()
+    states = xp.asarray(states).astype(xp.complex128)
 
     if states.ndim == 1:
         # states is a 0-state vector
@@ -395,9 +395,9 @@ def _format_states(states, check=True):
 
     # check values
     if check:
-        if not np.allclose(states[..., 1], states[..., ::-1, 0].conj()):
+        if not xp.allclose(states[..., 1], states[..., ::-1, 0].conj()):
             raise ValueError("The F-state columns do no match.")
-        if not np.allclose(states[..., 2], states[..., ::-1, 2].conj()):
+        if not xp.allclose(states[..., 2], states[..., ::-1, 2].conj()):
             raise ValueError("The Z-state columns is not symmetrical.")
     return states
 
@@ -405,7 +405,7 @@ def _format_states(states, check=True):
 def _setup_coords(nstate, kdim=1):
     """setup wavenumbers array"""
     xp = common.get_array_module()
-    coords = np.c_[
+    coords = xp.c_[
         xp.arange(-nstate, nstate + 1), xp.zeros((2 * nstate + 1, kdim - 1), dtype=int)
     ]
     coords = common.expand_dims(coords, (0,))

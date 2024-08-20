@@ -35,6 +35,7 @@ def set_array_module(xp=None):
         try:
             # setting global _xp to cupy
             import cupy as cp
+            import cupyx
 
             LOGGER.info("Setting array module to `cupy`")
             _xp = cp

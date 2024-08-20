@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from epgpy import operators, diffusion, statematrix
+from epgpy import operators, diffusion, statematrix, common
 
 
 def test_compute_bmatrix():
@@ -94,7 +94,8 @@ def test_diffusion_operator():
         DL, DT = diffusion.diffusion_operator(bL, bT, np.diag([1, 1]))
 
     # anisotropic
-    D = np.diag([2, 1, 0])  # mm^2 / s
+    xp = common.get_array_module()
+    D = xp.diag([2, 1, 0])  # mm^2 / s
     bL = diffusion.compute_bmatrix(1, [1e3, 0, 0])
     bT = diffusion.compute_bmatrix(1, [1e3, 0, 0], [1e3, 1e3, 0])
     DL, DT = diffusion.diffusion_operator(bL, bT, D)
@@ -183,14 +184,14 @@ def test_D_class():
 
     # expected attenuation
     k = sm.kvalue  # rad/m
-    bT = sum(
+    bT = common.asnumpy(sum(
         [
             diffusion.compute_bmatrix(1, [0, 0], [k, k]),
             diffusion.compute_bmatrix(2e-1, [k, k]),
             diffusion.compute_bmatrix(2e-1, [-k, -k]),
             diffusion.compute_bmatrix(1, [-k, -k], [0, 0]),
         ]
-    )  # s/mm^2
-
+    ))  # s/mm^2
+    
     att = np.exp(-np.trace(bT @ D, axis1=-2, axis2=-1))
     assert np.isclose(sm.F0, att)

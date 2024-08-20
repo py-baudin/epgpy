@@ -106,11 +106,11 @@ for i, nstate in enumerate(sig_epg):
     plt.imshow(np.abs(sig_epg[nstate]), cmap='gray')
     plt.title(f'EPG\n(n.states: {nstate}, dur.: {time_epg[nstate]/60:.1f}min)')
     plt.axis('off')
-# for i, niso in enumerate(sig_iso):
-#     plt.sca(axes[1, i])
-#     plt.imshow(np.abs(sig_iso[niso]), cmap='gray')
-#     plt.title(f'Isochromats\n(n.iso: {niso}, dur.: {time_iso[niso]/60:.1f}min)')
-#     plt.axis('off')
+for i, niso in enumerate(sig_iso):
+    plt.sca(axes[1, i])
+    plt.imshow(np.abs(sig_iso[niso]), cmap='gray')
+    plt.title(f'Isochromats\n(n.iso: {niso}, dur.: {time_iso[niso]/60:.1f}min)')
+    plt.axis('off')
 plt.suptitle(f'Isochromats vs EPG')
 plt.tight_layout()
 plt.show()

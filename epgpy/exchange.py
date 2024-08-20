@@ -247,7 +247,8 @@ def insert_axis(arr, axis):
 
 def dotp(a, b, axes=[-1, -1]):
     """dot product along custom axes"""
-    xp = common.get_array_module(a, b)
+    xp = common.get_array_module()
+    a, b = map(xp.asarray, [a, b])
     mov = xp.moveaxis
     return xp.einsum("...i,...i->...", mov(a, axes[0], -1), mov(b, axes[1], -1))
 

@@ -160,13 +160,14 @@ def as_matrix(arr):
 
 def scalar_setup(arr, arr0=None, *, axes=None, check=True, ref=None):
     """setup scalar operator"""
+    xp = common.get_array_module()
     arr = scalar_format(arr, check=check)
     if ref is not None:
-        arr, _ = np.broadcast_arrays(arr, ref)
+        arr, _ = xp.broadcast_arrays(arr, ref)
 
     if arr0 is not None:
         arr0 = scalar_format(arr0, check=check)
-        arr, arr0 = np.broadcast_arrays(arr, arr0)
+        arr, arr0 = xp.broadcast_arrays(arr, arr0)
 
     if axes is not None:
         arr = common.set_axes(1, arr, axes)
@@ -176,7 +177,8 @@ def scalar_setup(arr, arr0=None, *, axes=None, check=True, ref=None):
 
 def scalar_format(arr, check=True):
     """setup array for scalar operator"""
-    arr = np.asarray(arr)
+    xp = common.get_array_module()
+    arr = xp.asarray(arr)
     if arr.ndim == 1:
         arr = arr[NAX]
 
@@ -184,10 +186,9 @@ def scalar_format(arr, check=True):
         raise ValueError(f"Expected ...x3 array shape, found: {arr.shape}")
     elif not check:
         return arr
-    elif check and not np.allclose(arr, arr[..., (1, 0, 2)].conj()):
+    elif check and not xp.allclose(arr, arr[..., (1, 0, 2)].conj()):
         raise ValueError(f"Invalid coefficients: {arr}")
 
-    xp = common.get_array_module()
     return xp.asarray(arr)
 
 
