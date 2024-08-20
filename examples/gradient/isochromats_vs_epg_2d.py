@@ -28,7 +28,7 @@ nread, nphase = mask.shape
 
 pixsize = FOV / nread
 pixels = np.mgrid[-nread//2:nread//2, -nphase//2:nphase//2] 
-pixels = pixels.reshape(2, -1).T * FOV / [nread, nphase]
+pixels = pixels.reshape(2, -1).T[mask.flat] * FOV / [nread, nphase]
 
 # system
 # GM, WM, CSF
@@ -36,7 +36,7 @@ PD = [0.8, 0.7, 1.0] # a.u.
 T1 = [1.55e3, 0.83e3, 4.16e3] # ms
 T2 = [0.09e3, 0.07e3, 1.65e3] # ms
 T2p = [0.322e3, 0.183e3, 0.0591e3] # ms
-pds = np.stack([gm * PD[0], wm * PD[1], csf * PD[2]]).reshape(3, -1)
+pds = np.stack([gm * PD[0], wm * PD[1], csf * PD[2]]).reshape(3, -1)[:, mask.flat]
 
 # EPG
 print('EPG')
