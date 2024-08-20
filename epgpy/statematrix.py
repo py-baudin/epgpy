@@ -495,7 +495,7 @@ class ArrayCollection:
         """dictionary of named axes"""
         return self._axes
 
-    def get(self, name, default=None):
+    def get(self, name, default=None, *, broadcast=True):
         """get (broadcast) array from collection"""
         if not name in self._arrays:
             return default
@@ -504,7 +504,7 @@ class ArrayCollection:
             # skip broadcasting
             return array
         layout = self._layouts[name]
-        return self._broadcast_array(array, layout)
+        return self._expand_and_broadcast(array, layout, broadcast=broadcast)
 
     def update(self, name, array, *, resize=False):
         """update array inplace"""
@@ -743,7 +743,7 @@ class ArrayCollection:
             other._default = self._shape
             other._update_shape()
 
-    def _broadcast_array(self, array, layout):
+    def _expand_and_broadcast(self, array, layout, broadcast=True):
         """expand and broadcast array to shared shape"""
         xp = self.xp
 
@@ -766,7 +766,7 @@ class ArrayCollection:
 
         if dims:
             array = xp.expand_dims(array, dims)
-        if tuple(shape) != array.shape:
+        if broadcast and (tuple(shape) != array.shape):
             array = xp.broadcast_to(array, shape)
         return array
 

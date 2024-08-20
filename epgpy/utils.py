@@ -9,7 +9,7 @@ NAX = np.newaxis
 gamma_1H = 42.576 * 1e3  # kHz/T
 gamma_23Na = 11.262 * 1e3  # kHz/T
 
-
+# @profile
 def imaging(
     positions,
     states,
@@ -22,6 +22,7 @@ def imaging(
     voxel_size=1,
     expand=True,
     reduce=True,
+    tol=1e-8,
 ):
     """Discrete Fourier transform
 
@@ -31,8 +32,12 @@ def imaging(
         positions:      ... x ndim
 
     """
+    xp = common.get_array_module()
 
-    xp = common.get_array_module(states)
+    def cexp(a):
+        # complex modulation
+        return xp.cos(a) + 1j * xp.sin(a)
+
     F = xp.asarray(states)
     k = xp.asarray(wavenumbers)
     t = xp.asarray(acctime) if acctime is not None else None
@@ -51,7 +56,7 @@ def imaging(
         voxel = 1.0
     elif voxel_shape == "box":
         voxel = xp.sinc(k * voxel_size / 2 / np.pi).prod(-1)
-        kmask = ~np.all(np.isclose(voxel, 0), axis=tuple(range(F.ndim - 1)))
+        kmask = xp.any(xp.abs(voxel) > tol, axis=tuple(range(F.ndim - 1)))
         F, k, voxel = F[..., kmask], k[..., kmask, :], voxel[..., kmask]
         if t is not None:
             t = t[..., kmask]
@@ -61,29 +66,22 @@ def imaging(
     # modulation
     if t is not None and modulation is not None:
         modulation = xp.asarray(modulation)[..., NAX]
-        amp, freq = modulation.real, modulation.imag
-        mod = xp.exp(amp * xp.abs(t) + 2j * np.pi * t * freq)
-        mmask = ~np.all(np.isclose(mod, 0), axis=tuple(range(F.ndim - 1)))
-        F, k, mod = (
-            F[..., mmask],
-            k[
-                ...,
-                mmask,
-            ],
-            mod[..., mmask],
-        )
+        mod = xp.exp(xp.abs(t) * modulation.real)
+        mmask = xp.any(mod > tol, axis=tuple(range(F.ndim - 1)))
+        F, k, mod, voxel = F[..., mmask], k[...,mmask,:], mod[..., mmask], voxel[..., mmask]
+        if xp.iscomplexobj(modulation):
+            freq = t[..., mmask] * 2 * xp.pi * modulation.imag
+            mod = mod * cexp(freq)
+        
     else:
         mod = 1.0
 
     # DFT
-    kdim = min(k.shape[-1], pos.shape[-1])
+    kdim = pos.shape[-1]
     s = (
-        voxel
-        * mod
-        * F
-        * xp.exp(1j * xp.einsum("...ni,...i->...n", k[..., :kdim], pos[..., :kdim]))
+        (voxel * mod * F)
+        * cexp(xp.einsum("...ni,...i->...n", k[..., :kdim], pos))
     )
-
     # add up states
     s = s.sum(axis=-1)
 
