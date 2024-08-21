@@ -9,6 +9,7 @@ NAX = np.newaxis
 gamma_1H = 42.576 * 1e3  # kHz/T
 gamma_23Na = 11.262 * 1e3  # kHz/T
 
+
 def imaging(
     positions,
     states,
@@ -33,9 +34,12 @@ def imaging(
     """
     xp = common.get_array_module()
 
-    def cexp(a):
+    def cexp(arr):
         # complex modulation
-        return xp.cos(a) + 1j * xp.sin(a)
+        ret = np.empty_like(arr, dtype='complex')
+        xp.cos(arr, out=ret.real)
+        xp.sin(arr, out=ret.imag)
+        return ret
 
     F = xp.asarray(states)
     k = xp.asarray(wavenumbers)
@@ -77,23 +81,19 @@ def imaging(
 
     # DFT
     kdim = pos.shape[-1]
-    s = (
-        (voxel * mod * F)
-        * cexp(xp.einsum("...ni,...i->...n", k[..., :kdim], pos))
-    )
-    # add up states
-    s = s.sum(axis=-1)
-
+    kpos = xp.einsum("...ni,...i->...n", k[..., :kdim], pos)
+    im = (voxel * mod * F) * xp.exp(1j * kpos) * weights
+    
     # weights
     if weights is not None:
-        s *= xp.asarray(weights)
+        im *= xp.asarray(weights)[..., NAX]
 
     # add up axes
     if reduce is True:
-        return xp.sum(s)
+        return im.sum()
     elif reduce is not False:
-        return xp.sum(s, axis=reduce)
-    return s
+        return im.sum(-1).sum(axis=reduce)
+    return im.sum(-1)
 
 
 def dft(coords, states, wavenumbers, *, reduce=False):
