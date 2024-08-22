@@ -189,7 +189,7 @@ sm2 = shift(sm1)  # shift transverse states (create new states if needed)
 sm3 = relax(sm2)  # apply signal decay and precession
 ```
 
-Which yiels:
+Which yields:
 ```
 In : sm0.states
 Out: array([[[0.+0.j, 0.+0.j, 1.+0.j]]])
