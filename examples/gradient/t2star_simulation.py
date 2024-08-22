@@ -1,4 +1,4 @@
-""" T2 star simulation
+""" Tutorial for T2 star simulation
 
 Compare T2' simulations using
 - n-isochromats 
@@ -23,15 +23,18 @@ N = 20
 delta = 0.5
 adc = epg.ADC
 rf = epg.T(30, 90)
-wait = epg.P(delta, 1/t2p * offres)
 
+# isochromats
+wait = epg.P(delta, 1/t2p * offres)
 seq_iso = [rf] + [[wait, adc]] * N
 sim_iso = epg.simulate(seq_iso).sum(-1) / niso
 
-wait = epg.C(delta/t2p) # phase accumulation 
+# EPG
+wait = epg.C(delta) # time accumulation 
 seq_epg = [rf] + [[wait, adc]] * N
-sim_epg, tau = epg.simulate(seq_epg, kgrid=0.1, probe=('F', 't'))
-sim_epg = (sim_epg * np.exp(-np.abs(tau))).sum((-2, -1))
+sim_epg, tau = epg.simulate(seq_epg, kgrid=0.1, probe=('F0', 't'))
+# combine F0 states and time accumulation to obtain the T2* effect
+sim_epg = (sim_epg * np.exp(-np.abs(tau)/t2p)).sum((-2, -1))
 
 
 plt.figure('t2-star')

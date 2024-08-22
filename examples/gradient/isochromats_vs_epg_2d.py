@@ -1,5 +1,9 @@
 """
-This example is an attempt at implementing the brain phantom simulation from:
+Simulation of a 64x64 brain phantom with readout and phase encoding gradients.
+We compare EPG with arbitrary gradients with isochromats simulations.
+(Note: the isochromats simulation may take a while)
+
+This is an attempt at implementing the brain phantom simulation from:
     Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, et Moritz Zaiss. 
     « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». 
     Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. 

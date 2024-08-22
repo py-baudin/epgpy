@@ -1,7 +1,7 @@
 """
 Simulation of MRF sensitivity to off-resonance patterns
 
-based on:
+Based on:
 > Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M: 
   Three‐dimensional spatially resolved phase graph framework. Magn Reson Med 2021; 86:551–560.
   Part "3.1 Off-resonance simulation"
@@ -98,15 +98,15 @@ for iter in range(100):
     duration = time.time() - tic
     # discrete Fourier transform
     sig = functions.dft(pos[..., NAX], Fs[-1], ks[-1])
-    if sims:
-        prevK = min(sims)
+    # store signal and update Kg
+    stats[Kg] = {"time": duration, "num-k": [k.size for k in ks]}
+    sims[Kg] = sig
+    if iter:
         diff = np.linalg.norm(sig - sims[prevK]) / np.linalg.norm(sig)
         print(f"iteration {iter}: Kg={Kg:.2f}, diff={diff:.3f}")
         if diff < 1e-2:
             break
-    # store signal and update Kg
-    stats[Kg] = {"time": duration, "num-k": [k.size for k in ks]}
-    sims[Kg] = sig
+    prevK = Kg
     Kg *= fk
 
 print("done")
@@ -173,6 +173,6 @@ plt.legend(handles=[h1[0], h2[0], h3[0]])
 plt.title("Protocol parameters")
 
 
-plt.suptitle("Simulation of off-res effects in pSSFP-MRF with spatially-resolved EPG")
+plt.suptitle("Simulation of off-resonance effects in pSSFP-MRF with spatially-resolved EPG")
 plt.tight_layout()
 plt.show()

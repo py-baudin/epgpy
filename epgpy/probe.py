@@ -174,10 +174,17 @@ class Imaging(Probe):
         operator.Operator.__init__(self, name=name, duration=None)
 
     def _acquire(self, sm):
-        coords = self.coords if self.coords is not None else sm.system.get("coords", broadcast=False)
-        modulation = sm.system.get("modulation", broadcast=False)
-        weights = sm.system.get("weights", broadcast=False)
-        # imaging functions
+        # get corods, modultion and weights from attribute or sm.system
+        coords = self.coords
+        if coords is None:
+            coords = sm.system.get("coords", broadcast=False)
+        modulation = self.opts.pop('modulation', None)
+        if modulation is None:
+            modulation = sm.system.get("modulation", broadcast=False)
+        weights = self.opts.pop("weights", None)
+        if weights is None:
+            weights = sm.system.get("weights", broadcast=False)
+        # imaging function
         return utils.imaging(
             coords,
             sm.F,

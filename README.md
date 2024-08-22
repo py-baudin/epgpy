@@ -17,7 +17,7 @@ An introductory tutorial is available [here](docs/basics.md).
 A number of extensions are implemented:
 
 - Arbitrary 3D gradients
-- Anisotropic diffusion
+- isotropic and anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
 - [Differentiability](docs/differentiation.md) (e.g., for sequence optimization)
 - GPU compatible (via `cupy`)
