@@ -69,20 +69,21 @@ for tol in [5e-2, 1e-2, 1e-8]:
 
 # isochromats
 sig_iso, time_iso = {}, {}
-for niso in [10, 100, 101]:#, 10000]:
+for niso in [10, 100, 10000]:
     print(f'Isochromats with n={niso}')
     # isochromats positions
-    iso = random.uniform(-0.5, 0.5, niso) * pixsize
+    iso = random.uniform(-0.5, 0.5, (niso, 2)) * pixsize
     # isochromats off-resonance frequencies (num. cycle)
     omega = np.tan(0.999 * np.pi * np.linspace(-0.5, 0.5, niso)) / 2 / np.pi
     # omega = np.tan(0.999 * np.pi * random.uniform(-0.5, 0.5, niso)) / 2 / np.pi
     adc = epg.Adc(reduce=(0, 1, 2))
     init = epg.PD(pds)
     rf = epg.T(FA, 90)
+    # T1/T2/T2 (3 x 1 x niso)
     rlx = epg.E(TR, T1, T1)
-    rlx *= epg.P(TR, 1/np.reshape(T2p,(3,1,1)) * omega) # T2' 
-    # readout gradient 
-    g = (pixels.T[:, NAX, ..., NAX] + iso) / FOV # (num cycles)
+    rlx *= epg.P(TR, 1/np.reshape(T2p, (3, 1, 1)) * omega) # T2' 
+    # readout gradient  (2 x 1 x npix x niso)
+    g = (pixels + iso[:, NAX]).T[:, NAX] / FOV # (num cycles)
     gxpre = epg.P(1, -g[0] * nread / 2 ) 
     gx = epg.P(1, g[0]) 
     gxspl = epg.P(1, 1.5 * g[0] * nread / 2)

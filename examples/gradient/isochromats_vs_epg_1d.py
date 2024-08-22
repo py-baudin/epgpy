@@ -42,7 +42,7 @@ sig_epg = np.fft.fftshift(np.fft.fft(kspace)) / nread
 sig_iso = {}
 for niso in [10, 100, 1000, 10000]:
     print(f'Isochromats with n={niso}')
-    # isochromats positions
+    # isochromats coordinate positions
     iso = random.uniform(-0.5, 0.5, niso) * pixsize
     # isochromats off-resonance frequencies (num. cycle)
     omega = np.tan(0.999 * np.pi * np.linspace(-0.5, 0.5, niso)) / 2 / np.pi
