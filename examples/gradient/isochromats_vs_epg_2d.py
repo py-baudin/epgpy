@@ -1,6 +1,6 @@
 """
 Simulation of a 64x64 brain phantom with readout and phase encoding gradients.
-We compare EPG with arbitrary gradients with isochromats simulations.
+We compare EPG + arbitrary gradients with isochromats simulations.
 (Note: the isochromats simulation may take a while)
 
 This is an attempt at implementing the brain phantom simulation from:
@@ -9,7 +9,7 @@ This is an attempt at implementing the brain phantom simulation from:
     Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. 
     https://doi.org/10.1002/mrm.30055.
 
-Brain phanom:
+Brain phantom:
     Colin 27 Average Brain 2008
     Copyright (C) 1993–2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University.
     https://nist.mni.mcgill.ca/category/atlas/
