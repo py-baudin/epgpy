@@ -346,7 +346,6 @@ def shiftnd(states, indices, shift, *, nmax=None, prune=True, tol=1e-8):
 
     return sm2, k2
 
-
 def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     """nd shift-merge for arbitrary wavenumbers
 
@@ -442,12 +441,29 @@ def add_at(dest, indices, source):
 
 
 def unique_1d(values, axis=0):
-    """faster unique, using python dictionary"""
+    """faster unique """
     xp = common.get_array_module()
+    if not set(values.shape[:-2]) <= {1}:
+        return xp.unique(values, axis=axis, return_inverse=True)
+    
+    squeeze = (0,) * (values.ndim - 2)
+    indices = xp.lexsort(values[squeeze].T[::-1])
+    sorted = values[..., indices, :]
+    mask = xp.any(xp.diff(sorted[squeeze], axis=0, prepend=-1) != 0, axis=-1)
+    unique = sorted[..., mask, :]
+    # compute inverse
+    inverse = xp.zeros_like(indices)
+    inverse[indices] = xp.cumsum(mask) - 1 
+    return unique, inverse
+
+
+def _unique_1d(values, axis=0):
+    """faster unique, using python dictionary"""
 
     if not np.issubdtype(values.dtype, np.integer):
         raise ValueError("This function only works with integer arrays")
 
+    xp = common.get_array_module()
     values = xp.moveaxis(values, axis, 0)
     shape = values.shape[1:]
     values = values.reshape(len(values), -1)
