@@ -70,7 +70,7 @@ fdiff_T2 = (epg.simulate(seq_T2) - signal) / eps
 
 Which gives:
 
-![diff MSE](mse-diff.png)
+![diff MSE](images/mse-diff.png)
 
 (the plotting code is given in `examples/differentiation/tutorial.py`)
 
@@ -103,7 +103,7 @@ hessian = epg.simulate(seq, probe=hprobe)
 
 Compare to finite difference approximate derivatives:
 
-![diff2 MSE](mse-diff2.png)
+![diff2 MSE](images/mse-diff2.png)
 
 
 ## Confidence intervals
@@ -157,4 +157,4 @@ print(rf"c.int alpha: 150 +/- {cint_alpha}")
 print(rf"c.int T2: 30 +/- {cint_T2}")
 ```
 
-![cint MSE](mse-cint.png)
+![cint MSE](images/mse-cint.png)

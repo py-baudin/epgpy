@@ -1,3 +1,16 @@
+"""
+This example is an attempt at implementing the brain phantom simulation from:
+    Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, et Moritz Zaiss. 
+    « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». 
+    Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. 
+    https://doi.org/10.1002/mrm.30055.
+
+Brain phanom:
+    Colin 27 Average Brain 2008
+    Copyright (C) 1993–2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University.
+    https://nist.mni.mcgill.ca/category/atlas/
+"""
+
 import pathlib
 import time
 import numpy as np
@@ -9,12 +22,6 @@ NAX = np.newaxis
 random = np.random #.RandomState(0)
 
 # brain phantom
-"""
-Source:
-    Colin 27 Average Brain 2008
-    Copyright (C) 1993–2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University.
-    https://nist.mni.mcgill.ca/category/atlas/
-"""
 HERE = pathlib.Path(__file__).parent
 wm, gm, csf = np.load(HERE / 'brain.npy')
 

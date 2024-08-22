@@ -12,18 +12,20 @@ Its aims are:
 
 *only some degree of efficiency can be expected from this implementation, if speed is really critical, other implementations may be more suitable.
 
-A number of extensions are, or will be, implemented:
+An introductory tutorial is available [here](docs/basics.md).
+
+A number of extensions are implemented:
 
 - Arbitrary 3D gradients
 - Anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
-- Differentiability (e.g., for sequence optimization)
-- (soon) GPU compatible (via `cupy`)
+- [Differentiability](docs/differentiation.md) (e.g., for sequence optimization)
+- GPU compatible (via `cupy`)
 - (soon) General operator merging for faster simulations
 
-Please look into the `docs` and `examples` folders for usage examples.
+Please look into the `docs` and `examples` folders for tutorials and usage examples.
 
-Disclaimer : this is a research project, and the authors give no guaranty on the validity of the generated results. 
+Disclaimer: this is a research project, and the authors give no guaranty on the validity of the generated results. 
 
 ## Example usage
 
@@ -66,14 +68,16 @@ plt.legend(labels=[f'{t2} ms' for t2 in T2], title='T2 values')
 plt.show()
 
 ```
-![plot](docs/readme_mse_example.png)
+![plot](docs/images/readme_mse_example.png)
 
 ## References
 
 These references were used for the implementation:
 
+- Weigel, Matthias. « Extended Phase Graphs: Dephasing, RF Pulses, and Echoes - Pure and Simple: Extended Phase Graphs ». Journal of Magnetic Resonance Imaging 41, nᵒ 2 (février 2015): 266‑95. https://doi.org/10.1002/jmri.24619.
+- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, et J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance 205, nᵒ 2 (août 2010): 276‑85. https://doi.org/10.1016/j.jmr.2010.05.011.
 - Gao, Xiang, Valerij G. Kiselev, Thomas Lange, Jürgen Hennig, et Maxim Zaitsev. « Three‐dimensional Spatially Resolved Phase Graph Framework ». Magnetic Resonance in Medicine 86, nᵒ 1 (juillet 2021): 551‑60. https://doi.org/10.1002/mrm.28732.
 - Malik, Shaihan J., Rui Pedro A.G. Teixeira, et Joseph V. Hajnal. « Extended Phase Graph Formalism for Systems with Magnetization Transfer and Exchange: EPG-X: Extended Phase Graphs With Exchange ». Magnetic Resonance in Medicine 80, nᵒ 2 (août 2018): 767‑79. https://doi.org/10.1002/mrm.27040.
-- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, et J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance 205, nᵒ 2 (août 2010): 276‑85. https://doi.org/10.1016/j.jmr.2010.05.011.
-- Weigel, Matthias. « Extended Phase Graphs: Dephasing, RF Pulses, and Echoes - Pure and Simple: Extended Phase Graphs ». Journal of Magnetic Resonance Imaging 41, nᵒ 2 (février 2015): 266‑95. https://doi.org/10.1002/jmri.24619.
+- Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, et Moritz Zaiss. « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. https://doi.org/10.1002/mrm.30055.
+
 

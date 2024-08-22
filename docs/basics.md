@@ -113,7 +113,7 @@ mse = [excit] + [shift, relax, inversion, shift, relax, adc] * necho
 mse_times, mse_signal = epg.simulate(mse, adc_time=True)
 ```
 
-![basics MSE](basics_mse.png)
+![basics MSE](images/basics_mse.png)
 
 ```python
 # spoiled gradient echo
@@ -124,7 +124,7 @@ spgr = [[epg.T(14.8, phase), relax, adc, relax, shift] for phase in phases]
 spgr_times, spgr_signal = epg.simulate(spgr, adc_time=True)
 ```
 
-![basics SPGR](basics_spgr.png)
+![basics SPGR](images/basics_spgr.png)
 
 ```python
 # Double echo in steady state (DESS)
@@ -137,7 +137,7 @@ dess = [rf, relax1, adc, shift, relax2, adc, relax1] * necho
 dess_times, dess_signal = epg.simulate(dess, adc_time=True)
 ```
 
-![basics DESS](basics_dess.png)
+![basics DESS](images/basics_dess.png)
 
 
 ### State matrix 
