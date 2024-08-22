@@ -82,7 +82,7 @@ wait = epg.Wait(1.0) # do nothing for some time (ms)
 ```
 
 
-### sequence definition and functions
+### Sequence definition and functions
 
 Sequences are normally defined as (nested) python lists, and passed to the simulation functions:
 
@@ -187,6 +187,28 @@ sm2 = shift(sm1)  # shift transverse states (create new states if needed)
 
 # relaxation
 sm3 = relax(sm2)  # apply signal decay and precession
+```
+
+Which yiels:
+```
+In : sm0.states
+Out: array([[[0.+0.j, 0.+0.j, 1.+0.j]]])
+
+In : sm1.states.real
+Out: array([[[1.000000e+00, 1.000000e+00, 6.123234e-17]]])
+
+In : sm2.states.real
+Out:
+array([[[0.000000e+00, 1.000000e+00, 0.000000e+00],
+        [0.000000e+00, 0.000000e+00, 6.123234e-17],
+        [1.000000e+00, 0.000000e+00, 0.000000e+00]]])
+
+In : sm3.states.real
+Out:
+array([[[0.        , 0.90483742, 0.        ],
+        [0.        , 0.        , 0.0030349 ],
+        [0.90483742, 0.        , 0.        ]]])
+
 ```
 
 
