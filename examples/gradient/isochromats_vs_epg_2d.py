@@ -70,7 +70,6 @@ for tol in [5e-2, 1e-2, 1e-8]:
 # isochromats
 sig_iso, time_iso = {}, {}
 for niso in [10, 100, 1000]:
-for niso in [10, 100, 10000]:
     print(f'Isochromats with n={niso}')
     # isochromats positions
     iso = random.uniform(-0.5, 0.5, (niso, 2)) * pixsize
