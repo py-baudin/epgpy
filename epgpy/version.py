@@ -1,2 +1,2 @@
 # PEP-440
-__version__ = "3.0.0-beta.2"
+__version__ = "3.1.0-beta.0"

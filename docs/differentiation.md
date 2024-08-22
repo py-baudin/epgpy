@@ -83,7 +83,7 @@ and stored in the `order2` dictionary attribute of the state matrix, indexed by 
 To recover the Hessian matrix (the matrix of 2nd order derivatives),
 we use the `Hessian` probe operator.
 
-Note: passing single parameters (not pairs) to the `order2` keyword automatically activates 1st and 2nd order differentiation with respect to these parameters AND activated parameters of OTHER operators. Passing pairs of parameters deactivate this automatic "cross-operator" calculation, which means you need to specify all pairs of parameters you want to be considered.
+Note: passing single parameters (not pairs) to the `order2` keyword automatically activates 1st and 2nd order differentiation with respect to these parameters AND activated parameters of OTHER operators. Passing pairs of parameters deactivates this automatic "cross-operator" calculation, which means you need to specify all pairs of parameters you want to be considered.
 
 ```python
 # Activate 2nd (and 1st) order derivatives for `alpha` 
