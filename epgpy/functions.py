@@ -8,6 +8,7 @@ from . import common, operators, statematrix, utils
 from .utils import dft, imaging
 
 LOGGER = logging.getLogger(__name__)
+Probe = operators.Probe
 
 
 def getshape(sequence):
@@ -72,7 +73,7 @@ def simulate(
             If True, returns the adc opening times
         squeeze: [True], False
             Pre-combine operators when possible
-        probe: probe expression (to supersede existing probe)
+        probe: probe expression to supersede existing probe (or list of).
         callback: callback function after each operator
         asarray: True, [False]
             return output values as single ndarray
@@ -121,8 +122,9 @@ def simulate(
     if probe:
         LOGGER.info(f"Custom probe(s): {probe}")
         probes = probe if isinstance(probe, (tuple, list)) else [probe]
+        # list probe operators (if None, use operator in sequence)
         probes = [
-            probe if isinstance(probe, operators.Probe) else operators.Probe(probe)
+            probe if isinstance(probe, (Probe, type(None))) else Probe(probe)
             for probe in probes
         ]
 
@@ -185,9 +187,9 @@ def simulate_simple(sm, sequence, probes=None, callback=None, disp=False):
         # apply each operator in sequence
         sm = op(sm, inplace=True)
         tic = tic + op.duration
-        if isinstance(op, operators.Probe):
-            # substitute probing operator and store
-            values.append([pb.acquire(sm, post=op.post) for pb in (probes or [op])])
+        if isinstance(op, Probe):
+            # substitute probing operator and store (None is replaced with op)
+            values.append([(pb or op).acquire(sm, post=op.post) for pb in (probes or [op])])
             times.append(tic)
         elif callback:
             callback(sm)

@@ -135,7 +135,9 @@ class Adc(Probe):
             dims = [i for i in range(arr.ndim) if i >= mult.ndim]
             mult = np.expand_dims(mult, dims)
         arr = obj * mult
-        if self.reduce not in [None, Ellipsis]:
+        if self.reduce is True:
+            arr = np.sum(arr)
+        elif self.reduce not in [None, Ellipsis]:
             arr = np.sum(arr, axis=self.reduce)
         return arr
 

@@ -16,6 +16,7 @@ def imaging(
     wavenumbers,
     acctime=None,
     *,
+    phase=None,
     weights=None,
     modulation=None,
     voxel_shape="box",
@@ -75,9 +76,12 @@ def imaging(
         if xp.iscomplexobj(modulation):
             freq = t[..., mmask] * 2 * xp.pi * modulation.imag
             mod = mod * cexp(freq)
-        
     else:
         mod = 1.0
+
+    # phase offset
+    if phase is not None:
+        mod = mod * np.exp(1j * phase * np.pi / 180)
 
     # DFT
     kdim = pos.shape[-1]
