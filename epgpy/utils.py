@@ -82,7 +82,7 @@ def imaging(
     # DFT
     kdim = pos.shape[-1]
     kpos = xp.einsum("...ni,...i->...n", k[..., :kdim], pos)
-    im = (voxel * mod * F) * xp.exp(1j * kpos) * weights
+    im = (voxel * mod * F) * xp.exp(1j * kpos)
     
     # weights
     if weights is not None:
