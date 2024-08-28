@@ -21,7 +21,7 @@ A number of extensions are implemented:
 - Multi-compartment exchanges, including magnetization transfer
 - [Differentiability](docs/differentiation.md) (e.g., for sequence optimization)
 - GPU compatible (via `cupy`)
-- (soon) General operator merging for faster simulations
+- (soon) Operator merging for faster simulations
 
 Please look into the `docs` and `examples` folders for tutorials and usage examples.
 
