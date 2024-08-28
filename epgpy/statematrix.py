@@ -166,13 +166,15 @@ class StateMatrix:
 
     @property
     def k(self):
-        """wavenumbers (only first 3 dimensions)"""
-        coords = _setup_coords(self.nstate, 1) if self.coords is None else self.coords
+        """wavenumbers (coords first 3 dimensions)"""
+        coords = self.coords
+        if coords is None:
+            coords = _setup_coords(self.nstate, 1, self.ndim)
         return coords[..., :3] * self.kvalue
 
     @property
     def t(self):
-        """time-accumulated dephasing (4th dimension)"""
+        """time-accumulated dephasing (coords 4th dimension)"""
         if self.kdim < 4:
             return 0
         return self.coords[..., 3] * self.tvalue
@@ -402,13 +404,13 @@ def _format_states(states, check=True):
     return states
 
 
-def _setup_coords(nstate, kdim=1):
+def _setup_coords(nstate, kdim=1, ndim=1):
     """setup wavenumbers array"""
     xp = common.get_array_module()
     coords = xp.c_[
         xp.arange(-nstate, nstate + 1), xp.zeros((2 * nstate + 1, kdim - 1), dtype=int)
     ]
-    coords = common.expand_dims(coords, (0,))
+    coords = common.expand_dims(coords, tuple(range(ndim)))
     return coords
 
 

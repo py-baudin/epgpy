@@ -69,12 +69,12 @@ def imaging(
 
     # modulation
     if t is not None and modulation is not None:
-        modulation = xp.asarray(modulation)[..., NAX]
-        mod = xp.exp(xp.abs(t) * modulation.real)
+        modulation = xp.asarray(modulation)
+        mod = xp.exp(xp.abs(t) * modulation.real[..., NAX])
         mmask = xp.any(mod > tol, axis=tuple(range(F.ndim - 1)))
         F, k, mod, voxel = F[..., mmask], k[...,mmask,:], mod[..., mmask], voxel[..., mmask]
         if xp.iscomplexobj(modulation):
-            freq = t[..., mmask] * 2 * xp.pi * modulation.imag
+            freq = t[..., mmask] * 2 * xp.pi * modulation.imag[..., NAX]
             mod = mod * cexp(freq)
     else:
         mod = 1.0

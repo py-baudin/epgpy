@@ -300,6 +300,7 @@ class Reset(Operator):
     def _apply(self, sm):
         # return sm.copy(sm.equilibrium)
         sm.arrays.update("states", sm.equilibrium)
+        sm.resize(0)
         return sm
 
 
@@ -347,5 +348,8 @@ class System(Operator):
 
     def _apply(self, sm):
         for prop, value in self.properties.items():
-            sm.system.set(prop, value)
+            if prop in ['kvalue', 'tvalue']:
+                setattr(sm, prop, value)
+            else:
+                sm.system.set(prop, value)
         return sm

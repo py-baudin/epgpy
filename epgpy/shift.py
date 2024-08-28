@@ -81,6 +81,7 @@ class S(diff.DiffOperator):
         """Shift states"""
         # check shift method
         method, shift = get_shift_method(self.k, sm.coords)
+        nmax = sm.options.get("max_nstate") or self.nmax or np.inf
 
         if method == "int-1d":
             # basic 1d shift
@@ -88,7 +89,6 @@ class S(diff.DiffOperator):
                 raise RuntimeError("Cannot use int-1d method on this state-matrix")
 
             # first add new state (if max_nstate not reached)
-            nmax = sm.options.get("max_nstate") or self.nmax or np.inf
             sm.resize(min(sm.nstate + abs(shift), nmax))
 
             # shift states (inplace)
@@ -108,7 +108,7 @@ class S(diff.DiffOperator):
             opts = {
                 "prune": bool(self.prune),
                 "tol": self.prune,
-                "nmax": self.nmax,
+                "nmax": nmax,
             }
             states, coords = shiftnd(sm.states, sm.coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
