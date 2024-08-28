@@ -41,7 +41,7 @@ signal = simulate(seq)
 Most objects can be imported directly from the root package:
 
 ```python
-from epgpy import epg
+import epgpy as epg
 ```
 
 ### Basic operators
