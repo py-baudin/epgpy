@@ -170,7 +170,10 @@ class StateMatrix:
         coords = self.coords
         if coords is None:
             coords = _setup_coords(self.nstate, 1, self.ndim)
-        return coords[..., :3] * self.kvalue
+        kvalue = self.kvalue
+        if not common.isscalar(kvalue):
+            kvalue = kvalue[:coords.shape[-1]]
+        return coords[..., :3] * kvalue
 
     @property
     def t(self):
@@ -189,7 +192,12 @@ class StateMatrix:
     @property
     def ktvalue(self):
         """concatenation of kvalue and tvalue (wavenumbers, accumulated time)"""
-        coeff = [self.kvalue] * min(self.kdim, 3) + [self.tvalue] * (self.kdim == 4)
+        kdim = self.kdim
+        kvalue, tvalue = self.kvalue, self.tvalue
+        if common.isscalar(kvalue):
+            coeff = [kvalue] * min(kdim, 3) + [tvalue] * (kdim == 4)
+        else:
+            coeff = list(kvalue)[:3] + [tvalue] * (kdim == 4)
         return common.asarray(coeff)
 
     @property

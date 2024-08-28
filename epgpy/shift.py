@@ -130,7 +130,9 @@ class S(diff.DiffOperator):
                 raise AttributeError("kgrid not set")
 
             # apply (not inplace)
-            coords = sm.coords * sm.ktvalue
+            ktvalue = sm.ktvalue
+            coords = sm.coords * ktvalue
+            shift = shift * ktvalue
             prune = sm.options.get("prune") or self.prune
             opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
             states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
@@ -449,7 +451,7 @@ def unique_1d(values, axis=0):
     squeeze = (0,) * (values.ndim - 2)
     indices = xp.lexsort(values[squeeze].T[::-1])
     sorted = values[..., indices, :]
-    mask = xp.any(xp.diff(sorted[squeeze], axis=0, prepend=-1) != 0, axis=-1)
+    mask = np.r_[True, xp.any(xp.diff(sorted[squeeze], axis=0) != 0, axis=-1)]
     unique = sorted[..., mask, :]
     # compute inverse
     inverse = xp.zeros_like(indices)
