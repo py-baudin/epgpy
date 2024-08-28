@@ -4,7 +4,7 @@ In this file, we will cover the basics of `epgpy`,
 i.e. the main EPG operators, the `StatesMatrix` object and simulation helper functions.
 
 
-## Introduction: how to build an EPG sequence
+## Introduction: how to build a sequence with `epgpy`
 
 The `epgpy` library offers functions and objects for simulating nuclear magnetic resonance (NMR) phenomena according to the Extended Phase Graph (EPG) formalism. 
 
@@ -41,7 +41,7 @@ signal = simulate(seq)
 Most objects can be imported directly from the root package:
 
 ```python
-from epgpy import epg
+import epgpy as epg
 ```
 
 ### Basic operators
