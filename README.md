@@ -36,7 +36,7 @@ from epgpy import epg
 
 FA = 120 # flip angle (degrees)
 ESP = 10 # echo spacing (ms)
-Nrf = 20 # num. rf
+Necho = 20 # num. echo
 
 # relaxation times (multiple T2 values are simulated at once)
 T1 = 150 # ms
@@ -50,7 +50,7 @@ shift = epg.S(1, duration=ESP / 2) # spoiler gradients
 adc = epg.ADC # reading flag
 
 # concatenate operators (in nested lists)
-seq = [exc] + [[shift, rlx, rfc, shift, rlx, adc]] * Nrf
+seq = [exc] + [[shift, rlx, rfc, shift, rlx, adc]] * Necho
 
 # simulate the signal
 signal = epg.simulate(seq)
