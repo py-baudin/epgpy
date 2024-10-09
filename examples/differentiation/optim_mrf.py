@@ -248,7 +248,7 @@ if __name__ == '__main__':
     plt.tight_layout()
 
 
-    plt.figure("mfr-iterations")
+    plt.figure("mrf-iterations")
     plt.plot(crb_mag, ":", label="CRLB M0")
     plt.plot(crb_T1, ":", label="CRLB T1")
     plt.plot(crb_T2, ":", label="CRLB T2")
