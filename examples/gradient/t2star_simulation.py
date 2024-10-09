@@ -15,7 +15,8 @@ from matplotlib import pyplot as plt
 t2p = 5 # ms
 
 # sample isochromats off-resonance frequencies according to the Cauchy law
-niso = 10001
+niso = 1001
+# offres = np.random.uniform(-0.5, 0.5, niso)
 offres = np.tan(0.999 * np.pi * np.random.uniform(-0.5, 0.5, niso)) / 2 / np.pi
 # offres = np.tan(0.999 * np.pi * np.linspace(-0.5, 0.5, niso)) / 2 / np.pi
 
@@ -35,6 +36,7 @@ seq_epg = [rf] + [[wait, adc]] * N
 sim_epg, tau = epg.simulate(seq_epg, kgrid=0.1, probe=('F0', 't'))
 # combine F0 states and time accumulation to obtain the T2* effect
 sim_epg = (sim_epg * np.exp(-np.abs(tau)/t2p)).sum((-2, -1))
+# sim_epg = (sim_epg * np.sinc(-np.abs(tau)/t2p)).sum((-2, -1))
 
 
 plt.figure('t2-star')
