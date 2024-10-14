@@ -60,7 +60,7 @@ class Probe(operator.EmptyOperator):
         return eval(self._expr, vars(np), locals)
 
     def _acquire_callable(self, sm):
-        return self._callable(sm, *self._args)
+        return self._callable(sm, *self._args, **self._kwargs)
 
     def acquire(self, sm, post=None):
         """return object (copy onto CPU)"""
