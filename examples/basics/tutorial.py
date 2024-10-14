@@ -95,9 +95,10 @@ mse = [excit] + [shift, relax, inversion, shift, relax, adc] * necho
 
 # spoiled gradient echo
 # note: nested lists can be used for more compact definitions
+# note: the operateur "epg.Adc" accepts a `phase` argument to compensate for the RF pulse phase
 necho = 400
 phases = 58.5 * np.arange(necho) ** 2
-spgr = [[epg.T(14.8, phase), relax, adc, relax, shift] for phase in phases]
+spgr = [[epg.T(14.8, phase), relax, epg.Adc(phase=-phase), relax, shift] for phase in phases]
 
 
 # Double echo in steady state (DESS)
@@ -130,7 +131,6 @@ plt.grid()
 plt.tight_layout()
 
 spgr_times, spgr_signal = epg.simulate(spgr, adc_time=True)
-spgr_signal *= np.exp(-1j * np.c_[phases] * np.pi / 180)
 plt.figure("spgr")
 mag = plt.plot(spgr_times, np.abs(spgr_signal))
 plt.title("SPGR simulation")

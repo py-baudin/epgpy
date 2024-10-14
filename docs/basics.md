@@ -118,10 +118,10 @@ mse_times, mse_signal = epg.simulate(mse, adc_time=True)
 ```python
 # spoiled gradient echo
 # note: nested lists can be used for more compact definitions
+# note: the operateur "epg.Adc" accepts a `phase` argument to compensate for the RF pulse phase
 necho = 400
-phases = 58.5 * np.arange(necho) ** 2 # varying phase
-spgr = [[epg.T(14.8, phase), relax, adc, relax, shift] for phase in phases]
-spgr_times, spgr_signal = epg.simulate(spgr, adc_time=True)
+phases = 58.5 * np.arange(necho) ** 2
+spgr = [[epg.T(14.8, phase), relax, epg.Adc(phase=-phase), relax, shift] for phase in phases]
 ```
 
 ![basics SPGR](images/basics_spgr.png)
