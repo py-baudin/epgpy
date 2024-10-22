@@ -238,14 +238,14 @@ att = np.linspace(0.2, 1, num_b1)
 # build sequence
 exc = epg.T(90, 90)
 shift = epg.S(1)
-rfc = epg.T(180 * att, 0)  # B1 on 1st axis
+rfc = epg.T(180 * att, 0)  # put B1 attenuation on 1st axis
 rlx = epg.E(TE / 2, T1, [T2])  # put T2 on 2d axis
 adc = epg.ADC
 seq = [exc] + [shift, rlx, rfc, shift, rlx, adc] * necho
 
 # simulate
 shape = epg.getshape(seq) # get signal's shape
-print(f"Simulate {np.prod(shape)} signals")
+print(f"Simulate {necho} echoes, {num_t2} T2s, {num_b1} B1s, for a total of {np.prod(shape)} signals")
 
 time0 = time.time()
 signal = epg.simulate(seq)
@@ -258,7 +258,7 @@ print(f"Output shape: {signal.shape}")
 Output on a 1.80 GHz laptop with 32Go RAM:
 
 ```
-Simulate 5000 signals
+Simulate 18 echoes, 100 T2s, 50 B1s for a total of 5000 signals
 Duration: 0.69s
 Output shape: (18, 50, 100)
 ```
