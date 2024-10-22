@@ -112,7 +112,7 @@ Example: `epg.probe("mean(F0, axis=1)")`, `epg.Probe(lambda sm: sm.F0**2 + sm.Z0
 `DFT`: discrete Fourier transform
 ```python
 # arguments: coords (ndarray, voxel coordinates)
-# assumes infinitely small voxel (ie. voxel_shape=`point` in epg.imaging)
+# assumes infinitely small voxel (ie. voxel_shape=`point` in epg.Imaging)
 epg.DFT(coords)
 ```
 
