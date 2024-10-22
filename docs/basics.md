@@ -245,7 +245,7 @@ seq = [exc] + [shift, rlx, rfc, shift, rlx, adc] * necho
 
 # simulate
 shape = epg.getshape(seq) # get signal's shape
-print(f"Simulate {necho} echoes, {num_t2} T2s, {num_b1} B1s, for a total of {np.prod(shape)} signals")
+print(f"Simulate {necho} echoes, {num_t2} T2s, {num_b1} B1s, making {np.prod(shape)} signals")
 
 time0 = time.time()
 signal = epg.simulate(seq)
@@ -258,7 +258,7 @@ print(f"Output shape: {signal.shape}")
 Output on a 1.80 GHz laptop with 32Go RAM:
 
 ```
-Simulate 18 echoes, 100 T2s, 50 B1s for a total of 5000 signals
+Simulate 18 echoes, 100 T2s, 50 B1s, making 5000 signals
 Duration: 0.69s
 Output shape: (18, 50, 100)
 ```
