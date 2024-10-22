@@ -23,7 +23,9 @@ and the signal is simulated by applying the operators sequentially, starting fro
 
 Beyond these three operators, in `egppy` you will also find:
 - advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the echange operator `X`, for simulating the echange phenomena between compartments (e.g. in magnetization transfer), and others;
-- utility operators, such as the `ADC` operator, which has no effect and is only needed to tell the program to store the magnetization.
+- utility operators, such as the `ADC` operator, which has no effect on the state matrix and is only needed to tell the program to store the magnetization.
+
+A complete list of the operators provided in `epgpy` is available [here]('operators.md').
 
 In practice, once the operators are instanciated, they are concatenated in a python list which is passed to the `simulate` function.
 
