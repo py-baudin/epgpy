@@ -5,12 +5,15 @@ Following is a list of available operators and their arguments
 
 ## Transition (RF pulse)
 
+Transition (RF pulse)
 ```python
-# Transition (RF pulse)
 # arguments: alpha (flip angle, degree), phi (phase, degree)
 epg.T(alpha, phi) 
+```
 
-# phase offset operator
+Phase offset operator
+```python
+
 # arguments: phi (phase, degree)
 epg.Phi(phi)
 ```
