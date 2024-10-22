@@ -13,23 +13,26 @@ epg.T(alpha, phi)
 
 Phase offset operator
 ```python
-
 # arguments: phi (phase, degree)
 epg.Phi(phi)
 ```
 
 ## Evolution (relaxation / precession)
 
+Evolution (relaxation/precession operator)
 ```python
-# Evolution (relaxation/precession operator)
 # arguments: tau (time, ms), T1 (ms), T2 (ms), g (precession frequency, kHz) 
 epg.E(tau, T1, T2, g=0)
+```
 
-# Precession
+Precession
+```python
 # arguments: tau (ms), g (ms)
 epg.P(tau, g)
+```
 
-# Evolution (more general)
+Evolution (more general)
+```python
 # arguments: rT (transverse evolution, a.u)
 # rL (longitudinal evolution, a.u), r0 (longitudinal recovery, a.u) 
 epg.R(rT=0, rL=0, *, r0=None)
