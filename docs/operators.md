@@ -1,5 +1,5 @@
 
-# List of available operators
+# List of operators in `epgpy`
 
 Following is a list of available operators and their arguments
 
