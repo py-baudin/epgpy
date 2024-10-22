@@ -16,7 +16,7 @@ There are three basic "canonical" operators:
 
 1. The evolution operator `E`, for simulating the relaxation and precession of the magnetization. 
 2. The transition operator `T`, for simulating RF pulses and whose effect is to mix F and Z components.
-3. The shift operator `S`, for simulating gradients and whose effect is to create and move F components into different states.
+3. The shift operator `S`, for simulating gradients and whose effect is to create and move F components to different states.
 
 EPG sequences are built by chaining various combinations of these operators, 
 and the signal is simulated by applying the operators sequentially, starting from an initial state matrix.
