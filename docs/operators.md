@@ -30,9 +30,8 @@ epg.P(tau, g)
 # arguments: rT (transverse evolution, a.u)
 # rL (longitudinal evolution, a.u), r0 (longitudinal recovery, a.u) 
 epg.R(rT=0, rL=0, *, r0=None)
-# note: epg.T(tau, T1, T2, g) is equivalent to:
-# epg.R(rT=tau * (1/T2 + 2j * pi * g), rL=tau/T1, r0=tau/T1) 
 ```
+Note: `epg.T(tau, T1, T2, g)` is equivalent to: `epg.R(rT=tau * (1/T2 + 2j * pi * g), rL=tau/T1, r0=tau/T1)` 
 
 ## Shift (phase states / gradients)
 
@@ -43,19 +42,22 @@ epg.R(rT=0, rL=0, *, r0=None)
 # if k is an array of int, an n-dim a.u. integer EPG shift is applied
 # if k is (an array of) float, a n-dim rad/m gridded EPG shift is applied
 epg.S(k)
-# note: if k is 4-d, the 4th dimension if the accumulated time
+```
+Note: if `k` is 4-d, the 4th dimension if the accumulated time.
 
+```python
 # Gradient
 # arguments: tau (time, ms), grad (gradient amplitude, mT/m)
 epg.G(tau, grad)
-# note: epg.G(tau, grad) is equivalent to epg.S(k) with k = utils.get_wavenumber(tau, grad)
+```
+Note: `epg.G(tau, grad)` is equivalent to `epg.S(k)` with `k = utils.get_wavenumber(tau, grad)`
 
+```python
 # Time accumulation (for T2* and B0 deviations)
 # arguments: tau (time, ms)
 epg.C(tau)
-# note: works best in combination with the special ADC operator `epg.Imaging`
-# and the setup operator `epg.System(modulation=-R2star + 1j*B0)`
 ```
+Note: works best in combination with the special ADC operator `epg.Imaging` and the setup operator `epg.System(modulation=-R2star + 1j*B0)`
 
 ## Diffusion
 
