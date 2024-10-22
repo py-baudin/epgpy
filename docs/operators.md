@@ -107,7 +107,7 @@ Examples: `epg.Adc('Z0')`, `epg.Adc(phase=-phi)`
 # args, kwargs: arguments and keyword arguments for the callable
 epg.Probe(probe, *args, **kwargs)
 ```
-Example: `epg.probe("F0.mean(axis=1)")`
+Example: `epg.probe("mean(F0, axis=1)")`
 
 `DFT`: discrete Fourier transform
 ```python
