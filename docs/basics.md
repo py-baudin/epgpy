@@ -31,7 +31,7 @@ In practice, once the operators are instanciated, they are concatenated in a pyt
 
 ```python
 # build sequence by chaining operators in a list
-seq = [rf, relax, gradient, ADC] * num_echo
+seq = [rf, relax, gradient, adc] * num_echo
 
 # simulate the resulting magnetization
 signal = simulate(seq)
