@@ -23,6 +23,7 @@ A number of extensions are implemented:
 - GPU compatible (via `cupy`)
 - (soon) Operator merging for faster simulations
 
+A list of available operators is given [here](docs/basics.md).
 Please look into the `docs` and `examples` folders for tutorials and usage examples.
 
 Disclaimer: this is a research project, and the authors give no guaranty on the validity of the generated results. 
