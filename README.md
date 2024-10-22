@@ -17,12 +17,12 @@ An introductory tutorial is available [here](docs/basics.md).
 A number of extensions are implemented:
 
 - Arbitrary 3D gradients
-- isotropic and anisotropic diffusion
+- Isotropic and anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
 - [Differentiability](docs/differentiation.md) (e.g., for sequence optimization)
 - GPU compatible (via `cupy`)
 
-A list of available operators is given [here](docs/operators.md).
+A list of all available operators is given [here](docs/operators.md).
 Please look into the `docs/` and `examples/` folders for tutorials and usage examples.
 
 Disclaimer: this is a research project, and the authors give no guaranty on the validity of the generated results. 
