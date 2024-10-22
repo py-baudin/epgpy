@@ -86,9 +86,8 @@ Note: `khi` can also be a NxN kinetic matrix. State matrix must have size 2 (or 
 
 ## Probes
 
-`ADC`
+`ADC` (returns F0 state of state matrix)
 ``` python
-# returns F0 state of state matrix
 epg.ADC
 ```
 
@@ -129,6 +128,7 @@ cf. `utils.imaging` for more detailed description
 ```python
 # set variables of the Jacobian matrix: J[i, j] = d(signal[i]) / d(variables[j])
 epg.Jacobian(variables)
+
 # set variables of the Hessian tensor
 # H[i, j, k] = d2(signal[i]) / d(variables1[j]) / d(variables2[k])
 # if variables2 is None, it is set to variables1
