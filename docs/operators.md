@@ -121,7 +121,7 @@ epg.DFT(coords)
 # arguments: coords (ndarray, voxel coordinates), voxel_shape ('box', 'points'), voxel_size (m)
 epg.Imaging(coords, voxel_shape='box', voxel_size=1)
 ```
-Note: best used in combination with `epg.System(modulation=..., weights=...)`
+Note: best used in combination with `epg.System(modulation=..., weights=...)`.
 cf. `utils.imaging` for more detailed description
 
 `Jacobian`, `Hessian` (cf. `differentiation.md`)
@@ -134,7 +134,7 @@ epg.Jacobian(variables)
 # if variables2 is None, it is set to variables1
 epg.Hessian(variables1, variables2=None)
 ```
-Note: differentiation must be activated in the requested operators  for the corresponding variables (eg.: `epg.E(tau, T1, T2, order1=['T1', 'T2'], order2=True))`
+Note: differentiation must be activated in the requested operators  for the corresponding variables (eg.: `epg.E(tau, T1, T2, order1=['T1', 'T2'], order2=True))`.
 Typical use: `signal, jac, hess = epg.simulate(seq, probe=[ADC, Jacobian(...), Hessian(...)])`
 
 ## Utilities
