@@ -3,22 +3,21 @@
 
 Following is a list of available operators and their arguments
 
+## Transition (RF pulse)
+
 ```python
-
-#
-# RF pulse
-
-# Transition (instantaneous RF pulse)
+# Transition (RF pulse)
 # arguments: alpha (flip angle, degree), phi (phase, degree)
 epg.T(alpha, phi) 
 
 # phase offset operator
 # arguments: phi (phase, degree)
-epg.Phi(phi) 
+epg.Phi(phi)
+```
 
-#
-# relaxation/precession
+## Evolution (relaxation / precession)
 
+```python
 # Evolution (relaxation/precession operator)
 # arguments: tau (time, ms), T1 (ms), T2 (ms), g (precession frequency, kHz) 
 epg.E(tau, T1, T2, g=0)
@@ -33,10 +32,11 @@ epg.P(tau, g)
 epg.R(rT=0, rL=0, *, r0=None)
 # note: epg.T(tau, T1, T2, g) is equivalent to:
 # epg.R(rT=tau * (1/T2 + 2j * pi * g), rL=tau/T1, r0=tau/T1) 
+```
 
-#
-# phase states
+## Shift (phase states / gradients)
 
+``` python
 # Shift
 # arguments: k (wavenumber, rad/m)
 # note: if k is an int, the standard 1-d a.u. EPG integer shift is applied
@@ -55,25 +55,31 @@ epg.G(tau, grad)
 epg.C(tau)
 # note: works best in combination with the special ADC operator `epg.Imaging`
 # and the setup operator `epg.System(modulation=-R2star + 1j*B0)`
+```
 
-#
-# others
+## Diffusion
 
+``` python
 # Diffusion (iso/anisotropic diffusion)
 # arguments: tau (ms), D (diffusion, mm^2/s), k (same as epg.S), 
 epg.D(tau, D, k=None)
 # note: use scalar D for isotropic, and 3x3 ndarray D for anisotrophic diffusion
 # note: if k!=None, always put right after `epg.S(k)` (with the same k value)
+```
 
+## Exchange 
+``` python
 # Exchange (n-dimensional exchange) 
 # arguments: tau (time), khi (exchange rate, 1/ms), axis (int, exchange axis)
 epg.X(tau, khi, *, axis=-1, T1=None, T2=None, g=None)
 # note: khi can also be a NxN kinetic matrix
 # note: state matrix must have size 2 (or N) in set axis
+```
 
-#
+## ADC
+
+``` python
 # ADC
-
 # returns F0 state of state matrix
 epg.ADC
 
@@ -102,7 +108,6 @@ epg.Imaging(coords, voxel_shape='box', voxel_size=1)
 # note: best used in combination with epg.System(modulation=..., weights=...)
 # cf. `utils.imaging` for more detailed description
 
-
 # Jacobian and Hessian probes (cf. `differentiation.md`)
 # set variables of the Jacobian matrix: J[i, j] = d(signal[i]) / d(variables[j])
 epg.Jacobian(variables)
@@ -113,10 +118,12 @@ epg.Hessian(variables1, variables2=None)
 # note: differentiation must be activated in the requested operators 
 # for the corresponding variables (eg.: `epg.E(tau, T1, T2, order1=['T1', 'T2'], order2=True))`
 # typical use: `signal, jac, hess = epg.simulate(seq, probe=[ADC, Jacobian(...), Hessian(...)])`
+```
 
-#
-# Utilities
 
+## Utilities
+
+``` python
 # do-nothing operators
 epg.NULL
 epg.Wait(duration) # do nothing, but for a virtual duration
@@ -141,6 +148,4 @@ epg.PD(pd, reset=True)
 # example, `epg.Imaging` will depend on the following setup:
 # epg.System(kvalue=..., tvalue=..., modulation=tau * (R2star + 2j*pi*B0), weights=weights)`
 epg.System(...)
-
-
 ```
