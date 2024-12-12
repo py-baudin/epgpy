@@ -4,6 +4,7 @@ from .operator import (
     EmptyOperator,
     Spoiler,
     Wait,
+    Offset,
     Reset,
     PD,
     System,
