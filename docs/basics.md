@@ -16,22 +16,24 @@ There are three basic "canonical" operators:
 
 1. The evolution operator `E`, for simulating the relaxation and precession of the magnetization. 
 2. The transition operator `T`, for simulating RF pulses and whose effect is to mix F and Z components.
-3. The shift operator `S`, for simulating gradients and whose effect is to create and move F components into different states.
+3. The shift operator `S`, for simulating gradients and whose effect is to create and move F components to different states.
 
 EPG sequences are built by chaining various combinations of these operators, 
 and the signal is simulated by applying the operators sequentially, starting from an initial state matrix.
 
 Beyond these three operators, in `egppy` you will also find:
 - advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the echange operator `X`, for simulating the echange phenomena between compartments (e.g. in magnetization transfer), and others;
-- utility operators, such as the `ADC` operator, which has no effect and is only needed to tell the program to store the magnetization.
+- utility operators, such as the `ADC` operator, which has no effect on the state matrix and is only needed to tell the program to store the magnetization.
+
+A complete list of the operators provided in `epgpy` is available [here](operators.md).
 
 In practice, once the operators are instanciated, they are concatenated in a python list which is passed to the `simulate` function.
 
 ```python
 # build sequence by chaining operators in a list
-seq = [rf, relax, gradient] * num_echo
+seq = [rf, relax, gradient, adc] * num_echo
 
-# simulate the resulting magnetization (F0, by default)
+# simulate the resulting magnetization
 signal = simulate(seq)
 ```
 
@@ -236,28 +238,28 @@ att = np.linspace(0.2, 1, num_b1)
 # build sequence
 exc = epg.T(90, 90)
 shift = epg.S(1)
-rfc = epg.T(180 * att, 0)  # B1 on 1st axis
+rfc = epg.T(180 * att, 0)  # put B1 attenuation on 1st axis
 rlx = epg.E(TE / 2, T1, [T2])  # put T2 on 2d axis
 adc = epg.ADC
 seq = [exc] + [shift, rlx, rfc, shift, rlx, adc] * necho
 
 # simulate
 shape = epg.getshape(seq) # get signal's shape
-print(f"Simulate {np.prod(shape)} signals")
+print(f"Simulating {necho} echoes, {num_t2} T2s, {num_b1} B1s, making {np.prod(shape)} signals")
 
 time0 = time.time()
 signal = epg.simulate(seq)
 duration = time.time() - time0
 
-print(f"Duration: {duration:.2f}s")
+print(f"Simulation duration: {duration:.2f}s")
 print(f"Output shape: {signal.shape}")
 ```
 
 Output on a 1.80 GHz laptop with 32Go RAM:
 
 ```
-Simulate 5000 signals
-Duration: 0.69s
+Simulating 18 echoes, 100 T2s, 50 B1s, making 5000 signals
+Simulation duration: 0.69s
 Output shape: (18, 50, 100)
 ```
 
