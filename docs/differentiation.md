@@ -168,8 +168,8 @@ and evolution operator `E` has expressions for derivatives with respect to evolu
 
 Let's define state matrix $M$, i-th phase state $M_i$, and equilibrium phase state $M_{eq}$:
 
-$$
-M = \{M_{eq}, M_0, \dots, M_N\},
+```math
+M = \{M_{q}, M_0, \dots, M_N\},
 \ 
 M_i = \begin{bmatrix}
 m_{i+} \\
@@ -182,41 +182,40 @@ M_{eq} = \begin{bmatrix}
 0 \\
 m_{Zeq}
 \end{bmatrix}
-$$
+```
 
 EPG operators act on the state matrix to produce a new state matrix $M^+$:
 
-$$
- M^+ = \{M_{eq}, M^+_0, \dots, M^+_N\} = \mathcal{O}(M)
-$$
-
+```math
+ M^+ = \{M_{q}, M^+_0, \dots, M^+_N\} = \mathcal{O}(M)
+```
 The partial derivative of $M^+$ with respect to operator's parameter $p$ is a derived state matrix:
 
-$$
+```math
 \frac{\partial \mathcal{O}}{\partial p}(M) = 
-\{ 0, \left\[ \frac{\partial \mathcal{O}}{\partial p} (M) \right\]_0, \dots, \left\[ \frac{\partial \mathcal{O}}{\partial p} (M) \right\]_N  \}
-$$
+\left\{ 0, \left[ \frac{\partial \mathcal{O}}{\partial p} (M) \right]_0, \dots, \left[ \frac{\partial \mathcal{O}}{\partial p} (M) \right]_N  \right\}
+```
 
-Note that the equilibrium state being unmodified by $\mathcal{O}$, it's derivative is $0$.
+Note that the equilibrium state being unmodified by operator $\mathcal{O}$, its derivative is always $0$.
 
 For instance, evolution operator $\mathcal{E}$ applies relaxations $T_1$, $T_2$ and precession $\gamma$ on each state independantly, 
 with $T_1$-recovery for state $i=0$:
 
-$$
+```math
 M^+_i = \left[ \mathcal{E}(M) \right] _i =
 \begin{bmatrix}
 e^{-\tau/T_2 + j2\pi\tau\gamma} & 0 & 0 \\
 0 & e^{-\tau/T_2 - j2\pi\tau\gamma} & 0 \\
 0 & 0 & e^{-\tau/T_1}
-\end{bmatrix} 
-\( M_i - \delta_i M_{eq}\) + \delta_i M_{eq} 
-$$
+\end{bmatrix}
+(M_i - \delta_i M_{eq}) + \delta_i M_{eq}
+```
 
 
 In this case, the derivative of $\mathcal{E}(M)$ with respect of $\tau$, $T_1$, $T_2$ or $\gamma$ is easily computed for each phase state independantly. 
 For instance, with respect to $T_1$:
 
-$$
+```math
 \left[ \frac{\partial \mathcal{E}}{\partial T_1}(M)\right]_i = 
 \begin{bmatrix}
 0 & 0 & 0 \\
@@ -224,26 +223,26 @@ $$
 0 & 0 & \frac{\tau}{T_1^2} e^{-\tau/T_1}
 \end{bmatrix}
 (M_i - \delta_i M_{eq})
-$$
+```
 
 A sequence $\mathcal{S}$ is a concatenation of operators, applied successively:
 
-$$
+```math
 \mathcal{S}(M) = \mathcal{O}_n \mathcal{O}_{n-1} \dots \mathcal{O}_1(M)
-$$
+```
 
 Since all operators $\mathcal{O}_n$ are linear, like $\mathcal{E}$ above, 
 the derivative of signal $\mathcal{S}$ with respect to parameter $p$ is computed using the chain rule for linear operators:
 
-$$
+```math
 \begin{aligned}
 \frac{\partial\mathcal{S}}{\partial p}(M) &= 
 \frac{\partial}{\partial p} \left(
-\mathcal{O}_n \mathcal{O}_{n-1} \dots \mathcal{O}_1
+\mathcal{O}_n \dots \mathcal{O}_1
 \right)(M) \\
-& = \sum^n_{k=1} \mathcal{O}_n\dots \frac{\partial}{\partial p}\mathcal{O}_k \dots \mathcal{O}_1(M)
+& = \sum^n_{k=1} \mathcal{O}_n\dots \frac{\partial \mathcal{O}_k}{\partial p} \dots \mathcal{O}_1(M)
 \end{aligned}
-$$
+```
 
-In each term of the sum, $\mathcal{O}_{k+1}$ and later opertors are applied on derived state matrices, due to following the partially differentiated operator $\frac{\partial}{\partial p}\mathcal{O}_k$.
-Conversely, operators up to $\mathcal{O}_{k-1}$ are applied on non-derived state matrices, using the same calculations as in $\mathcal{S}(M)$.
+In each term of the sum, operators at indices $>k$ are applied on derived state matrices, due to applying after the partially differentiated operator at index $k$.
+Conversely, operators at indices $<k$ are applied on non-derived state matrices, sharing the same calculations as in $\mathcal{S}(M)$.
