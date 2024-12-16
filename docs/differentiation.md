@@ -184,12 +184,12 @@ m_{Zeq}
 \end{bmatrix}
 ```
 
-EPG operators act on the state matrix to produce a new state matrix $M^+$:
+EPG operators act on the state matrix to produce a new state matrix:
 
 ```math
- M^+ = \{M_{q}, M^+_0, \dots, M^+_N\} = \mathcal{O}(M)
+ \mathcal{O}(M) = \{M_{q}, [\mathcal{O}(M)]_0, \dots, [\mathcal{O}(M)]_N\}
 ```
-The partial derivative of $M^+$ with respect to operator's parameter $p$ is a derived state matrix:
+The partial derivative of $\mathcal{O}(M)$ with respect to parameter $p$ is a derived state matrix:
 
 ```math
 \frac{\partial \mathcal{O}}{\partial p}(M) = 
@@ -202,7 +202,7 @@ For instance, evolution operator $\mathcal{E}$ applies relaxations $T_1$, $T_2$ 
 with $T_1$-recovery for state $i=0$:
 
 ```math
-M^+_i = \left[ \mathcal{E}(M) \right] _i =
+\left[ \mathcal{E}(M) \right] _i =
 \begin{bmatrix}
 e^{-\tau/T_2 + j2\pi\tau\gamma} & 0 & 0 \\
 0 & e^{-\tau/T_2 - j2\pi\tau\gamma} & 0 \\
