@@ -167,6 +167,7 @@ For instance, the transition operator `T` has expressions for derivatives with r
 and evolution operator `E` has expressions for derivatives with respect to evolution time `tau`, `T1` and `T2` relaxation and off-resonance frequency `g`.
 
 Let's define state matrix $M$, i-th phase state $M_i$, and equilibrium phase state $M_{eq}$:
+
 $$
 M = \{M_{eq}, M_0, \dots, M_N\},
 \ 
@@ -190,51 +191,39 @@ $$
 $$
 
 The partial derivative of $M^+$ with respect to operator's parameter $p$ is a derived state matrix:
+
 $$
 \frac{\partial \mathcal{O}}{\partial p}(M) = 
-\left\{ 0, \left[ \frac{\partial \mathcal{O}}{\partial p} (M)\right]_0, \dots, \left[ \frac{\partial \mathcal{O}}{\partial p} (M)\right]_N \right\}
+\{ 0, \left\[ \frac{\partial \mathcal{O}}{\partial p} (M) \right\]_0, \dots, \left\[ \frac{\partial \mathcal{O}}{\partial p} (M) \right\]_N  \}
 $$
 
 Note that the equilibrium state being unmodified by $\mathcal{O}$, it's derivative is $0$.
 
 For instance, evolution operator $\mathcal{E}$ applies relaxations $T_1$, $T_2$ and precession $\gamma$ on each state independantly, 
 with $T_1$-recovery for state $i=0$:
+
 $$
-M^+_i = \left[ \mathcal{E}(M)\right]_i = 
+M^+_i = \left[ \mathcal{E}(M) \right] _i =
 \begin{bmatrix}
 e^{-\tau/T_2 + j2\pi\tau\gamma} & 0 & 0 \\
 0 & e^{-\tau/T_2 - j2\pi\tau\gamma} & 0 \\
 0 & 0 & e^{-\tau/T_1}
 \end{bmatrix} 
-M_i
-+ 
-\delta_{i}
-\begin{bmatrix}
-0 & 0 & 0 \\
-0 & 0 & 0 \\
-0 & 0 & 1 - e^{-\tau/T_1}
-\end{bmatrix} 
-M_{eq}
+\( M_i - \delta_i M_{eq}\) + \delta_i M_{eq} 
 $$
+
 
 In this case, the derivative of $\mathcal{E}(M)$ with respect of $\tau$, $T_1$, $T_2$ or $\gamma$ is easily computed for each phase state independantly. 
 For instance, with respect to $T_1$:
+
 $$
 \left[ \frac{\partial \mathcal{E}}{\partial T_1}(M)\right]_i = 
 \begin{bmatrix}
 0 & 0 & 0 \\
 0 & 0 & 0 \\
 0 & 0 & \frac{\tau}{T_1^2} e^{-\tau/T_1}
-\end{bmatrix} 
-M_i
-+ 
-\delta_{i}
-\begin{bmatrix}
-0 & 0 & 0 \\
-0 & 0 & 0 \\
-0 & 0 & -\frac{\tau}{T_1^2} e^{-\tau/T_1}
-\end{bmatrix} 
-M_{eq}
+\end{bmatrix}
+(M_i - \delta_i M_{eq})
 $$
 
 A sequence $\mathcal{S}$ is a concatenation of operators, applied successively:
