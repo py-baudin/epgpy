@@ -158,3 +158,103 @@ print(rf"c.int T2: 30 +/- {cint_T2}")
 ```
 
 ![cint MSE](images/mse-cint.png)
+
+
+## How it works
+
+Differentiable operators use explicit expressions to compute the partial derivative of the output state matrix with respect to a variable of interest. 
+For instance, the transition operator `T` has expressions for derivatives with respect to flip angle `alpha` and RF phase `phi`, 
+and evolution operator `E` has expressions for derivatives with respect to evolution time `tau`, `T1` and `T2` relaxation and off-resonance frequency `g`.
+
+Let's define state matrix $M$, i-th phase state $M_i$, and equilibrium phase state $M_{eq}$:
+$$
+M = \{M_{eq}, M_0, \dots, M_N\},
+\ 
+M_i = \begin{bmatrix}
+m_{i+} \\
+m_{i-} \\
+m_{iZ} 
+\end{bmatrix},
+\ 
+M_{eq} = \begin{bmatrix} 
+0 \\
+0 \\
+m_{Zeq}
+\end{bmatrix}
+$$
+
+EPG operators act on the state matrix to produce a new state matrix $M^+$:
+
+$$
+ M^+ = \{M_{eq}, M^+_0, \dots, M^+_N\} = \mathcal{O}(M)
+$$
+
+The partial derivative of $M^+$ with respect to operator's parameter $p$ is a derived state matrix:
+$$
+\frac{\partial \mathcal{O}}{\partial p}(M) = 
+\left\{ 0, \left[ \frac{\partial \mathcal{O}}{\partial p} (M)\right]_0, \dots, \left[ \frac{\partial \mathcal{O}}{\partial p} (M)\right]_N \right\}
+$$
+
+Note that the equilibrium state being unmodified by $\mathcal{O}$, it's derivative is $0$.
+
+For instance, evolution operator $\mathcal{E}$ applies relaxations $T_1$, $T_2$ and precession $\gamma$ on each state independantly, 
+with $T_1$-recovery for state $i=0$:
+$$
+M^+_i = \left[ \mathcal{E}(M)\right]_i = 
+\begin{bmatrix}
+e^{-\tau/T_2 + j2\pi\tau\gamma} & 0 & 0 \\
+0 & e^{-\tau/T_2 - j2\pi\tau\gamma} & 0 \\
+0 & 0 & e^{-\tau/T_1}
+\end{bmatrix} 
+M_i
++ 
+\delta_{i}
+\begin{bmatrix}
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & 1 - e^{-\tau/T_1}
+\end{bmatrix} 
+M_{eq}
+$$
+
+In this case, the derivative of $\mathcal{E}(M)$ with respect of $\tau$, $T_1$, $T_2$ or $\gamma$ is easily computed for each phase state independantly. 
+For instance, with respect to $T_1$:
+$$
+\left[ \frac{\partial \mathcal{E}}{\partial T_1}(M)\right]_i = 
+\begin{bmatrix}
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & \frac{\tau}{T_1^2} e^{-\tau/T_1}
+\end{bmatrix} 
+M_i
++ 
+\delta_{i}
+\begin{bmatrix}
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & -\frac{\tau}{T_1^2} e^{-\tau/T_1}
+\end{bmatrix} 
+M_{eq}
+$$
+
+A sequence $\mathcal{S}$ is a concatenation of operators, applied successively:
+
+$$
+\mathcal{S}(M) = \mathcal{O}_n \mathcal{O}_{n-1} \dots \mathcal{O}_1(M)
+$$
+
+Since all operators $\mathcal{O}_n$ are linear, like $\mathcal{E}$ above, 
+the derivative of signal $\mathcal{S}$ with respect to parameter $p$ is computed using the chain rule for linear operators:
+
+$$
+\begin{aligned}
+\frac{\partial\mathcal{S}}{\partial p}(M) &= 
+\frac{\partial}{\partial p} \left(
+\mathcal{O}_n \mathcal{O}_{n-1} \dots \mathcal{O}_1
+\right)(M) \\
+& = \sum^n_{k=1} \mathcal{O}_n\dots \frac{\partial}{\partial p}\mathcal{O}_k \dots \mathcal{O}_1(M)
+\end{aligned}
+$$
+
+In each term of the sum, $\mathcal{O}_{k+1}$ and later opertors are applied on derived state matrices, due to following the partially differentiated operator $\frac{\partial}{\partial p}\mathcal{O}_k$.
+Conversely, operators up to $\mathcal{O}_{k-1}$ are applied on non-derived state matrices, using the same calculations as in $\mathcal{S}(M)$.
