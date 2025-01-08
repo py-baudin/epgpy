@@ -21,7 +21,7 @@ csf = ndimage.zoom(csf, zoom)
 mask = np.max([wm, gm, csf], axis=0) > 1e-5
 
 # acquisition
-FA = 60 # degrees
+FA = 30 # degrees
 TR = 10 # ms
 FOV = 200e-3 # m
 nread, nphase = mask.shape
@@ -43,11 +43,12 @@ print('EPG')
 # set proton density and T2* decay
 init = epg.System(weights=pds, modulation=-1/np.array(T2p))
 # rf pulse and ADC with phase offset
-rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)]
+rf = [epg.T(FA, 0)] * nphase
+# rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)] # rf spoiling
 adc = [epg.Imaging(pixels, voxel_size=pixsize, phase=-rf[i].phi) for i in range(nphase)]
 # T1/T2 and time accumulation (for T2* and B0)
-rlx = epg.E(TR, T1, T1)
-rlx *= epg.C(TR) # time accumulation
+rlx = epg.E(TR/nread, T1, T2)
+rlx *= epg.C(TR/nread) # time accumulation
 # readout gradient 
 kx = np.array([2 * np.pi / FOV, 0]) # rad/m
 gxpre = epg.S(-kx * nread/2)
@@ -61,11 +62,11 @@ gp2 = [epg.S(-kp * i) if i !=0 else epg.NULL for i in range(-nphase//2, nphase//
 seq = [init] + [[rf[i], gxpre, gp1[i]] + [adc[i], rlx, gx] * nread + [gxspl, gp2[i]] for i in range(nphase)]
 # simulate
 sig_epg, time_epg = {}, {}
-for tol in [5e-2, 1e-2, 1e-8]:
+for tol in [1e-1, 1e-2, 1e-8]:
     print(f'EPG with tol={tol}')
     tic = time.time()
     # also return number of phase states
-    kspace, nstates = epg.simulate(seq, prune=tol, kgrid=1, disp=True, probe=(None, 'nstate'))
+    kspace, nstates = epg.simulate(seq, prune=tol, kgrid=0.1, disp=True, probe=(None, 'nstate'))
     duration = time.time() - tic
     # FFT
     sig = np.fft.fftshift(np.fft.fft2(kspace.reshape(nphase, nread))) / nread
@@ -87,11 +88,12 @@ for niso in [10, 100, 1000]:
     # set proton density
     init = epg.PD(pds)
     # rf pulse and ADC with phase offset
-    rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)]
+    rf = [epg.T(FA, 0)] * nphase
+    # rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)] # rf spoiling
     adc = [epg.Adc(reduce=True, phase=-rf[i].phi) for i in range(nphase)]
     # T1/T2/T2 (3 x 1 x niso)
-    rlx = epg.E(TR, T1, T1)
-    rlx *= epg.P(TR, 1/np.reshape(T2p, (3, 1, 1)) * omega) # T2' 
+    rlx = epg.E(TR/nread, T1, T2)
+    rlx *= epg.P(TR/nread, 1/np.reshape(T2p, (3, 1, 1)) * omega) # T2' 
     # gradients (2 x 1 x npix x niso)
     g = (pixels + iso[:, NAX]).T[:, NAX] / FOV # (num cycles)
     # readout gradient
@@ -115,8 +117,8 @@ for niso in [10, 100, 1000]:
 
 #
 # plot
-max_iso = max(sig_iso)
-vmin, vmax = [func(np.abs(sig_iso[max_iso])) for func in (np.min, np.max)]
+max_epg = sig_epg[max(sig_epg)]
+vmin, vmax = [func(np.abs(max_epg)) for func in (np.min, np.max)]
 fig, axes = plt.subplots(nrows=2, ncols=3, num='iso-vs-epg-2d', figsize=(8,7))
 for i, nstate in enumerate(sig_epg):
     plt.sca(axes[0, i])
@@ -130,5 +132,6 @@ for i, niso in enumerate(sig_iso):
     plt.axis('off')
 plt.suptitle(f'Isochromats vs EPG')
 plt.tight_layout()
-plt.show()
+# plt.show()
+plt.savefig(fig.get_label() + '.png', dpi=200)
 
