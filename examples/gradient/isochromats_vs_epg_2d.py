@@ -1,18 +1,24 @@
 import pathlib
 import time
 import numpy as np
+from scipy import ndimage
 import epgpy as epg
 from matplotlib import pyplot as plt
 
 NAX = np.newaxis
 random = np.random #.RandomState(0)
 
-# load brain phantom
+# brain phantom
+"""
+Source:
+    Colin 27 Average Brain 2008
+    Copyright (C) 1993–2009 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University.
+    https://nist.mni.mcgill.ca/category/atlas/
+"""
 HERE = pathlib.Path(__file__).parent
 wm, gm, csf = np.load(HERE / 'brain.npy')
 
-# tmp
-from scipy import ndimage
+# reshape to 64x64
 zoom = 64 / wm.shape[0]
 wm = ndimage.zoom(wm, zoom)
 gm = ndimage.zoom(gm, zoom)
