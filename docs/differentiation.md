@@ -3,7 +3,7 @@
 In `epgpy`, not only the signal can be simulated but also the first or second signal's derivatives 
 with respect to some input parameters.
 
-The signal's derivative can be needed in various situation: sequence optimization, confidence interval calculation, etc.
+The signal's derivative is needed in various situations: sequence optimization, confidence interval calculation, etc.
 
 To activate differentiation, simply fill the `order1` and `order2` keywords in the relevant operators.
 Keyword `order1` is passed the list of parameters (string values) with respect to which to compute the 1st order derivatives. The parameters available for differentiation can be obtained from the attributes `PARAMETERS_ORDER1`. 
