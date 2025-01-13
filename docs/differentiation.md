@@ -169,7 +169,7 @@ and evolution operator `E` has expressions for derivatives with respect to evolu
 Let's define state matrix $M$, i-th phase state $M_i$, and equilibrium phase state $M_{eq}$:
 
 ```math
-M = \{M_{q}, M_0, \dots, M_N\},
+M = \{M_{eq}, M_0, \dots, M_N\},
 \ 
 M_i = \begin{bmatrix}
 m_{i+} \\
@@ -187,7 +187,7 @@ m_{Zeq}
 EPG operators act on the state matrix to produce a new state matrix:
 
 ```math
- \mathcal{O}(M) = \{M_{q}, [\mathcal{O}(M)]_0, \dots, [\mathcal{O}(M)]_N\}
+ \mathcal{O}(M) = \{M_{eq}, [\mathcal{O}(M)]_0, \dots, [\mathcal{O}(M)]_N\}
 ```
 The partial derivative of $\mathcal{O}(M)$ with respect to parameter $p$ is a derived state matrix:
 
@@ -196,7 +196,7 @@ The partial derivative of $\mathcal{O}(M)$ with respect to parameter $p$ is a de
 \left\{ 0, \left[ \frac{\partial \mathcal{O}}{\partial p} (M) \right]_0, \dots, \left[ \frac{\partial \mathcal{O}}{\partial p} (M) \right]_N  \right\}
 ```
 
-Note that the equilibrium state being unmodified by operator $\mathcal{O}$, its derivative is always $0$.
+Note that the equilibrium state being unmodified by operator $\mathcal{O}$, its derivative is $0$.
 
 For instance, evolution operator $\mathcal{E}$ applies relaxations $T_1$, $T_2$ and precession $\gamma$ on each state independantly, 
 with $T_1$-recovery for state $i=0$:
@@ -225,13 +225,13 @@ For instance, with respect to $T_1$:
 (M_i - \delta_i M_{eq})
 ```
 
-A sequence $\mathcal{S}$ is a concatenation of operators, applied successively:
+A sequence $\mathcal{S}$ is a concatenation of operators, applied in succession:
 
 ```math
 \mathcal{S}(M) = \mathcal{O}_n \mathcal{O}_{n-1} \dots \mathcal{O}_1(M)
 ```
 
-Since all operators $\mathcal{O}_n$ are linear, like $\mathcal{E}$ above, 
+Since all operators $\mathcal{O}_n$ are linear, 
 the derivative of signal $\mathcal{S}$ with respect to parameter $p$ is computed using the chain rule for linear operators:
 
 ```math
