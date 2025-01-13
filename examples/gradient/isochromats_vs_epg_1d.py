@@ -1,7 +1,3 @@
-"""
-A simple 1D readout simulation example to compare EPG with arbitrary gradients and isochromats/Bloch.
-"""
-
 import numpy as np
 import epgpy as epg
 from matplotlib import pyplot as plt
