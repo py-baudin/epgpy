@@ -7,7 +7,7 @@ random = np.random #.RandomState(0)
 
 
 # acquisition
-FA = 60 # degrees
+FA = 30 # degrees
 TR = 10 # ms
 FOV = 200e-3 # m
 nread = 64 
@@ -17,7 +17,7 @@ pixels = np.arange(-nread//2, nread//2) / nread * FOV
 
 # system
 # proton density
-pd = random.uniform(size=nread)
+pd = random.uniform(0.5, 1, size=nread)
 # relaxation
 T1, T2 = 830, 70 # ms
 T2p = 30 # ms (T2 prime)
@@ -26,9 +26,9 @@ T2p = 30 # ms (T2 prime)
 print('EPG')
 adc = epg.Imaging(pixels, voxel_size=pixsize) 
 init = epg.System(weights=pd, modulation=-1/T2p)
-rf = epg.T(FA, 90)
-rlx = epg.E(TR, T1, T2)
-rlx *= epg.C(TR) # time accumulation
+rf = epg.T(FA, 0)
+rlx = epg.E(TR/nread, T1, T2)
+rlx *= epg.C(TR/nread) # time accumulation
 # readout gradient 
 k = 2 * np.pi / FOV # rad/m
 gxpre = epg.S(-k * nread/2)
@@ -49,9 +49,9 @@ for niso in [10, 100, 1000, 10000]:
     # omega = np.tan(0.999 * np.pi * random.uniform(-0.5, 0.5, niso)) / 2 / np.pi
     adc = epg.ADC
     init = epg.PD(pd)
-    rf = epg.T(FA, 90)
-    rlx = epg.E(TR, T1, T2)
-    rlx *= epg.P(TR, 1/T2p * omega[NAX]) # T2' 
+    rf = epg.T(FA, 0)
+    rlx = epg.E(TR/nread, T1, T2)
+    rlx *= epg.P(TR/nread, 1/T2p * omega[NAX]) # T2' 
     # readout gradient 
     g = (pixels[:, NAX] + iso) / FOV # (num cycles)
     gxpre = epg.P(1, -g * nread / 2 ) 
