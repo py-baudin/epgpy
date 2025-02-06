@@ -78,7 +78,7 @@ class Probe(operator.EmptyOperator):
         return sm
 
     def __repr__(self):
-        return f"Probe({self._repr})"
+        return self.name or f"Probe({self._repr})"
 
 
 class Adc(Probe):
