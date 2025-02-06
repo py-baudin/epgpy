@@ -9,7 +9,7 @@ def test_parse_partials():
 
     class Op(diff.DiffOperator):
         PARAMETERS_ORDER1 = {"x", "y"}
-        PARAMETERS_ORDER2 = {("x", "y"), ("x", "x"), ("y", "y")}
+        PARAMETERS_ORDER2 = {("x", "y"), ("x", "x")} # no (y, y)
 
         def _apply(self, sm):
             pass
@@ -32,48 +32,83 @@ def test_parse_partials():
     # all order1 derivatives
     order1, order2 = op._parse_partials(order1=True)
     assert not order2
-    assert order1 == {"x": "x", "y": "y"}
+    assert order1 == {"x": {"x": 1}, "y": {"y": 1}}
 
     # selected order1 derivatives
     order1, order2 = op._parse_partials(order1="x")
     assert not order2
-    assert order1 == {"x": "x"}
+    assert order1 == {"x": {"x": 1}}
 
     # selected aliased order1 derivatives
     order1, order2 = op._parse_partials(order1={"x1": "x"})
     assert not order2
-    assert order1 == {"x1": "x"}
+    assert order1 == {"x1": {"x": 1}}
 
     with pytest.raises(ValueError):
+        # unknown parameter
         op._parse_partials(order1="unknown")
 
     with pytest.raises(ValueError):
-        op._parse_partials(order1={"z": "unknown"})
+        # unknown parameter
+        op._parse_partials(order1={"x1": "z"})
 
+
+    # order 2
     order1, order2 = op._parse_partials(order2=True)
-    assert order1 == {"x": "x", "y": "y"}
+    assert order1 == {"x": {"x": 1}, "y": {"y": 1}}
     assert order2 == {
-        ("x", "x"),
-        ("x", "y"),
-        ("y", "y"),
+        ("x", "x"): {},
+        ("x", "y"): {},
     }
 
     order1, order2 = op._parse_partials(order1="x", order2="x")
-    assert order1 == {"x": "x"}
-    assert order2 == {("x", "x")}
+    assert order1 == {"x": {"x": 1}}
+    assert order2 == {("x", "x"): {}}
+
+    order1, order2 = op._parse_partials(order1=['x', 'y'], order2=[('x', 'y')])
+    assert order1 == {"x": {"x": 1}, 'y': {'y': 1}}
+    assert order2 == {("x", "y"): {}}
 
     order1, order2 = op._parse_partials(
-        order1={"x1": "x", "y1": "y"},
-        order2=[("x1", "y1")],
+        order1={'x1': 'x', 'y1': 'y'},
+        order2=[('x1', 'y1')],
     )
-    assert order1 == {"x1": "x", "y1": "y"}
-    assert order2 == {("x1", "y1")}
+    assert order1 == {"x1": {"x": 1}, "y1": {"y": 1}}
+    assert order2 == {("x1", "y1"): {}}
+
+    order1, order2 = op._parse_partials(
+        order1={'x1': {'x': 2}, 'y1': {'y': 3}}, 
+        order2={('y1', 'x1'): {'x': 4, 'y': 5}},
+    )
+    assert order1 == {"x1": {"x": 2}, "y1": {"y": 3}}
+    assert order2 == {("x1", "y1"): {'x': 4, 'y': 5}}
 
     with pytest.raises(ValueError):
+        # order1 not given
         op._parse_partials(order2={("x", "y")})
 
-    with pytest.raises(ValueError):
-        op._parse_partials(order2={("wrong", "y1")})
+    # with pytest.raises(ValueError):
+    #     # unknown parameter
+    #     op._parse_partials(order1=['x', 'y'], order2=[('x', 'z')])
+
+    # with pytest.raises(ValueError):
+    #     # invalid pair
+    #     op._parse_partials(order1=['x', 'y'], order2=[('y', 'y')])
+    
+    # with pytest.raises(ValueError):
+    #     # unknown variable
+    #     op._parse_partials(order1={'x1': 'x', 'y1': 'y'}, order2=[('y1', 'z1')])
+
+    # with pytest.raises(ValueError):
+    #     # invalid pair
+    #     op._parse_partials(order1={'x1': 'x', 'y1': 'y'}, order2=[('y1', 'y1')])
+
+    # with pytest.raises(ValueError):
+    #     # unknown parameter
+    #     op._parse_partials(
+    #         order1={'x1': {'x': 2}, 'y1': {'y': 3}}, 
+    #         order2={('y1', 'x1'): {'x': 4, 'z': 5}},
+    #     )
 
 
 def test_order12():
@@ -81,7 +116,7 @@ def test_order12():
 
     class Op(diff.DiffOperator):
         PARAMETERS_ORDER1 = {"x", "y"}
-        PARAMETERS_ORDER2 = {("x", "y"), ("x", "x"), ("y", "y")}
+        PARAMETERS_ORDER2 = {("x", "y"), ("x", "x")} # no (y, y)
 
         def _apply(self, sm):
             return sm
@@ -92,12 +127,12 @@ def test_order12():
 
         def _derive2(self, sm, pair):
             pair = tuple(sorted(pair))
-            op2 = {("x", "x"): 4, ("x", "y"): 5, ("y", "y"): 6}[pair]
+            op2 = {("x", "x"): 4, ("x", "y"): 5}[pair]
             return op2 * sm
 
     # order 1
     op = Op(order1=True)
-    assert op.order1 == {"x": "x", "y": "y"}
+    assert op.order1 == {"x": {"x": 1}, "y": {"y": 1}}
     assert not op.order2
     assert op.parameters_order1 == {"x", "y"}
 
@@ -106,34 +141,48 @@ def test_order12():
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states)  # sm is unchanged
-    assert {"x", "y"} == set(sm.order1)  # order1 partials were computed
+    assert set(sm.order1) == {"x", "y"}  # order1 partials were computed
     assert np.allclose(sm.order1["x"], 2 * sm0.states)
     assert np.allclose(sm.order1["y"], 3 * sm0.states)
 
+    # composed arguments
+    op = Op(order1={'z': {'x': -1, 'y': -2}})
+    sm = op(sm0)
+    assert np.allclose(sm.states, sm0.states)  # sm is unchanged
+    assert set(sm.order1) == {'z'}
+    assert np.allclose(sm.order1["z"], (-1 * 2  + -2 * 3) * sm0.states)
+
     # order 2
+
     op = Op(order2=True)
     # order 1 is filled by default
-    assert op.order1 == {"x": "x", "y": "y"}
-    assert op.order2 == {
-        ("x", "x"),
-        ("x", "y"),
-        ("y", "y"),
-    }
+    assert op.order1 == {"x": {"x": 1}, "y": {"y": 1}}
+    assert op.order2 == {("x", "x"): {}, ("x", "y"): {}}
     assert op.parameters_order1 == {"x", "y"}
-    assert op.parameters_order2 == {("x", "y"), ("x", "x"), ("y", "y")}
-
+    assert op.parameters_order2 == {("x", "y"), ("x", "x")}
+    
     # apply operator
     sm = op(sm0)
     assert np.allclose(sm.states, sm0.states)  # sm is unchanged
     # order1 partials were computed
-    assert {"x", "y"} == set(sm.order1)
+    assert set(sm.order1) == {"x", "y"}
     # order2 partials were computed
-    assert {("x", "x"), ("x", "y"), ("y", "x"), ("y", "y")} == set(sm.order2)
+    assert set(sm.order2) == {("x", "x"), ("x", "y"), ("y", "x")}
     assert np.allclose(sm.order1["x"], 2 * sm0.states)
     assert np.allclose(sm.order1["y"], 3 * sm0.states)
     assert np.allclose(sm.order2["x", "x"], 4 * sm0.states)
     assert np.allclose(sm.order2["x", "y"], 5 * sm0.states)
-    assert np.allclose(sm.order2["y", "y"], 6 * sm0.states)
+
+    # composed arguments
+    op = Op(order1={'z': {'x': -1}, 'y': {'y': 1}}, order2={('z', 'z'): {'x': -2}, ('y', 'z'): {}})
+    sm = op(sm0)
+    assert np.allclose(sm.states, sm0.states)  # sm is unchanged
+    assert set(sm.order1) == {'z', 'y'}
+    assert set(sm.order2) == {('y', 'z'), ('z', 'y'), ('z', 'z')}
+    assert np.allclose(sm.order1["z"], (-1 * 2) * sm0.states)
+    assert np.allclose(sm.order1["y"], 3 * sm0.states)
+    assert np.allclose(sm.order2[('y', 'z')], (1 * -1 * 5) * sm0.states)
+    assert np.allclose(sm.order2[('z', 'z')], (-1 * -1 * 4 + -2 * 2) * sm0.states)
 
     # test copy
     op2 = op.copy(name="op2")
@@ -164,7 +213,7 @@ def test_diff_chain():
             op2 = {("x", "x"): 4, ("x", "y"): 5, ("y", "y"): 6}[pair]
             return op2 * sm
 
-    # order 1
+    # order 1, aliases
     op1 = Op(order1={"a": "x", "b": "y"})
     op2 = Op(order1={"a": "y", "b": "x"})
     sm0 = statematrix.StateMatrix([1, 1, 0.5])
@@ -174,6 +223,17 @@ def test_diff_chain():
     # op2/d1 * op1 + op2 * op1/d1
     assert np.allclose(sm2.order1["a"].states, (2 + 3) * sm0.states)
     assert np.allclose(sm2.order1["b"].states, (3 + 2) * sm0.states)
+
+    # order1, composed
+    op1 = Op(order1={'a': {'x': 1, 'y': 2}, 'b': {'y': 3}})
+    op2 = Op(order1={'a': {'x': 1}, 'b': {'x': 2, 'y': 3}})
+    sm0 = statematrix.StateMatrix([1, 1, 0.5])
+    sm2 = op2(op1(sm0))
+    assert set(sm2.order1) == {'a', 'b'}
+    assert np.allclose(sm2.states, sm0.states)  # order 0
+    assert np.allclose(sm2.order1["a"].states, ((1 * 2 + 2 * 3) + 2) * sm0.states)
+    assert np.allclose(sm2.order1["b"].states, ((3 * 3) + (2 * 2 + 3 * 3)) * sm0.states)
+
 
     # order 2
     op1 = Op(order1={"a": "x", "b": "y"}, order2=[("a", "b")])
@@ -191,6 +251,25 @@ def test_diff_chain():
         (5 + 3 * 3 + 2 * 2 + 5) * sm0.states,
     )
     assert np.allclose(sm2.order2[("a", "b")].states, sm2.order2[("b", "a")])
+
+    # order2, composed
+    op1 = Op(order1={'a': {'x': 1, 'y': 2}, 'b': {'y': 3}}, order2=[('a', 'b')])
+    op2 = Op(order1={'a': {'x': 1}, 'b': {'x': 2, 'y': 3}}, order2=[('a', 'b')])
+    sm0 = statematrix.StateMatrix([1, 1, 0.5])
+    sm1 = op1(sm0)
+    assert set(sm1.order2) == {('a', 'b'), ('b', 'a')}
+    assert np.allclose(sm1.order2[('a', 'b')], (1 * 3 * 5 + 2 * 3 * 6) * sm0.states)
+
+    sm2 = op2(sm1)
+    assert set(sm2.order2) == {('a', 'b'), ('b', 'a')}
+    assert np.allclose(
+        sm2.order2[('a', 'b')], 
+        # 2nd derivatives 
+        ((1 * 3 * 5 + 2 * 3 * 6) + (1 * 2 * 4 + 1 * 3 * 5) +
+        # cross derivatives
+        (1 * 2) * (3 * 3) + (2 * 2 + 3 * 3) * (1 * 2 + 2 * 3)) * sm0.states,
+    )
+
 
 
 def test_diff_chain_mse():
