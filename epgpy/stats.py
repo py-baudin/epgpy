@@ -66,32 +66,34 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     return xp.moveaxis(crb, -1, 0)
 
 
-def confint(obs, S, J, H=None, *, alpha=0.05):
+def confint(obs, pred, jac, hess=None, *, conflevel=0.95):
     """Delta method for confidence intervals and confidence bands"""
-    nobs, nparam = J.shape[-2:]
+    nobs, nparam = jac.shape[-2:]
     dof = nobs - nparam
-    res = S - obs
-    sse = np.sum(res**2)
+    res = obs - pred
+    sse = np.sum(res * res.conj(), axis=-1)
 
     # covariance matrix
-    if H is not None:
+    if hess is not None:
         # hessian of MLE
-        Hmle = np.einsum("...nqp,...y->...pq", H.conj(), res).real
-        Hmle += np.einsum("...np,...nq->...pq", J.conj(), J).real
+        Hmle = np.einsum("...nqp,...y->...pq", hess.conj(), res).real
+        Hmle += np.einsum("...np,...nq->...pq", jac.conj(), jac).real
         cov = np.linalg.inv(Hmle)
     else:
-        JJ = np.einsum("...np,...nq->...pq", J.conj(), J).real
-        cov = np.linalg.inv(JJ)
+        jac2 = np.einsum("...np,...nq->...pq", jac.conj(), jac).real
+        cov = np.linalg.inv(jac2)
+    cov *= sse / dof
+
     # tvalue
-    tval = get_tstat_interval(1 - alpha, dof)
+    tval = get_tstat_interval(conflevel, dof)
 
     # confidence intervals for the parameters
     idiag = np.arange(nparam)
-    cints = tval * cov[..., idiag, idiag] * sse / dof
+    cints = tval * np.sqrt(cov[..., idiag, idiag])
 
     # confidence band for the prediction
-    predvar = np.einsum("...np,...pq,...nq->...n", J, cov, J)
-    cband = tval * np.sqrt(predvar * sse / dof)
+    predvar = np.einsum("...np,...pq,...nq->...n", jac.conj(), cov, jac).real
+    cband = tval * np.sqrt(predvar)
 
     return cints, cband
 

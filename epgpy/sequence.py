@@ -1,53 +1,79 @@
 """ Sequence building tools
 
-# variable definition
+from epg.sequence import Variable, Sequence, operators
+
+# Define variables
 T1 = Variable("T1")
 T2 = Variable("T2")
-b1 = Variable("b1", dtype=float)
+b1 = Variable("b1")
 
-# define a sequence
-ops = [T(90 * b1, 90), S(1), E(9.5, T1, T2), ...] # `b1` is a variable
+# Get (virtual) operators to use in sequence 
+T = operators.T
+S = operators.S
+E = operators.S
+
+# Define a sequence as list of operators (with some variables in arguments)
+ops = [T(90 * b1, 90), S(1), E(9.5, T1, T2), ...]
 seq = Sequence(ops)
 
-ops[0].variables --> {"b1"} # operator's variables
-ops[1].variables --> {"T1", "T2"}
-ops[0](b1=0.9) --> epg.T(0.1*90, 90) # operator instantiation
-
-# base functions
+# Basic functions
 seq.variables --> {"b1", "T1", "T2"} # sequence's variables
-seq.build(b1=0.9, T1=1000, T2=30) --> [epg.T(0.1*90, 90), ...] # sequence instantiation
-seq.simulate(T2=30, ...) --> value  # sequence simulation
 
-# helper functions
-signal = seq.signal(...)
-signal, gradient = seq.gradient(variables, ...)
-sig, grad, hess = seq.hessian(variables, ...)
+# Simulate signal, Jacobian and Hessian matrix (tensor)
+signal = seq.signal(b1=0.9, T1=1000, T2=30) 
+# equivalently: seq(b1=0.9, T1=1000, T2=30)
+signal, jacobian = seq.jacobian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+sig, grad, hess = seq.hessian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+
+# Other functions
+
+# Only build (non-virtual) EPG operators, without simulation
+seq.build({b1: 0.9, T1: 1000, T2: 30}) 
+    --> [epg.T(0.9*90, 90), epg.S(1), epg.E(0.5, 1000, 30), ...]
+
+# Run epg.functions.simulate (more flexible than seq.signal)
+seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0') --> value 
+
+# CRLB (sequence optimization objective function)
+seq.crlb(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+
+# Confidence intervals
+seq.confint(obs, ['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+
 
 # Tips
 
-# Operator's variables can be given as string
+# Operator's variables can be passed directly as string
 seq = Sequence([E('tau', T1, T2), T('alpha', phi), ...])
 
 # ADC flag and SPOILER operator can be passed as string
 `Sequence([op1, op2, ..., 'ADC', 'SPOILER'])
 
-# partial Hessian (avoid computing unnecessary partial derivatives)
-seq.hessian([var1, var3], [var2, var3]) # different variables in rows and columns
-seq.crlb([var1, var2], gradient=["var3"]) # gradient can be True/False or a list of variables
+# Avoid computing unnecessary partial derivatives in the Hessian tensor
+# by passing different variables in rows (axis=-2) and columns (axis=-1)
+seq.hessian([var1, var2], [var3]) 
+
+# Compute the gradient of the crlb w/r to a given variable
+seq.crlb([var1, var2], gradient=["var3"])
 
 """
 
 import abc
 import types
 import numpy as np
-from . import operators as epgops, functions as funcs
+from . import operators as epgops, functions as funcs, stats
 
 
 class Sequence:
     """ Sequence building object """
 
     def __init__(self, ops=[], *, name=None):
-        """ Create Sequence from list of operators """
+        """Build sequence from a list of virtual operators
+
+        Args:
+            ops: list of virtual operators
+            name: sequence's name
+        """
         ops = flatten(ops)
         ops = self.check(ops)
         self.operators = ops
@@ -84,15 +110,17 @@ class Sequence:
     def __repr__(self):
         return self.name if self.name else f"Sequence({len(self)})"
     
-    def __call__(self, **kwargs):
+    def __call__(self, *args, **kwargs):
         """ call signal """
-        return self.signal(**kwargs)
+        return self.signal(*args, **kwargs)
 
     @property
     def variables(self):
+        """ set of variables in the sequence"""
         return {var for op in self.operators for var in op.variables}
     
     def check(self, ops):
+        """ Check and convert provided operators """
         # replace string objects with virtual operators
         ops = [operators.STR_OPS.get(op, op) for op in ops]
         # check operator type
@@ -102,36 +130,162 @@ class Sequence:
         return ops
     
     def copy(self, ops=None, **kwargs):
+        """ Copy sequence """
         ops = ops or self.operators
         name = kwargs.get('name', self.name)
         return Sequence(ops, name=name)
 
-    def build(self, values, order1=None, order2=None):
+    def build(self, values, *, jacobian=None, hessian=None):
         """ build EPG operators"""
+        # check jacobian and hessian
+        variables = self.variables
+        if jacobian:
+            invalid = set(jacobian) - variables
+            if invalid:
+                raise ValueError(f'Unknown variable(s) in jacobian: {invalid}')
+        if hessian:
+            hessvars = {var for pair in hessian for var in pair}
+            invalid = hessvars - variables
+            if invalid:
+                raise ValueError(f'Unknown variable(s) in jacobian: {invalid}')
+            if not jacobian:
+                jacobian = list(hessvars)
+
+        # build operators
         unique = {} # unique operators
         return [
-            unique.setdefault(op, op.build(values, order1=order1))
+            unique.setdefault(op, op.build(values, jacobian=jacobian, hessian=hessian))
             for op in self.operators
         ]
     
-    def simulate(self, values, order1=None, order2=None, probe=None, **kwargs):
-        """ return funcs.simulate """
-        ops = self.build(values, order1=order1, order2=order2)
-        sim = funcs.simulate(ops, probe=probe, **kwargs)
-        return sim
+    def simulate(self, values, *, jacobian=None, hessian=None, probe=None, **kwargs):
+        """ Run epg.functions.simulate() on sequence's operators.
+
+        Args:
+            values: dict of variable's values
+            kwargs: cf. epg.functions.simulate
+        """
+        ops = self.build(values, jacobian=jacobian, hessian=hessian)
+        return funcs.simulate(ops, probe=probe, **kwargs)
     
-    def signal(self, **values):
-        """ return simulated signal as ndarray (... x nADC) """
-        sim = self.simulate(values, asarray=True)
+    def adc_times(self, **values):
+        """ Return adc times """
+        ops = self.build(values=values)
+        return funcs.get_adc_times(ops)
+    
+    def signal(self, *, options={}, **values):
+        """Simulate the sequence's signal 
+
+        Args:
+            **values: variables' values
+
+        Returns:
+            signal: (... x nADC) signal ndarray
+        """
+        probe = epgops.Probe("F0")
+        sim = self.simulate(values, probe=probe, asarray=True, **options)
         return np.moveaxis(sim, 0, -1)
     
-    def jacobian(self, variables, **values):
-        """ return simulated signal as ndarray (... x nADC) """
+    def jacobian(self, variables, *, options={}, **values):
+        """Simulate the signal's Jacobian matrix (tensor)
+
+        Args:
+            variables: list of variables of the Jacobian matrix's partials
+            **kwargs: variables' values and simulate options
+
+        Returns:
+            signal: (... x nADC) signal ndarray
+            jac: (... x nADC x nVars) Jacobian ndarray
+        """
         if isinstance(variables, str):
             variables = [variables]
-        probe = [epgops.ADC, epgops.Jacobian(variables)]
-        sim, grad = self.simulate(values, order1=variables, probe=probe, asarray=True)
-        return np.moveaxis(sim, 0, -1), np.moveaxis(grad, [0, 1], [-2, -1])
+        probe = [epgops.ADC, epgops.Jacobian(list(variables))]
+        sim, jac = self.simulate(values, jacobian=variables, probe=probe, asarray=True, **options)
+        return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
+    
+    def hessian(self, variables1, variables2=None, *, options={}, **values):
+        """Simulate the signal's Hessian matrix (tensor)
+
+        Args:
+            variables1: list of variables of the Hessian matrix's partials
+            variables2: if provided, variables of the Hessian matrix's 2nd partials.
+                If not provided, variables is used for both 1st and 2nd partials.
+            **kwargs: variables' values and simulate options
+
+        Returns:
+            signal: (... x nADC) signal ndarray
+            jac: (... x nADC x nVars1) Jacobian ndarray
+            hes: (... x nADC x nVars1 x nVars2) Hessian ndarray
+        """
+        if isinstance(variables1, str):
+            variables1 = [variables1]
+        if variables2 is None:
+            variables2 = variables1
+        elif isinstance(variables2, str):
+            variables2 = [variables2]
+            
+        probe = [
+            epgops.ADC, 
+            epgops.Jacobian(list(variables1)), 
+            epgops.Hessian(list(variables1), list(variables2)),
+        ]
+        pairs = [(v1, v2) for v1 in variables1 for v2 in variables2 if v1 <= v2]
+        sim, jac, hess = self.simulate(
+            values, jacobian=variables1, hessian=pairs, probe=probe, asarray=True, **options)
+        return (
+            np.moveaxis(sim, 0, -1), 
+            np.moveaxis(jac, [0, 1], [-2, -1]), 
+            np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
+        )
+    
+    def crlb(self, variables, *, gradient=None, weights=None, log=False, options={}, **values):
+        """Cramer-Rao lower bound for given variables
+
+        Args:
+            variables: list of variables used in CRLB calculation
+            gradient: if provided, variables for the CRLB's gradient
+            weights: CRLB weights (same length as `variables`)
+            log: True/[False]: returns log10(CRLB)
+            **kwargs: variables' values and simulate options
+
+        Returns:
+            crlb: CRLB scalar (or ndarray if n-dimensional variable values passed)
+        if `gradient` is provided:
+            crlb, Jcrlb: where Jcrlb is the gradient of the crlb w/r gradient variables.
+        """
+        if not gradient:
+            _, jac = self.jacobian(variables, options=options, **values)
+            hess = None
+        else:
+            variables2 = list(gradient)
+            _, jac, hess = self.hessian(variables, variables2, options=options, **values)
+        return stats.crlb(jac, H=hess, W=weights, log=log)
+
+
+    def confint(self, obs, variables, *, conflevel=0.95, return_cband=False, **kwargs):
+        """return 95% confidence interval for given observation 
+        
+        Args:
+            obs: observations (... x nADC) ndarray
+            variables: (nVar) list of variables for the confidence intervals
+
+        Returns:
+            cints: 1/2 width of confidence intervals (... x nVar) ndarray
+            if return_cband == True,
+            cband: confidence band of prediction (... x nADC) ndarray
+        """
+        # compute prediction and jacobian
+        pred, jac = self.jacobian(variables, **kwargs)
+
+        # check dimensions
+        obs = np.asarray(obs)
+        if obs.shape != pred.shape:
+            raise ValueError(f'Mismatch between observation and prediction shapes')
+
+        cints, cband = stats.confint(obs, pred, jac, conflevel=conflevel)
+        if return_cband:
+            return cints, cband
+        return cints
 
 
 class VirtualOperator(abc.ABC):
@@ -143,13 +297,10 @@ class VirtualOperator(abc.ABC):
     
     @property
     def variables(self):
-        """ list of variables"""
-        variables = []
-        for var in self.positionals + list(self.keywords.values()): 
-            if not isinstance(var, Variable):
-                continue
-            elif not str(var) in variables:
-                variables.append(str(var))
+        """ set of variables"""
+        variables = set()
+        for expr in self.positionals + list(self.keywords.values()): 
+            variables |= {var for var in expr.variables}
         return variables
     
     def __init__(self, *args, **kwargs):
@@ -192,35 +343,47 @@ class VirtualOperator(abc.ABC):
         kwargs = {**keywords, **self.options}
         return type(self)(*args, **kwargs)
 
-    def build(self, values={}, *, order1=None, order2=None):
+    def build(self, values={}, *, jacobian=None, hessian=None):
         """ build (non-virtual) EPG operator """
         # solve expressions
         args = [arg(**values) for arg in self.positionals]
         keywords = {key: value(**values) for key, value in self.keywords.items()}
         kwargs = {**keywords, **self.options}
+
         # build operator
-        if not (order1 or order2):
+        if not (jacobian or hessian):
             return self.OPERATOR(*args, **kwargs)
         
         # build order1 and order2 dicts
-        diff = {}
-        for param in self.OPERATOR.PARAMETERS_ORDER1:
-            if param in self.POSITIONALS:
-                index = self.POSITIONALS.index(param)
-                if index >= len(self.positionals):
-                    var = Constant(0)
-                else:
-                    var = self.positionals[index]
-            elif param in self.KEYWORDS:
-                var = self.keywords[param]
-            if not str(var) in order1:
-                continue
-            if isinstance(var, Constant):
-                diff.setdefault('order1', {})[param] = param
-            elif isinstance(var, Variable):
-                diff.setdefault('order1', {})[str(var)] = param
+        jacobian = list(jacobian or [])
+        hessian = [pair for pair in (hessian or [])]
+        hesvars = {var for pair in hessian for var in pair}
 
-        kwargs.update(diff)
+        exprs = list(zip(self.POSITIONALS, self.positionals)) 
+        exprs += [(name, self.keywords[name]) for name in self.KEYWORDS]
+        order1, order2 = {}, {}
+        for param, expr in exprs:
+            # get argument's variables
+            variables = set(map(str, expr.variables))
+            for var in variables & (set(jacobian) | hesvars):
+                # 1st order derivatives
+                d1param = expr.derive(var, **values)
+                order1.setdefault(var, {}).update({param: d1param})
+            for pair in hessian:
+                if set(pair) <= variables:
+                    # 2nd order derivative
+                    order2.setdefault(pair, {})
+                    d2param = expr.derive(pair[0]).derive(pair[1], **values)
+                    if not np.allclose(d2param, 0):
+                        order2[pair].update({param: d2param})
+                elif set(pair) & variables:
+                    # 1st order cross derivatives
+                    order2.setdefault(pair, {})
+
+        if order1:
+            kwargs['order1'] = order1
+        if order2:
+            kwargs['order2'] = order2
         return self.OPERATOR(*args, **kwargs)
     
     def __repr__(self):
@@ -308,6 +471,11 @@ class operators(types.SimpleNamespace):
         'RESET': RESET,
     }
 
+#
+# order1/order2 keywords
+def parse_order12(seq, order1=None, order2=None):
+    """ parse order1/order2 keywords """
+
 
 #
 # Expressions
@@ -363,7 +531,7 @@ class Expression:
     def derive(self, variable, /, **kwargs):
         """ compute derivative expression """
         variable = str(variable)
-        d_expr = None
+        d_expr = Constant(0)
         for i, arg in enumerate(self.arguments):
             if variable in map(str, arg.variables):
                 # derive function
@@ -404,21 +572,41 @@ class Expression:
         other = to_expression(other)
         return Expression(functions.add, [self, other])
     
+    def __radd__(self, other):
+        other = to_expression(other)
+        return Expression(functions.add, [other, self])
+    
     def __sub__(self, other):
         other = to_expression(other)
         return Expression(functions.sub, [self, other])
+    
+    def __rsub__(self, other):
+        other = to_expression(other)
+        return Expression(functions.sub, [other, self])
     
     def __mul__(self, other):
         other = to_expression(other)
         return Expression(functions.mul, [self, other])
     
+    def __rmul__(self, other):
+        other = to_expression(other)
+        return Expression(functions.mul, [other, self])
+    
     def __truediv__(self, other):
         other = to_expression(other)
         return Expression(functions.div, [self, other])
     
+    def __rtruediv__(self, other):
+        other = to_expression(other)
+        return Expression(functions.div, [other, self])
+    
     def __pow__(self, other):
         other = to_expression(other)
         return Expression(functions.pow, [self, other])
+    
+    def __rpow__(self, other):
+        other = to_expression(other)
+        return Expression(functions.pow, [other, self])
     
 
 class Constant(Expression):
@@ -436,6 +624,13 @@ class Constant(Expression):
 
     def __repr__(self):
         return self.name
+    
+    def __eq__(self, other):
+        other = other.value if isinstance(other, Constant) else other
+        return np.all(self.value == other)
+    
+    def __hash__(self):
+        return hash(self.value)
 
     def __call__(self, /, **kwargs):
         return self.value
@@ -572,11 +767,21 @@ class functions(types.SimpleNamespace):
     @tofunction([Constant(0), Constant(1)], fmt='{arg2}')
     def right(v1, v2):
         return v2
+    
+    # abs
+    @tofunction()
+    def sign(value):
+        return np.sign(value)
 
     # neg
     @tofunction([Constant(-1)], fmt='(-{arg1})')
     def neg(value):
         return - value
+    
+    # abs
+    @tofunction()
+    def abs(value):
+        return np.abs(value)
 
     # add
     @tofunction([Constant(1), Constant(1)], fmt='({arg1}+{arg2})')
@@ -619,6 +824,7 @@ class functions(types.SimpleNamespace):
         return np.exp(value)
     
     # set missing derivatives
+    abs.derivatives = [sign(p1)]
     inv.derivatives = [div(Constant(-1), pow(p1, Constant(2)))]
     div.derivatives = [inv(right(p1, p2)), div(neg(p1), pow(p2, Constant(2)))]
     pow.derivatives = [mul(p2, pow(p1, add(p2, Constant(-1)))), mul(log(p1), pow(p1, p2))]
