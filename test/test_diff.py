@@ -87,28 +87,28 @@ def test_parse_partials():
         # order1 not given
         op._parse_partials(order2={("x", "y")})
 
-    # with pytest.raises(ValueError):
-    #     # unknown parameter
-    #     op._parse_partials(order1=['x', 'y'], order2=[('x', 'z')])
+    with pytest.raises(ValueError):
+        # unknown variable pair
+        op._parse_partials(order1=['x', 'y'], order2=[('a', 'b')])
 
-    # with pytest.raises(ValueError):
-    #     # invalid pair
-    #     op._parse_partials(order1=['x', 'y'], order2=[('y', 'y')])
+    with pytest.raises(ValueError):
+        # invalid pair
+        op._parse_partials(order1=['x', 'y'], order2=[('y', 'y')])
     
-    # with pytest.raises(ValueError):
-    #     # unknown variable
-    #     op._parse_partials(order1={'x1': 'x', 'y1': 'y'}, order2=[('y1', 'z1')])
+    with pytest.raises(ValueError):
+        # invalid pair
+        op._parse_partials(order1={'a': 'x', 'b': 'y'}, order2=[('b', 'b')])
 
-    # with pytest.raises(ValueError):
-    #     # invalid pair
-    #     op._parse_partials(order1={'x1': 'x', 'y1': 'y'}, order2=[('y1', 'y1')])
+    with pytest.raises(ValueError):
+        # unknown parameter
+        op._parse_partials(order1={'a': 'x', 'b': 'y'}, order2={('a', 'b'): {'z': 1}})
 
-    # with pytest.raises(ValueError):
-    #     # unknown parameter
-    #     op._parse_partials(
-    #         order1={'x1': {'x': 2}, 'y1': {'y': 3}}, 
-    #         order2={('y1', 'x1'): {'x': 4, 'z': 5}},
-    #     )
+    with pytest.raises(ValueError):
+        # invalid pair: expecting no coefficients in cross-operator pairs
+        op._parse_partials(
+            order1={'a': {'x': 2}, 'b': {'y': 3}}, 
+            order2={('a', 'c'): {'x': 4}},
+        )
 
 
 def test_order12():

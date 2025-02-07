@@ -209,9 +209,7 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         elif all(isinstance(param, str) for param in order2):
             # list of variables: derivatives w/r to all variable pairs
-            order2 = {
-                {Pair(pair): {}} for pair in get_combinations(order2)
-            } & self.PARAMETERS_ORDER2
+            order2 = {{Pair(pair): {}} for pair in get_combinations(order2)}
 
         elif not isinstance(order2, dict) and all(isinstance(pair, tuple) for pair in order2):
             # compute *some* 2nd order partial derivatives
@@ -226,16 +224,20 @@ class DiffOperator(operator.Operator, abc.ABC):
             raise ValueError(f"Invalid parameter 'order2' value: {order2}")
         
         # check order2 parameters
-        # invalid = {var for pair in order2 for var in pair} - set(order1)
-        # if invalid:
-        #     raise ValueError(f"Unknown variable in {self}: {sorted(invalid)}")
-        # param_pairs = {Pair(p1, p2) for v1,v2 in order2 for p1 in order1[v1] for p2 in order1[v2]}
-        # invalid = param_pairs - set(self.PARAMETERS_ORDER2)
-        # if invalid:
-        #     raise ValueError(f"Unknown parameters pair(s) in {self}: {sorted(invalid)}")
-        # invalid = {param for pair in order2 for param in set(order2[pair]) - parameters}
-        # if invalid:
-        #     raise ValueError(f"Unknown parameter(s): {invalid}")
+        invalid = {pair for pair in order2 if not (set(pair) & set(order1))}
+        if invalid:
+            raise ValueError(f"Invalid variable pair(s), no match in order1 variables: {invalid}")
+        cross_vars = {pair for pair in order2 if (set(pair) - set(order1))}
+        invalid = {pair for pair in cross_vars if order2[pair]}
+        if invalid:
+            raise ValueError(f"Invalid variable pair(s), expecting no coefficient: {invalid}")
+        invalid = {param for pair in order2 for param in (set(order2[pair]) - parameters)}
+        if invalid: 
+            raise ValueError(f'Unknown parameter(s) in order2: {invalid}')
+        param_pairs = {Pair(p1, p2) for v1, v2 in order2 for p1 in order1.get(v1, []) for p2 in order1.get(v2, [])}
+        invalid = param_pairs - set(self.PARAMETERS_ORDER2)
+        if invalid:
+            raise ValueError(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
 
         return order1, order2
 
