@@ -240,7 +240,7 @@ class Sequence:
             np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
         )
     
-    def crlb(self, variables, *, gradient=None, weights=None, log=False, options={}, **values):
+    def crlb(self, variables, *, gradient=None, weights=None, options={}, **values):
         """Cramer-Rao lower bound for given variables
 
         Args:
@@ -255,13 +255,14 @@ class Sequence:
         if `gradient` is provided:
             crlb, Jcrlb: where Jcrlb is the gradient of the crlb w/r gradient variables.
         """
+        crlb_opts = {key: options.pop(key) for key in ['log', 'sigma2']}
         if not gradient:
             _, jac = self.jacobian(variables, options=options, **values)
             hess = None
         else:
             variables2 = variables if gradient is True else list(gradient)
             _, jac, hess = self.hessian(variables, variables2, options=options, **values)
-        return stats.crlb(jac, H=hess, W=weights, log=log)
+        return stats.crlb(jac, H=hess, W=weights, **crlb_opts)
 
 
     def confint(self, obs, variables, *, conflevel=0.95, return_cband=False, **kwargs):
