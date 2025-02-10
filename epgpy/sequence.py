@@ -135,37 +135,39 @@ class Sequence:
         name = kwargs.get('name', self.name)
         return Sequence(ops, name=name)
 
-    def build(self, values, *, jacobian=None, hessian=None):
+    def build(self, values, *, order1=None, order2=None):
         """ build EPG operators"""
         # check jacobian and hessian
         variables = self.variables
-        if jacobian:
-            invalid = set(jacobian) - variables
+        if order1:
+            order1 = [var for var in order1 if var != 'magnitude']
+            invalid = set(order1) - variables
             if invalid:
-                raise ValueError(f'Unknown variable(s) in jacobian: {invalid}')
-        if hessian:
-            hessvars = {var for pair in hessian for var in pair}
+                raise ValueError(f'Unknown variable(s) in order1: {invalid}')
+        if order2:
+            order2 = [pair for pair in order2 if not 'magnitude' in pair]
+            hessvars = {var for pair in order2 for var in pair}
             invalid = hessvars - variables
             if invalid:
-                raise ValueError(f'Unknown variable(s) in jacobian: {invalid}')
-            if not jacobian:
-                jacobian = list(hessvars)
+                raise ValueError(f'Unknown variable(s) in order2: {invalid}')
+            if not order1:
+                order1 = list(hessvars)
 
         # build operators
         unique = {} # unique operators
         return [
-            unique.setdefault(op, op.build(values, jacobian=jacobian, hessian=hessian))
+            unique.setdefault(op, op.build(values, order1=order1, order2=order2))
             for op in self.operators
         ]
     
-    def simulate(self, values, *, jacobian=None, hessian=None, probe=None, **kwargs):
+    def simulate(self, values, *, order1=None, order2=None, probe=None, **kwargs):
         """ Run epg.functions.simulate() on sequence's operators.
 
         Args:
             values: dict of variable's values
             kwargs: cf. epg.functions.simulate
         """
-        ops = self.build(values, jacobian=jacobian, hessian=hessian)
+        ops = self.build(values, order1=order1, order2=order2)
         return funcs.simulate(ops, probe=probe, **kwargs)
     
     def adc_times(self, **values):
@@ -200,7 +202,7 @@ class Sequence:
         if isinstance(variables, str):
             variables = [variables]
         probe = [epgops.ADC, epgops.Jacobian(list(variables))]
-        sim, jac = self.simulate(values, jacobian=variables, probe=probe, asarray=True, **options)
+        sim, jac = self.simulate(values, order1=variables, probe=probe, asarray=True, **options)
         return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
     
     def hessian(self, variables1, variables2=None, *, options={}, **values):
@@ -231,7 +233,7 @@ class Sequence:
         ]
         pairs = [(v1, v2) for v1 in variables1 for v2 in variables2 if v1 <= v2]
         sim, jac, hess = self.simulate(
-            values, jacobian=variables1, hessian=pairs, probe=probe, asarray=True, **options)
+            values, order1=variables1, order2=pairs, probe=probe, asarray=True, **options)
         return (
             np.moveaxis(sim, 0, -1), 
             np.moveaxis(jac, [0, 1], [-2, -1]), 
@@ -257,7 +259,7 @@ class Sequence:
             _, jac = self.jacobian(variables, options=options, **values)
             hess = None
         else:
-            variables2 = list(gradient)
+            variables2 = variables if gradient is True else list(gradient)
             _, jac, hess = self.hessian(variables, variables2, options=options, **values)
         return stats.crlb(jac, H=hess, W=weights, log=log)
 
@@ -343,7 +345,7 @@ class VirtualOperator(abc.ABC):
         kwargs = {**keywords, **self.options}
         return type(self)(*args, **kwargs)
 
-    def build(self, values={}, *, jacobian=None, hessian=None):
+    def build(self, values={}, *, order1=None, order2=None):
         """ build (non-virtual) EPG operator """
         # solve expressions
         args = [arg(**values) for arg in self.positionals]
@@ -351,39 +353,39 @@ class VirtualOperator(abc.ABC):
         kwargs = {**keywords, **self.options}
 
         # build operator
-        if not (jacobian or hessian):
+        if not (order1 or order2):
             return self.OPERATOR(*args, **kwargs)
         
         # build order1 and order2 dicts
-        jacobian = list(jacobian or [])
-        hessian = [pair for pair in (hessian or [])]
-        hesvars = {var for pair in hessian for var in pair}
+        order1 = list(order1 or [])
+        order2 = [pair for pair in (order2 or [])]
+        hesvars = {var for pair in order2 for var in pair}
 
         exprs = list(zip(self.POSITIONALS, self.positionals)) 
         exprs += [(name, self.keywords[name]) for name in self.KEYWORDS]
-        order1, order2 = {}, {}
+        _order1, _order2 = {}, {}
         for param, expr in exprs:
             # get argument's variables
             variables = set(map(str, expr.variables))
-            for var in variables & (set(jacobian) | hesvars):
+            for var in variables & (set(order1) | hesvars):
                 # 1st order derivatives
                 d1param = expr.derive(var, **values)
-                order1.setdefault(var, {}).update({param: d1param})
-            for pair in hessian:
+                _order1.setdefault(var, {}).update({param: d1param})
+            for pair in order2:
                 if set(pair) <= variables:
                     # 2nd order derivative
-                    order2.setdefault(pair, {})
+                    _order2.setdefault(pair, {})
                     d2param = expr.derive(pair[0]).derive(pair[1], **values)
                     if not np.allclose(d2param, 0):
-                        order2[pair].update({param: d2param})
+                        _order2[pair].update({param: d2param})
                 elif set(pair) & variables:
                     # 1st order cross derivatives
-                    order2.setdefault(pair, {})
+                    _order2.setdefault(pair, {})
 
-        if order1:
-            kwargs['order1'] = order1
-        if order2:
-            kwargs['order2'] = order2
+        if _order1:
+            kwargs['order1'] = _order1
+        if _order2:
+            kwargs['order2'] = _order2
         return self.OPERATOR(*args, **kwargs)
     
     def __repr__(self):

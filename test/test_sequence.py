@@ -95,10 +95,6 @@ def test_sequence_multiple_variables():
     signal = seq.signal(T2=35, T1=1000, alpha=150)
     assert signal.shape == (1, necho)
 
-    # dT2 = seq.derive("T2", T2=35, T1=1000, alpha=150)[..., 0]
-    # dT1 = seq.derive("T1", T2=35, T1=1000, alpha=150)[..., 0]
-    # dalpha = seq.derive("alpha", T2=35, T1=1000, alpha=150)[..., 0]
-
     # jacobian
     _, jac = seq.jacobian(["alpha", "T1", "T2"], T2=35, T1=1000, alpha=150)
     assert jac.shape == (1, necho, 3)
@@ -118,48 +114,49 @@ def test_sequence_multiple_variables():
     assert np.allclose(fdiff * 1e8, jac, atol=1e-7)
 
     # hessian
-    _, _, hess = seq.hessian(["alpha", "T1", "T2"], T2=35, T1=1000, alpha=150)
+    with pytest.warns(UserWarning):
+        _, _, hess = seq.hessian(["alpha", "T1", "T2"], T2=35, T1=1000, alpha=150)
     assert hess.shape == (1, necho, 3, 3)
 
     fdiff = (
         np.stack(
             [
-                np.stack(
+                np.concatenate(
                     [
-                        seq.jacobian("alpha", T2=35, T1=1000, alpha=150 + 1e-8)[..., 0],
-                        seq.jacobian("alpha", T2=35, T1=1000 + 1e-8, alpha=150)[..., 0],
-                        seq.jacobian("alpha", T2=35 + 1e-8, T1=1000, alpha=150)[..., 0],
+                        seq.jacobian("alpha", T2=35, T1=1000, alpha=150 + 1e-8)[1],
+                        seq.jacobian("alpha", T2=35, T1=1000 + 1e-8, alpha=150)[1],
+                        seq.jacobian("alpha", T2=35 + 1e-8, T1=1000, alpha=150)[1],
                     ],
-                    axis=1,
+                    axis=-1,
                 ),
-                np.stack(
+                np.concatenate(
                     [
-                        seq.jacobian("T1", T2=35, T1=1000, alpha=150 + 1e-8)[..., 0],
-                        seq.jacobian("T1", T2=35, T1=1000 + 1e-8, alpha=150)[..., 0],
-                        seq.jacobian("T1", T2=35 + 1e-8, T1=1000, alpha=150)[..., 0],
+                        seq.jacobian("T1", T2=35, T1=1000, alpha=150 + 1e-8)[1],
+                        seq.jacobian("T1", T2=35, T1=1000 + 1e-8, alpha=150)[1],
+                        seq.jacobian("T1", T2=35 + 1e-8, T1=1000, alpha=150)[1],
                     ],
-                    axis=1,
+                    axis=-1,
                 ),
-                np.stack(
+                np.concatenate(
                     [
-                        seq.derive("T2", T2=35, T1=1000, alpha=150 + 1e-8)[..., 0],
-                        seq.derive("T2", T2=35, T1=1000 + 1e-8, alpha=150)[..., 0],
-                        seq.derive("T2", T2=35 + 1e-8, T1=1000, alpha=150)[..., 0],
+                        seq.jacobian("T2", T2=35, T1=1000, alpha=150 + 1e-8)[1],
+                        seq.jacobian("T2", T2=35, T1=1000 + 1e-8, alpha=150)[1],
+                        seq.jacobian("T2", T2=35 + 1e-8, T1=1000, alpha=150)[1],
                     ],
-                    axis=1,
+                    axis=-1,
                 ),
             ],
-            axis=2,
+            axis=-1,
         )
         * 1e8
         - jac[..., np.newaxis, :] * 1e8
     )
 
     assert np.allclose(fdiff, hess, atol=1e-7)
-    1/0
+    
 
     # include magnitude as variable
-    _, grad, hess = seq.hessian(["magnitude", "alpha"], T2=35, T1=1000, alpha=150)
+    _, jac, hess = seq.hessian(["magnitude", "alpha"], T2=35, T1=1000, alpha=150)
     fdiff = (
         np.stack(
             [
@@ -170,23 +167,23 @@ def test_sequence_multiple_variables():
         )
         * 1e8
     )
-    assert np.allclose(grad, fdiff, atol=1e-7)
+    assert np.allclose(jac, fdiff, atol=1e-7)
 
     fdiff = (
         np.stack(
             [
                 np.concatenate(
                     [
-                        seq.gradient("magnitude", T2=35, T1=1000, alpha=150)[1],
-                        seq.gradient("magnitude", T2=35, T1=1000, alpha=150 + 1e-8)[1],
+                        seq.jacobian("magnitude", T2=35, T1=1000, alpha=150)[1],
+                        seq.jacobian("magnitude", T2=35, T1=1000, alpha=150 + 1e-8)[1],
                     ],
                     axis=-1,
                 ),
                 np.concatenate(
                     [
-                        seq.gradient("alpha", T2=35, T1=1000, alpha=150)[1]
+                        seq.jacobian("alpha", T2=35, T1=1000, alpha=150)[1]
                         * (1 + 1e-8),
-                        seq.gradient("alpha", T2=35, T1=1000, alpha=150 + 1e-8)[1],
+                        seq.jacobian("alpha", T2=35, T1=1000, alpha=150 + 1e-8)[1],
                     ],
                     axis=-1,
                 ),
@@ -195,7 +192,7 @@ def test_sequence_multiple_variables():
         )
         * 1e8
     )
-    fdiff = fdiff - grad[..., np.newaxis, :] * 1e8
+    fdiff = fdiff - jac[..., np.newaxis, :] * 1e8
     assert np.allclose(hess, fdiff, atol=1e-7)
 
     # CRLB
@@ -229,17 +226,20 @@ def test_partial_hessian():
     seq = Sequence([excit] + [shift, relax, refoc, shift, relax, adc] * necho)
 
     # 2nd derivative for all 9 pairs
-    # _, _, hess1 = seq.hessian(["alpha", "T1", "T2"], alpha=150, T1=1e3, T2=30)
-    # assert hess1.shape == (1, 5, 3, 3)
-
+    with pytest.warns(UserWarning):
+        _, _, hess1 = seq.hessian(["alpha", "T1", "T2"], alpha=150, T1=1e3, T2=30)
+    assert hess1.shape == (1, 5, 3, 3)
+    assert np.allclose(hess1[:, 0, 1, 2], 0) # no (T1, T2) nd order
+    assert np.allclose(hess1[:, 0, 2, 1], 0) 
+    
     # 2nd derivatives for 2 selected pairs
     _, jac2, hess2 = seq.hessian(["T1", "T2"], ["alpha"], alpha=150, T1=1e3, T2=30)
     assert hess2.shape == (1, 5, 2, 1)
     # alpha-T1
-    # assert np.allclose(hess1[..., 0, 1], hess2[..., 0, 0])
-    # assert np.allclose(hess1[..., 1, 0], hess2[..., 0, 0])
-    # assert np.allclose(hess1[..., 0, 2], hess2[..., 1, 0])
-    # assert np.allclose(hess1[..., 2, 0], hess2[..., 1, 0])
+    assert np.allclose(hess1[..., 0, 1], hess2[..., 0, 0])
+    assert np.allclose(hess1[..., 1, 0], hess2[..., 0, 0])
+    assert np.allclose(hess1[..., 0, 2], hess2[..., 1, 0])
+    assert np.allclose(hess1[..., 2, 0], hess2[..., 1, 0])
 
     # crlb
     crlb1, cgrad1 = seq.crlb(["T1", "T2"], gradient=["alpha"], alpha=150, T1=1e3, T2=30)

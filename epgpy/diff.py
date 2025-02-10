@@ -5,6 +5,7 @@ Note: only works with linear/affine operators
 
 import itertools
 import abc
+import warnings
 import logging
 import numpy as np
 from . import operator, common, probe
@@ -89,7 +90,10 @@ class DiffOperator(operator.Operator, abc.ABC):
             for v1,v2 in self.order2 
             for p1 in self.order1.get(v1, [])
             for p2 in self.order1.get(v2, [])
+            # keep only valid parameter pairss
+            if {(p1, p2), (p2, p1)} & self.PARAMETERS_ORDER2
         }
+    
         
     def derive0(self, sm, inplace=False):
         """apply operator (without order1 and order2 differential operators)"""
@@ -235,9 +239,12 @@ class DiffOperator(operator.Operator, abc.ABC):
         if invalid: 
             raise ValueError(f'Unknown parameter(s) in order2: {invalid}')
         param_pairs = {Pair(p1, p2) for v1, v2 in order2 for p1 in order1.get(v1, []) for p2 in order1.get(v2, [])}
+
+        # authorize invalid parameter pairs but warn user
         invalid = param_pairs - set(self.PARAMETERS_ORDER2)
         if invalid:
-            raise ValueError(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
+            warnings.warn(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
+            # raise ValueError(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
 
         return order1, order2
 
@@ -336,16 +343,14 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         # accumulate partial derivatives
         order2 = accumulate(
-            order2_previous, order1_previous, order2_current, order2_cross1, order2_cross2
+            order2_previous, order1_previous, order2_current, order2_cross1, order2_cross2,
         )
-        
 
         # store 2nd order partials as (v1, v2) and (v2, v1)
         for pair in list(order2):
             if pair[0] == pair[1]:
                 continue
             order2[pair[::-1]] = order2[pair]
-
         return order2
 
 
@@ -414,29 +419,27 @@ class Hessian(probe.Probe):
     def _acquire(self, sm):
         """return signal's Hessian"""
         xp = sm.array_module
-        zeros = xp.zeros(1)
+        missing = xp.zeros(1)
+        # missing = xp.nan * xp.ones(1)
 
         arrays = []
         for v1 in self.variables1:
             arrays.append([])
             for v2 in self.variables2:
                 if "magnitude" == v1:
-                    # hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
                     hess = (
-                        getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else zeros
+                        getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else missing
                     )
                 elif "magnitude" == v2:
-                    # hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
                     hess = (
-                        getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else zeros
+                        getattr(sm.order1[v1], self.probe) if v1 in sm.order1 else missing
                     )
                 else:
-                    # hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                     v12 = Pair(v1, v2)
                     hess = (
                         getattr(sm.order2[v12], self.probe)
                         if v12 in sm.order2
-                        else zeros
+                        else missing
                     )
 
                 arrays[-1].append(hess)

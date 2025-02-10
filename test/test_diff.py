@@ -91,11 +91,13 @@ def test_parse_partials():
         # unknown variable pair
         op._parse_partials(order1=['x', 'y'], order2=[('a', 'b')])
 
-    with pytest.raises(ValueError):
+
+    # with pytest.raises(ValueError):
+    with pytest.warns(UserWarning):
         # invalid pair
         op._parse_partials(order1=['x', 'y'], order2=[('y', 'y')])
     
-    with pytest.raises(ValueError):
+    with pytest.warns(UserWarning):
         # invalid pair
         op._parse_partials(order1={'a': 'x', 'b': 'y'}, order2=[('b', 'b')])
 
