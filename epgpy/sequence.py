@@ -386,8 +386,8 @@ class VirtualOperator(abc.ABC):
             return self.OPERATOR(*args, **kwargs)
         
         # build order1 and order2 dicts
-        order1 = list(order1 or [])
-        order2 = [pair for pair in (order2 or [])]
+        order1 = set(order1 or [])
+        order2 = {tuple(sorted(pair)) for pair in (order2 or [])}
         hesvars = {var for pair in order2 for var in pair}
 
         exprs = list(zip(self.POSITIONALS, self.positionals)) 
@@ -396,18 +396,18 @@ class VirtualOperator(abc.ABC):
         for param, expr in exprs:
             # get argument's variables
             variables = set(map(str, expr.variables))
-            for var in variables & (set(order1) | hesvars):
+            for var in variables & (order1 | hesvars):
                 # 1st order derivatives
                 d1param = expr.derive(var, **values)
                 _order1.setdefault(var, {}).update({param: d1param})
             for pair in order2:
-                if set(pair) <= variables:
+                if pair[0] in variables and pair[1] in variables:
                     # 2nd order derivative
                     _order2.setdefault(pair, {})
                     d2param = expr.derive(pair[0]).derive(pair[1], **values)
                     if not np.allclose(d2param, 0):
                         _order2[pair].update({param: d2param})
-                elif set(pair) & variables:
+                elif pair[0] in variables or pair[1] in variables:
                     # 1st order cross derivatives
                     _order2.setdefault(pair, {})
 
