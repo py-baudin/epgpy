@@ -509,7 +509,7 @@ class operators(types.SimpleNamespace):
 
     # utilities
     Adc = virtual_operator(
-        epgops.Adc, [], ["phase"], ["attr", "reduce", "weights"] + _std
+        epgops.Adc, [], ["phase", 'weights'], ["attr", "reduce"] + _std
     )
     Wait = virtual_operator(epgops.Wait, ["duration"], [], ["name"])
     Offset = virtual_operator(epgops.Offset, ["duration"], [], ["name"])

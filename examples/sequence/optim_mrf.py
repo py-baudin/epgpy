@@ -71,7 +71,7 @@ def callback(params):
 
 def signal(params):
     values = dict(zip(alphas + TRs, params))
-    return seq.signal(values, T1=T1, T2=T2)
+    return seq.signal()(values, T1=T1, T2=T2)
 
 
 def costfun(params):
@@ -190,8 +190,8 @@ sig0 = signal(init)
 crb0 = costfun(init)
 sig1 = signal(res.x)
 crb1 = costfun(res.x)
-plt.plot(np.abs(sig0[:, 0]), label=f"initial")
-plt.plot(np.abs(sig1[:, 0]), label=f"optimized")
+plt.plot(np.abs(sig0[0]), label=f"initial")
+plt.plot(np.abs(sig1[0]), label=f"optimized")
 plt.xlabel("echo index")
 plt.ylabel("signal [a.u.]")
 plt.title(f"MR ingerprint for T1={T1}ms, T2={T2}ms")
