@@ -235,7 +235,7 @@ class StateMatrix:
         elif xp.isscalar(other):
             value = other
         else:  # array
-            value = xp.asarray(other)
+            value = xp.asarray(other)[..., xp.newaxis, xp.newaxis]
         return value
 
     def __add__(self, other):

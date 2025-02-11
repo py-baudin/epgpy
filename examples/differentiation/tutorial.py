@@ -61,9 +61,9 @@ plt.xlabel("time (ms)")
 plt.ylabel("signal")
 plt.title(r"MSE signal and its derivatives ($\alpha$ and $T2$)")
 plt.twinx()
-halpha = plt.plot(times, jac[:, 0].real)
+halpha = plt.plot(times, jac[..., 0].real)
 halpha2 = plt.plot(times, fdiff_alpha.real, "+")
-ht2 = plt.plot(times, jac[:, 1].real)
+ht2 = plt.plot(times, jac[..., 1].real)
 ht22 = plt.plot(times, fdiff_T2.real, "+")
 plt.ylabel("signal derivative")
 legend = plt.legend(
@@ -99,7 +99,7 @@ hessian = epg.simulate(seq, probe=hprobe)
 relax_T2 = epg.E(4.5, 1400, 30 + eps, order1="T2")  # add order1 derivatives
 seq_T2 = [excit] + [shift, relax_T2, invert, shift, relax_T2, adc] * necho
 jprobe = epg.Jacobian("alpha")
-fdiff_alpha_t2 = (epg.simulate(seq_T2, probe=jprobe)[:, 0] - jac[:, 0]) / eps
+fdiff_alpha_t2 = (epg.simulate(seq_T2, probe=jprobe)[:, 0] - jac[..., 0]) / eps
 
 # plot 2nd derivative of signal w/r (T2, alpha)
 plt.figure("mse-diff2")
@@ -141,8 +141,8 @@ pred = signal.real[:, 0]
 sse = np.sum((pred - obs) ** 2)
 
 # Jacobian and hessian
-J = jac[..., 0]
-H = hessian[..., 0]
+J = jac[:, 0]
+H = hessian[:, 0]
 nobs, nparam = J.shape
 
 # number of degrees of freedom: num. echo - 2 (alpha and T2)

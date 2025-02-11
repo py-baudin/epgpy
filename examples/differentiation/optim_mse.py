@@ -64,7 +64,7 @@ for necho in range(1, 7):
     seq = [exc] + [grd, rlx, inv, grd, rlx, adc] * necho
     jac = epg.simulate(seq, probe=epg.Jacobian("T2"))
     # log10(CRB) of the MSE sequence
-    cost = stats.crlb(np.moveaxis(jac, -1, 0), log=True, W=[10])
+    cost = stats.crlb(np.moveaxis(jac, -2, 0), log=True, W=[10])
     # index of optimal tau value
     argmin = np.argmin(cost)
     h = plt.plot(2 * tau / 10, cost, label=f"Nechos={necho}")
@@ -86,7 +86,7 @@ for necho in range(2, 7):
     seq = [exc] + [grd, rlx, inv, grd, rlx, adc] * necho
     jac = epg.simulate(seq, probe=epg.Jacobian(["magnitude", "T2"]))
     # log10(CRB) of the MSE sequence
-    cost = stats.crlb(np.moveaxis(jac, -1, 0), log=True, W=[1, 10])
+    cost = stats.crlb(np.moveaxis(jac, -2, 0), log=True, W=[1, 10])
     # index of optimal tau value
     argmin = np.argmin(cost)
     plt.plot(2 * tau / 10, cost, color=colors[necho], label=f"Nechos={necho}")

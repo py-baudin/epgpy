@@ -112,7 +112,7 @@ class Adc(Probe):
         # reduction weights
         ndim = max(len(np.shape(weights)), 1)
         if weights is not None:
-            self._mult *= np.asarray(weights)
+            self._mult = self._mult * np.asarray(weights)
             if reduce is None:
                 # reduce along all weights axes
                 reduce = tuple(range(ndim))

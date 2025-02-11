@@ -539,13 +539,13 @@ def test_jacobian_class():
     assert jac1.shape == (5, 1, 1)  # alpha
     assert np.allclose(jac1[-1], sm.order1["alpha"].F0)
 
-    assert jac2.shape == (5, 2, 1)  # alpha, T2
-    assert np.allclose(jac2[-1, 0], sm.order1["alpha"].F0)
-    assert np.allclose(jac2[-1, 1], sm.order1["T2"].F0)
+    assert jac2.shape == (5, 1, 2)  # alpha, T2
+    assert np.allclose(jac2[-1, 0, 0], sm.order1["alpha"].F0)
+    assert np.allclose(jac2[-1, 0, 1], sm.order1["T2"].F0)
 
-    assert jac3.shape == (5, 2, 1)  # magnitude, alpha
-    assert np.allclose(jac3[-1, 0], sm.F0)
-    assert np.allclose(jac3[-1, 1], sm.order1["alpha"].F0)
+    assert jac3.shape == (5, 1, 2)  # magnitude, alpha
+    assert np.allclose(jac3[-1, 0, 0], sm.F0)
+    assert np.allclose(jac3[-1, 0, 1], sm.order1["alpha"].F0)
 
 
 def test_hessian_class():
@@ -576,15 +576,15 @@ def test_hessian_class():
     assert hes1.shape == (necho, 1, 1, 1)  # alpha
     assert np.allclose(hes1[-1, 0, 0], sm.order2[("alpha", "alpha")].F0)
 
-    assert hes2.shape == (necho, 2, 2, 1)  # alpha, T2
-    assert np.allclose(hes2[-1, 0, 0], sm.order2[("alpha", "alpha")].F0)
-    assert np.allclose(hes2[-1, 0, 1], sm.order2[("T2", "alpha")].F0)
-    assert np.allclose(hes2[-1, 1, 0], sm.order2[("alpha", "T2")].F0)
-    assert np.allclose(hes2[-1, 1, 1], sm.order2[("T2", "T2")].F0)
+    assert hes2.shape == (necho, 1, 2, 2)  # alpha, T2
+    assert np.allclose(hes2[-1, 0, 0, 0], sm.order2[("alpha", "alpha")].F0)
+    assert np.allclose(hes2[-1, 0, 0, 1], sm.order2[("T2", "alpha")].F0)
+    assert np.allclose(hes2[-1, 0, 1, 0], sm.order2[("alpha", "T2")].F0)
+    assert np.allclose(hes2[-1, 0, 1, 1], sm.order2[("T2", "T2")].F0)
 
-    assert hes3.shape == (necho, 2, 1, 1)  # (magnitude, alpha) x T2
-    assert np.allclose(hes3[-1, 0, 0], sm.order1["T2"].F0)  # magnitude
-    assert np.allclose(hes3[-1, 1, 0], sm.order2[("T2", "alpha")].F0)
+    assert hes3.shape == (necho, 1, 2, 1)  # (magnitude, alpha) x T2
+    assert np.allclose(hes3[-1, 0, 0, 0], sm.order1["T2"].F0)  # magnitude
+    assert np.allclose(hes3[-1, 0, 1, 0], sm.order2[("T2", "alpha")].F0)
 
     #
     # vary alpha
@@ -609,7 +609,7 @@ def test_hessian_class():
         [rfs(alphas[i] + 1e-8 * da[i], params[i]), rlx, grd, adc] for i in range(necho)
     ]
     jac_d = functions.simulate(seq_d, probe=Jacobian)
-    assert np.allclose(hes[..., 0] @ da, (jac_d - jac)[..., 0] * 1e8, atol=1e-6)
+    assert np.allclose(hes[..., 0, :] @ da, (jac_d - jac)[..., 0] * 1e8, atol=1e-6)
 
 
 def test_partials_pruner_class():
@@ -626,21 +626,21 @@ def test_partials_pruner_class():
 
     # no pruning
     jac1, hes1 = functions.simulate(seq, probe=probe)
-    assert jac1.shape == (necho, 2, 1)
+    assert jac1.shape == (necho, 1, 2)
 
-    assert not np.isclose(jac1[0, 0], 0)
-    assert not np.isclose(jac1[0, 1], 0)
+    assert not np.isclose(jac1[0, 0, 0], 0)
+    assert not np.isclose(jac1[0, 0, 1], 0)
     assert not np.isclose(hes1[0], 0)
 
-    assert not np.isclose(jac1[-1, 0], 0)
-    assert np.isclose(jac1[-1, 1], 0)  # derivative vanished
+    assert not np.isclose(jac1[-1, 0, 0], 0)
+    assert np.isclose(jac1[-1, 0, 1], 0)  # derivative vanished
     assert np.isclose(hes1[-1], 0)  # derivative vanished
-    nonzero1 = np.flatnonzero(jac1[:, 1])
+    nonzero1 = np.flatnonzero(jac1[..., 1])
 
     # with pruning
     pruner = diff.PartialsPruner(condition=1e-5, variables=["alpha"])
     jac2, hes2 = functions.simulate(seq, probe=probe, callback=pruner)
-    nonzero2 = np.flatnonzero(jac2[:, 1])
+    nonzero2 = np.flatnonzero(jac2[..., 1])
     assert nonzero2.max() < nonzero1.max()
 
     assert np.allclose(jac1, jac2, atol=1e-6)

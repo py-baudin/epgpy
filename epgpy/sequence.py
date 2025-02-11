@@ -225,7 +225,7 @@ class Sequence:
             sim, jac = self.simulate(
                 values, order1=variables, probe=probe, asarray=True, **options
             )
-            return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
+            return np.moveaxis(sim, 0, -1), np.moveaxis(jac, 0, -2)
 
         return jacobian(**values) if values else jacobian
 
@@ -259,7 +259,7 @@ class Sequence:
 
         def hessian(valuesdict=None, **values):
             values.update(valuesdict or {})
-            sim, jac, hess = self.simulate(
+            sim, jac, hes = self.simulate(
                 values,
                 order1=variables1,
                 order2=pairs,
@@ -267,11 +267,7 @@ class Sequence:
                 asarray=True,
                 **options,
             )
-            return (
-                np.moveaxis(sim, 0, -1),
-                np.moveaxis(jac, [0, 1], [-2, -1]),
-                np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
-            )
+            return np.moveaxis(sim, 0, -1), np.moveaxis(jac, 0, -2), np.moveaxis(hes, 0, -3)
 
         return hessian(**values) if values else hessian
 
@@ -407,7 +403,7 @@ class VirtualOperator(abc.ABC):
         kwargs = {**keywords, **self.options}
 
         # build operator
-        if not (order1 or order2):
+        if not (order1 or order2) or not issubclass(self.OPERATOR, epgops.DiffOperator):
             return self.OPERATOR(*args, **kwargs)
 
         # build order1 and order2 dicts
@@ -416,7 +412,7 @@ class VirtualOperator(abc.ABC):
         hesvars = {var for pair in order2 for var in pair}
 
         exprs = list(zip(self.POSITIONALS, self.positionals))
-        exprs += [(name, self.keywords[name]) for name in self.KEYWORDS]
+        exprs += [(name, self.keywords[name]) for name in set(self.KEYWORDS) & set(self.keywords)]
         _order1, _order2 = {}, {}
         for param, expr in exprs:
             # get argument's variables

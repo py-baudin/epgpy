@@ -402,7 +402,7 @@ class Jacobian(probe.Probe):
     def _acquire(self, sm):
         """return signal's Jacobian"""
         xp = sm.array_module
-        zeros = xp.zeros(1)
+        zeros = xp.zeros(sm.shape)
         _variables = [var for var in self.variables if var != "magnitude"]
         # retrieve jacobian arrays except for magnitude
         arrays = [
@@ -412,7 +412,8 @@ class Jacobian(probe.Probe):
         if "magnitude" in self.variables:
             index = self.variables.index("magnitude")
             arrays.insert(index, getattr(sm, self.probe))
-        return common.asnumpy(xp.stack(arrays))  # copy
+        # copy
+        return common.asnumpy(xp.stack(arrays, axis=-1))  
 
 
 class Hessian(probe.Probe):
@@ -443,8 +444,7 @@ class Hessian(probe.Probe):
     def _acquire(self, sm):
         """return signal's Hessian"""
         xp = sm.array_module
-        missing = xp.zeros(1)
-        # missing = xp.nan * xp.ones(1)
+        missing = xp.zeros(sm.shape)
 
         arrays = []
         for v1 in self.variables1:
@@ -471,9 +471,9 @@ class Hessian(probe.Probe):
                     )
 
                 arrays[-1].append(hess)
-            arrays[-1] = xp.stack(arrays[-1])
-
-        return common.asnumpy(xp.stack(arrays))  # copy
+            arrays[-1] = xp.stack(arrays[-1], axis=-1)
+        # copy
+        return common.asnumpy(xp.stack(arrays, axis=-2))  
 
 
 class PartialsPruner:

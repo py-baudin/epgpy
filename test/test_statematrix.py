@@ -192,7 +192,7 @@ def test_state_matrix_class():
     assert sm.equilibrium.shape[-2:] == sm.states.shape[-2:]
     sm.resize(0)
     assert sm.nstate == 0
-    assert np.all(sm == [[[0, 0, 1]]])
+    assert np.allclose(sm, [[[0, 0, 1]]])
 
     # reshape
     sm = statematrix.StateMatrix(shape=(3,))
@@ -210,14 +210,14 @@ def test_state_matrix_class():
     # operators eq, add and iadd
     sm1 = statematrix.StateMatrix([0, 0, 1])
     sm2 = statematrix.StateMatrix([1, 1, 0])
-    assert np.all(sm1 == [0, 0, 1])
-    assert np.all((sm1 + sm2) == [1, 1, 1])
+    assert np.allclose(sm1, [0, 0, 1])
+    assert np.allclose((sm1 + sm2), [1, 1, 1])
     sm1 += sm2
-    assert np.all(sm1 == [1, 1, 1])
+    assert np.allclose(sm1, [1, 1, 1])
 
     # as array
-    assert np.all(common.asnumpy(sm1) == common.asnumpy(sm1.states))
-    assert np.all(sm1 + [1, 1, 1] == [2, 2, 2])
+    assert np.allclose(common.asnumpy(sm1), common.asnumpy(sm1.states))
+    assert np.allclose(sm1 + [1, 1, 1], [2, 2, 2])
 
     # options
     sm = statematrix.StateMatrix(max_nstate=3, kgrid=2)

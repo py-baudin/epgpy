@@ -120,7 +120,7 @@ def costfun(params):
     """crlb cost function"""
     alphas, TRs = params[:nTR], params[nTR:]
     jac = epg.simulate(sequence(alphas, TRs), probe=Jac, max_nstate=nstate)
-    cost = stats.crlb(np.moveaxis(jac, -1, 0), W=weights, log=False, sigma2=sigma2)
+    cost = stats.crlb(np.moveaxis(jac, -2, 0), W=weights, log=False, sigma2=sigma2)
     return cost[0]
 
 
@@ -137,8 +137,8 @@ def costjac(params):
     )
     # CRLB
     cost, grad = stats.crlb(
-        np.moveaxis(jac, -1, 0),
-        np.moveaxis(hes, -1, 0),
+        np.moveaxis(jac, -2, 0),
+        np.moveaxis(hes, -3, 0),
         W=weights,
         sigma2=sigma2,
         log=False,

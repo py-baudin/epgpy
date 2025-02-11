@@ -1,4 +1,3 @@
-import math
 import numpy as np
 
 from . import common
@@ -14,29 +13,21 @@ def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     # Fisher information  matrix
     I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
 
-    # or ?
-    # if np.iscomplexobj(J):
-    #    J = xp.concatenate([J.real, J.imag], axis=-2)
-    # I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
-
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
 
     if W is not None:  # apply weights
-        W = xp.asarray(W)[:, np.newaxis]
+        W = xp.asarray(W)[..., np.newaxis]
     else:
         W = 1
-
     cost = xp.trace(W * lb, axis1=-2, axis2=-1)
+
     if H is None:
+        # return CRLB
         return cost if not log else np.log10(cost)
 
-    # H is the derivative of J
-    # H: npoint x nparam1 x nparam2 x ...
-    # if np.iscomplexobj(H):
-    #     H = xp.concatenate([H.real, H.imag], axis=-3)
-    # grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
+    # return CRLB and its gradient
     HJ = xp.einsum("...npx,...nq->...qpx", H.conj(), J) * 1 / sigma2
     HJ += np.moveaxis(HJ, -3, -2).conj()
     grad = -xp.einsum("...pq,...qrx,...rp->...x", W * lb, HJ.real, lb)

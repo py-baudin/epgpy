@@ -10,7 +10,7 @@ from .operator import (
     System,
 )
 from .probe import Probe, Adc, Imaging, DFT
-from .diff import Jacobian, Hessian
+from .diff import DiffOperator, Jacobian, Hessian
 from .evolution import E, P, R
 from .transition import T, Phi
 from .shift import S, G, C
