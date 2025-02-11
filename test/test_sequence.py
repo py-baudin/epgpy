@@ -70,12 +70,40 @@ def test_sequence_class():
     assert np.allclose(1e8 * (jacT2[..., 0] - jac[..., 0]), hes[..., 0, 0])
     assert np.allclose(1e8 * (jacB1[..., 0] - jac[..., 1]), hes[..., 1, 0])
 
+    # misc 
     
-    # crlb
-    # adc times
-    # simulate options
     # string operators
-    # edit, add sequences
+    seq = Sequence(['ADC', 'RESET', 'SPOILER', 'NULL'])
+    assert seq.operators == [operators.ADC, operators.RESET, operators.SPOILER, operators.NULL]
+
+    # adc times
+    seq = Sequence([
+        operators.T(1, 0, duration=1), 
+        operators.E(10, 1000, 30, duration=True), 
+        operators.ADC,
+    ] * 2)
+    times = seq.adc_times()
+    assert times == [1 + 10, (1 + 10) * 2]
+
+    # edit sequence
+    seq[1] = operators.E(5, 1000, 30, duration=True)
+    assert seq.adc_times() == [1 + 5, (1 + 5) + (1 + 10)]
+
+    seq[1:2] = [operators.E(5, 1000, 30, duration=True)] * 3
+    assert seq.adc_times() == [(1 + 5*3), (1 + 5*3) + (1 + 10)]
+
+    # add sequences
+    seq = Sequence(['NULL', 'ADC'])
+    seq2 = seq + seq
+    assert len(seq2) == 2 * len(seq)
+    assert seq2.operators[:2] == seq2.operators[2:]
+
+    # simulate options
+    seq = Sequence([], options={'max_nstate': 10, 'disp': True})
+    assert seq.options == {'max_nstate': 10, 'disp': True}
+
+
+
 
 def test_sequence_multiple_variables():
     from epgpy.sequence import Variable, Sequence, operators
@@ -197,12 +225,12 @@ def test_sequence_multiple_variables():
 
     # CRLB
     variables = ["alpha", "T2"]
-    crlb, d_crlb = seq.crlb(variables, T2=35, T1=1000, alpha=150, gradient=True)
+    crlb, d_crlb = seq.crlb(variables, gradient=True)(T2=35, T1=1000, alpha=150)
     fdiff = (
         np.stack(
             [
-                seq.crlb(variables, T2=35, T1=1000, alpha=150 + 1e-8) - crlb,
-                seq.crlb(variables, T2=35 + 1e-8, T1=1000, alpha=150) - crlb,
+                seq.crlb(variables)(T2=35, T1=1000, alpha=150 + 1e-8) - crlb,
+                seq.crlb(variables)(T2=35 + 1e-8, T1=1000, alpha=150) - crlb,
             ],
             axis=-1,
         )
@@ -242,7 +270,7 @@ def test_partial_hessian():
     assert np.allclose(hess1[..., 2, 0], hess2[..., 1, 0])
 
     # crlb
-    crlb1, cgrad1 = seq.crlb(["T1", "T2"], gradient=["alpha"], alpha=150, T1=1e3, T2=30)
+    crlb1, cgrad1 = seq.crlb(["T1", "T2"], gradient=["alpha"])(alpha=150, T1=1e3, T2=30)
     assert len(cgrad1) == 1
 
     crlb2, cgrad2 = sequence.stats.crlb(jac2, H=hess2)

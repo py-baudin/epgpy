@@ -26,18 +26,20 @@ T1, T2 = 1380, 80
 adc = operators.ADC
 spl = operators.S(1)
 inv = operators.T(180, 90) # inversion
-rlx0 = operators.E(20, T1, T2, duration=True) # initial relaxation
-rlx1 = operators.E(TE, T1, T2)
-
+rlx0 = operators.E(20, 'T1', 'T2', duration=True) # initial relaxation
+rlx1 = operators.E(TE, 'T1', 'T2', duration=True) # before adc
 rf = lambda alpha: operators.T(alpha, 90)
-rlx2 = lambda TR: operators.E(Variable(TR) - TE, T1, T2)
+rlx2 = lambda TR: operators.E(Variable(TR) - TE, 'T1', 'T2', duration=True)
 
 # parameters to optimize
 alphas = [f'alpha_{i:03d}' for i in range(nTR)]
 TRs = [f'TR_{i:03d}' for i in range(nTR)]
 
 # build sequence
-seq = Sequence([[inv, rlx0], [[rf(alphas[i]), rlx1, adc, rlx2(TRs[i]), spl] for i in range(nTR)]])
+seq = Sequence(
+    [[inv, rlx0], [[rf(alphas[i]), rlx1, adc, rlx2(TRs[i]), spl] for i in range(nTR)]],
+    options={'max_nstate': 10},
+)
 
 
 
@@ -52,15 +54,11 @@ TR in [11, 16]
 
 """
 
-options = {
-    # maximum number of phase states
-    'max_nstate': 10,
-    # sigma2 in CRLB
-    'sigma2': 1e1,
-    'log': False,
-}
-# CLRB weights
+    
+# CLRB options
+options = {'sigma2': 1e1, 'log': False}
 weights = [1, 1 / T1 ** 2, 1 / T2 ** 2]
+targets = ['magnitude', 'T1', 'T2']
 
 # store parameters at each iteration
 iterations = []
@@ -72,20 +70,20 @@ def callback(params):
 
 def signal(params):
     values = dict(zip(alphas + TRs, params))
-    return seq.signal(options=options, **values)
+    return seq.signal(values, T1=T1, T2=T2)
 
 
 def costfun(params):
     """crlb cost function"""
     values = dict(zip(alphas + TRs, params))
-    cost = seq.crlb(['T1', 'T2'], weights=weights, options=options, **values)
+    cost = seq.crlb(targets, weights=weights, **options)(values, T1=T1, T2=T2)
     return cost[0]
 
 
 def costjac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
     values = dict(zip(alphas + TRs, params))
-    cost, grad = seq.crlb(['T1', 'T2'], gradient=alphas + TRs, weights=weights, options=options, **values)
+    cost, grad = seq.crlb(targets, gradient=alphas + TRs, weights=weights, **options)(values, T1=T1, T2=T2)
 
     # display
     niter = len(iterations)
@@ -104,7 +102,7 @@ def constraint_function(params):
     return 1 - np.abs(diff)
 
 # initial FA between 10 and 60
-random = np.random # np.random.RandomState(0)
+random = np.random.RandomState(0)
 nFA = 300
 init_FA = []
 for i in range(nTR//nFA + 1):
@@ -144,7 +142,7 @@ config = {
 # optimize
 print(f'Optimize MRF sequence')
 print(f'Num. TR: {nTR}')
-print(f'Num. states: {options['max_nstate']}')
+print(f'Num. states: {seq.options['max_nstate']}')
 print(f'Num. parameters (alpha/tau): {len(init)}')
 print(f'Initial cost: {costfun(init):.8f}')
 
@@ -156,11 +154,11 @@ print(f"Optimization time: {duration/60:.1f} min")
 
 # compute crlb for each parameters
 jacs = [
-    seq.jacobian(['T1', 'T2'], options=options, **dict(zip(alphas + TRs, params)))[0]
+    seq.jacobian(['T1', 'T2'])(dict(zip(alphas + TRs, params)), T1=T1, T2=T2)[0]
     for params in iterations
 ]
-crb_tot = stats.crlb(jacs, W=weights, log=False, sigma2=options['sigma2'])
-crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, log=False, sigma2=options['sigma2'])
+crb_tot = stats.crlb(jacs, W=weights, **options)
+crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, **options)
 
 #
 # plot

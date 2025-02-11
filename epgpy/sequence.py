@@ -35,10 +35,10 @@ seq.build({b1: 0.9, T1: 1000, T2: 30})
 seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0') --> value 
 
 # CRLB (sequence optimization objective function)
-seq.crlb(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+seq.crlb(['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
 
 # Confidence intervals
-seq.confint(obs, ['T2', 'b1'], b1=0.9, T1=1000, T2=30)
+seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
 
 
 # Tips
@@ -46,28 +46,38 @@ seq.confint(obs, ['T2', 'b1'], b1=0.9, T1=1000, T2=30)
 # Operator's variables can be passed directly as string
 seq = Sequence([E('tau', T1, T2), T('alpha', phi), ...])
 
-# ADC flag and SPOILER operator can be passed as string
+# ADC, SPOILER, RESET operators can be passed as string
 `Sequence([op1, op2, ..., 'ADC', 'SPOILER'])
 
 # Avoid computing unnecessary partial derivatives in the Hessian tensor
 # by passing different variables in rows (axis=-2) and columns (axis=-1)
-seq.hessian([var1, var2], [var3]) 
+seq.hessian([var1, var2], [var3])(...)
 
-# Compute the gradient of the crlb w/r to a given variable
-seq.crlb([var1, var2], gradient=["var3"])
+# Compute the gradient of the crlb w/r to given variable(s)
+seq.crlb([var1, var2], gradient=[var3])(...)
+
+# keyword options to epg.functions.simulate can be set at different places:
+seq = Sequence(ops, options={'max_nstate': 10, 'disp': True})
+seq.signal(options={'max_nstate': 10, 'disp': True})(...)
+
+# Calling `signal`, `jacobian`, `hessian`, `crlb` or `confint` 
+# without passing the variable's values returns a function 
+# with arguments: (values_dict=None, **values). For instance:
+seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2)
+
 
 """
 
 import abc
 import types
 import numpy as np
-from . import operators as epgops, functions as funcs, stats
+from . import operators as epgops, functions as epgfuncs, stats
 
 
 class Sequence:
     """ Sequence building object """
 
-    def __init__(self, ops=[], *, name=None):
+    def __init__(self, ops=[], *, name=None, options=None):
         """Build sequence from a list of virtual operators
 
         Args:
@@ -76,8 +86,9 @@ class Sequence:
         """
         ops = flatten(ops)
         ops = self.check(ops)
-        self.operators = ops
-        self.name = name
+        self.operators = ops # operator list
+        self.name = name # display name
+        self.options = options or {} # simulate options
 
     def __len__(self):
         return len(self.operators)
@@ -94,8 +105,8 @@ class Sequence:
         elif isinstance(op, list):
             ops = self.check(op)
         else: # single insert
-            op = self.check([op])[0]
-            self.operators[item] = op
+            ops = self.check([op])
+            item = slice(item, item + 1)
         # assume bulk insert
         self.operators[item] = ops
 
@@ -135,7 +146,7 @@ class Sequence:
         name = kwargs.get('name', self.name)
         return Sequence(ops, name=name)
 
-    def build(self, values, *, order1=None, order2=None):
+    def build(self, values=None, *, order1=None, order2=None):
         """ build EPG operators"""
         # check jacobian and hessian
         variables = self.variables
@@ -156,24 +167,25 @@ class Sequence:
         # build operators
         unique = {} # unique operators
         return [
-            unique.setdefault(op, op.build(values, order1=order1, order2=order2))
+            unique.setdefault(op, op.build(values or {}, order1=order1, order2=order2))
             for op in self.operators
         ]
     
-    def simulate(self, values, *, order1=None, order2=None, probe=None, **kwargs):
+    def simulate(self, values=None, *, order1=None, order2=None, probe=None, **kwargs):
         """ Run epg.functions.simulate() on sequence's operators.
 
         Args:
             values: dict of variable's values
             kwargs: cf. epg.functions.simulate
         """
+        options = {**self.options, **kwargs}
         ops = self.build(values, order1=order1, order2=order2)
-        return funcs.simulate(ops, probe=probe, **kwargs)
+        return epgfuncs.simulate(ops, probe=probe, **options)
     
     def adc_times(self, **values):
         """ Return adc times """
         ops = self.build(values=values)
-        return funcs.get_adc_times(ops)
+        return epgfuncs.get_adc_times(ops)
     
     def signal(self, *, options={}, **values):
         """Simulate the sequence's signal 
@@ -185,8 +197,11 @@ class Sequence:
             signal: (... x nADC) signal ndarray
         """
         probe = epgops.Probe("F0")
-        sim = self.simulate(values, probe=probe, asarray=True, **options)
-        return np.moveaxis(sim, 0, -1)
+        def signal(valuesdict=None, **values):
+            values.update(valuesdict or {})
+            sim = self.simulate(values, probe=probe, asarray=True, **options)
+            return np.moveaxis(sim, 0, -1)
+        return signal(**values) if values else signal
     
     def jacobian(self, variables, *, options={}, **values):
         """Simulate the signal's Jacobian matrix (tensor)
@@ -202,8 +217,11 @@ class Sequence:
         if isinstance(variables, str):
             variables = [variables]
         probe = [epgops.ADC, epgops.Jacobian(list(variables))]
-        sim, jac = self.simulate(values, order1=variables, probe=probe, asarray=True, **options)
-        return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
+        def jacobian(valuesdict=None, **values):
+            values.update(valuesdict or {})
+            sim, jac = self.simulate(values, order1=variables, probe=probe, asarray=True, **options)
+            return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
+        return jacobian(**values) if values else jacobian
     
     def hessian(self, variables1, variables2=None, *, options={}, **values):
         """Simulate the signal's Hessian matrix (tensor)
@@ -232,15 +250,18 @@ class Sequence:
             epgops.Hessian(list(variables1), list(variables2)),
         ]
         pairs = [(v1, v2) for v1 in variables1 for v2 in variables2 if v1 <= v2]
-        sim, jac, hess = self.simulate(
-            values, order1=variables1, order2=pairs, probe=probe, asarray=True, **options)
-        return (
-            np.moveaxis(sim, 0, -1), 
-            np.moveaxis(jac, [0, 1], [-2, -1]), 
-            np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
-        )
+        def hessian(valuesdict=None, **values):
+            values.update(valuesdict or {})
+            sim, jac, hess = self.simulate(
+                values, order1=variables1, order2=pairs, probe=probe, asarray=True, **options)
+            return (
+                np.moveaxis(sim, 0, -1), 
+                np.moveaxis(jac, [0, 1], [-2, -1]), 
+                np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
+            )
+        return hessian(**values) if values else hessian
     
-    def crlb(self, variables, *, gradient=None, weights=None, options={}, **values):
+    def crlb(self, variables, *, gradient=None, weights=None, log=False, sigma2=1, options={}):
         """Cramer-Rao lower bound for given variables
 
         Args:
@@ -248,24 +269,27 @@ class Sequence:
             gradient: if provided, variables for the CRLB's gradient
             weights: CRLB weights (same length as `variables`)
             log: True/[False]: returns log10(CRLB)
-            **kwargs: variables' values and simulate options
 
-        Returns:
-            crlb: CRLB scalar (or ndarray if n-dimensional variable values passed)
-        if `gradient` is provided:
-            crlb, Jcrlb: where Jcrlb is the gradient of the crlb w/r gradient variables.
+        Returns: 
+            CRLB function with values passed as keywords or dictionary,
+            with return values:
+                crlb: CRLB scalar (or ndarray if n-dimensional variable values passed)
+            if `gradient` is provided:
+                crlb, Jcrlb: where Jcrlb is the gradient of the crlb w/r gradient variables.
         """
-        crlb_opts = {key: options.pop(key) for key in ['log', 'sigma2']}
-        if not gradient:
-            _, jac = self.jacobian(variables, options=options, **values)
+        def crlb(valuesdict=None, **values):
+            values.update(valuesdict or {})
             hess = None
-        else:
-            variables2 = variables if gradient is True else list(gradient)
-            _, jac, hess = self.hessian(variables, variables2, options=options, **values)
-        return stats.crlb(jac, H=hess, W=weights, **crlb_opts)
+            if not gradient:
+                _, jac = self.jacobian(variables, options=options, **values)
+            else:
+                variables2 = variables if gradient is True else list(gradient)
+                _, jac, hess = self.hessian(variables, variables2, options=options, **values)
+            return stats.crlb(jac, H=hess, W=weights, log=log, sigma2=sigma2)
+        return crlb
 
 
-    def confint(self, obs, variables, *, conflevel=0.95, return_cband=False, **kwargs):
+    def confint(self, obs, variables, *, conflevel=0.95, return_cband=False):
         """return 95% confidence interval for given observation 
         
         Args:
@@ -273,22 +297,26 @@ class Sequence:
             variables: (nVar) list of variables for the confidence intervals
 
         Returns:
-            cints: 1/2 width of confidence intervals (... x nVar) ndarray
-            if return_cband == True,
-            cband: confidence band of prediction (... x nADC) ndarray
+            confint function with values passed as keywords or dictionary,
+            with return values:
+                cints: 1/2 width of confidence intervals (... x nVar) ndarray
+                if return_cband == True,
+                cband: confidence band of prediction (... x nADC) ndarray
         """
-        # compute prediction and jacobian
-        pred, jac = self.jacobian(variables, **kwargs)
-
-        # check dimensions
         obs = np.asarray(obs)
-        if obs.shape != pred.shape:
-            raise ValueError(f'Mismatch between observation and prediction shapes')
-
-        cints, cband = stats.confint(obs, pred, jac, conflevel=conflevel)
-        if return_cband:
-            return cints, cband
-        return cints
+        def confint(valuesdict=None, **values):
+            values.update(valuesdict or {})
+            # compute prediction and jacobian
+            pred, jac = self.jacobian(variables, **values)
+            # check dimensions
+            if obs.shape != pred.shape:
+                raise ValueError(f'Mismatch between observation and prediction shapes')
+            # compute confidence intervals
+            cints, cband = stats.confint(obs, pred, jac, conflevel=conflevel)
+            if return_cband:
+                return cints, cband
+            return cints
+        return confint
 
 
 class VirtualOperator(abc.ABC):

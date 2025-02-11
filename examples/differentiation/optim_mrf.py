@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
 
     # initial FA between 10 and 60
-    random = np.random # np.random.RandomState(0)
+    random = np.random.RandomState(0)
     nFA = 300
     init_FA = []
     for i in range(nTR//nFA + 1):
