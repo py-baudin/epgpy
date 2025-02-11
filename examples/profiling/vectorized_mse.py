@@ -8,8 +8,8 @@ import time
 import numpy as np
 import epgpy as epg
 
-num_t2 = 100 # number of T2 values
-num_b1 = 50 # number of B1 attenuation values
+num_t2 = 200 # number of T2 values
+num_b1 = 200 # number of B1 attenuation values
 
 # parameters
 necho = 18
