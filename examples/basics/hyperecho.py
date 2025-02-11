@@ -2,10 +2,11 @@
 Hyperecho simulation
 
 Weigel M
-Dephasing, RF pulses, and echoes - pure and simple: Extended Phase Graphs. 
+Dephasing, RF pulses, and echoes - pure and simple: Extended Phase Graphs.
 J Magn Reson Imaging 2015; 41:266–295.
 
 """
+
 import numpy as np
 from matplotlib import pyplot as plt
 from epgpy import operators, functions, statematrix

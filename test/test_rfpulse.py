@@ -1,4 +1,4 @@
-""" test core.pulse module """
+"""test core.pulse module"""
 
 import numpy as np
 import pytest

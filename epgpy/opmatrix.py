@@ -1,4 +1,4 @@
-""" Scalar operator and functions """
+"""Scalar operator and functions"""
 
 import numpy as np
 from . import common, operator, diff, opscalar

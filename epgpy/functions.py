@@ -149,7 +149,9 @@ def simulate(
     sm = sm.copy()
 
     # run simulation
-    values, times = simulate_simple(sm, sequence, probes=probes, callback=callback, disp=disp)
+    values, times = simulate_simple(
+        sm, sequence, probes=probes, callback=callback, disp=disp
+    )
 
     # split multiple measurements
     values = tuple(zip(*values))
@@ -181,7 +183,9 @@ def simulate_simple(sm, sequence, probes=None, callback=None, disp=False):
         tic = tic + op.duration
         if isinstance(op, Probe):
             # substitute probing operator and store (None is replaced with op)
-            values.append([(pb or op).acquire(sm, post=op.post) for pb in (probes or [op])])
+            values.append(
+                [(pb or op).acquire(sm, post=op.post) for pb in (probes or [op])]
+            )
             times.append(tic)
         elif callback:
             callback(sm)

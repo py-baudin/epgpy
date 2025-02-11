@@ -1,4 +1,4 @@
-""" EPG library
+"""EPG library
 
     Implemented Operators:
         * Operator: base operator class (does nothing)

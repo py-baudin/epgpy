@@ -1,11 +1,11 @@
-""" inverse Laplace Transform
+"""inverse Laplace Transform
 
 cf.
-> Fricke SN, Seymour JD, Battistel MD, Freedberg DI, Eads CD, Augustine MP:  
-  Data processing in NMR relaxometry using the matrix pencil. 
+> Fricke SN, Seymour JD, Battistel MD, Freedberg DI, Eads CD, Augustine MP:
+  Data processing in NMR relaxometry using the matrix pencil.
   Journal of Magnetic Resonance 2020; 313:106704.
 
-> Eads CD: Analysis of multicomponent exponential magnetic resonance relaxation data: 
+> Eads CD: Analysis of multicomponent exponential magnetic resonance relaxation data:
   automatable parameterization and interpretable display protocols.
 
 

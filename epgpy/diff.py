@@ -1,4 +1,4 @@
-""" Differential operators 
+"""Differential operators
 
 Note: only works with linear/affine operators
 """
@@ -86,15 +86,14 @@ class DiffOperator(operator.Operator, abc.ABC):
     def parameters_order2(self):
         """Pairs of parameters used in 2nd order derivatives"""
         return {
-            Pair(p1, p2) 
-            for v1,v2 in self.order2 
+            Pair(p1, p2)
+            for v1, v2 in self.order2
             for p1 in self.order1.get(v1, [])
             for p2 in self.order1.get(v2, [])
             # keep only valid parameter pairss
             if {(p1, p2), (p2, p1)} & self.PARAMETERS_ORDER2
         }
-    
-        
+
     def derive0(self, sm, inplace=False):
         """apply operator (without order1 and order2 differential operators)"""
         if not inplace:
@@ -189,12 +188,11 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         else:
             raise ValueError(f"Invalid parameter 'order1' value: {order1}")
-        
+
         # check parameters
         invalid = {param for var in order1 for param in set(order1[var]) - parameters}
         if invalid:
             raise ValueError(f"Unknown parameter(s): {invalid}")
-
 
         if not order2:
             return order1, set()
@@ -215,30 +213,45 @@ class DiffOperator(operator.Operator, abc.ABC):
             # list of variables: derivatives w/r to all variable pairs
             order2 = {{Pair(pair): {}} for pair in get_combinations(order2)}
 
-        elif not isinstance(order2, dict) and all(isinstance(pair, tuple) for pair in order2):
+        elif not isinstance(order2, dict) and all(
+            isinstance(pair, tuple) for pair in order2
+        ):
             # compute *some* 2nd order partial derivatives
             order2 = {Pair(pair): {} for pair in order2}
-            
+
         elif isinstance(order2, dict) and all(
-            isinstance(pair, tuple) and isinstance(order2[pair], dict) for pair in order2):
+            isinstance(pair, tuple) and isinstance(order2[pair], dict)
+            for pair in order2
+        ):
             # pass 2nd order partials of the parameters w/r variable pairs
             order2 = {Pair(pair): order2[pair] for pair in order2}
-            
+
         elif order2:
             raise ValueError(f"Invalid parameter 'order2' value: {order2}")
-        
+
         # check order2 parameters
         invalid = {pair for pair in order2 if not (set(pair) & set(order1))}
         if invalid:
-            raise ValueError(f"Invalid variable pair(s), no match in order1 variables: {invalid}")
+            raise ValueError(
+                f"Invalid variable pair(s), no match in order1 variables: {invalid}"
+            )
         cross_vars = {pair for pair in order2 if (set(pair) - set(order1))}
         invalid = {pair for pair in cross_vars if order2[pair]}
         if invalid:
-            raise ValueError(f"Invalid variable pair(s), expecting no coefficient: {invalid}")
-        invalid = {param for pair in order2 for param in (set(order2[pair]) - parameters)}
-        if invalid: 
-            raise ValueError(f'Unknown parameter(s) in order2: {invalid}')
-        param_pairs = {Pair(p1, p2) for v1, v2 in order2 for p1 in order1.get(v1, []) for p2 in order1.get(v2, [])}
+            raise ValueError(
+                f"Invalid variable pair(s), expecting no coefficient: {invalid}"
+            )
+        invalid = {
+            param for pair in order2 for param in (set(order2[pair]) - parameters)
+        }
+        if invalid:
+            raise ValueError(f"Unknown parameter(s) in order2: {invalid}")
+        param_pairs = {
+            Pair(p1, p2)
+            for v1, v2 in order2
+            for p1 in order1.get(v1, [])
+            for p2 in order1.get(v2, [])
+        }
 
         # authorize invalid parameter pairs but warn user
         invalid = param_pairs - set(self.PARAMETERS_ORDER2)
@@ -261,13 +274,10 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive1 = derive1 or self.derive1
 
         # apply operator to previous 1st-order partials
-        order1_previous = {
-            var: derive0(order1[var], inplace=inplace) for var in order1
-        }
+        order1_previous = {var: derive0(order1[var], inplace=inplace) for var in order1}
         # apply derived opertors to previous element
         order1_partials = {
-            param: derive1(sm, param, inplace=False)
-            for param in self.parameters_order1
+            param: derive1(sm, param, inplace=False) for param in self.parameters_order1
         }
         # combine partials
         order1_current = combine_partials(self.order1, order1_partials)
@@ -306,13 +316,16 @@ class DiffOperator(operator.Operator, abc.ABC):
         order1_previous = combine_partials(self.order2, order1_partials)
 
         # 2nd derivatives of current operator
-        order2_partials = {(p1, p2): derive2(sm, (p1, p2)) for p1, p2 in self.parameters_order2}
+        order2_partials = {
+            (p1, p2): derive2(sm, (p1, p2)) for p1, p2 in self.parameters_order2
+        }
         order2_coeffs = {
             Pair(v1, v2): {
                 Pair(p1, p2): c1 * c2
-                for p1, c1 in self.order1.get(v1, {}).items() 
+                for p1, c1 in self.order1.get(v1, {}).items()
                 for p2, c2 in self.order1.get(v2, {}).items()
-            } for v1, v2 in self.order2
+            }
+            for v1, v2 in self.order2
         }
         order2_current = combine_partials(order2_coeffs, order2_partials)
 
@@ -321,8 +334,13 @@ class DiffOperator(operator.Operator, abc.ABC):
             vars_cross = {Pair(v1, v2) for v1 in self.order1 for v2 in order1}
         else:
             vars_cross = set(self.order2)
-        params_cross = {param for pair in vars_cross for var in pair for param in self.order1.get(var, [])}
-    
+        params_cross = {
+            param
+            for pair in vars_cross
+            for var in pair
+            for param in self.order1.get(var, [])
+        }
+
         order2_partials = {
             (param, var): derive1(order1[var], param)
             for var in order1
@@ -330,20 +348,26 @@ class DiffOperator(operator.Operator, abc.ABC):
         }
         order2_coeffs1 = {
             Pair(v1, v2): {(p1, v1): c1 for p1, c1 in self.order1[v2].items()}
-            for v1 in order1 for v2 in self.order1 
+            for v1 in order1
+            for v2 in self.order1
             if (Pair(v1, v2) in vars_cross) and (v1 >= v2)
         }
         order2_cross1 = combine_partials(order2_coeffs1, order2_partials)
         order2_coeffs2 = {
             Pair(v1, v2): {(p1, v1): c1 for p1, c1 in self.order1[v2].items()}
-            for v1 in order1 for v2 in self.order1 
+            for v1 in order1
+            for v2 in self.order1
             if (Pair(v1, v2) in vars_cross) and (v1 <= v2)
         }
         order2_cross2 = combine_partials(order2_coeffs2, order2_partials)
 
         # accumulate partial derivatives
         order2 = accumulate(
-            order2_previous, order1_previous, order2_current, order2_cross1, order2_cross2,
+            order2_previous,
+            order1_previous,
+            order2_current,
+            order2_cross1,
+            order2_cross2,
         )
 
         # store 2nd order partials as (v1, v2) and (v2, v1)
@@ -428,11 +452,15 @@ class Hessian(probe.Probe):
             for v2 in self.variables2:
                 if "magnitude" == v1:
                     hess = (
-                        getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else missing
+                        getattr(sm.order1[v2], self.probe)
+                        if v2 in sm.order1
+                        else missing
                     )
                 elif "magnitude" == v2:
                     hess = (
-                        getattr(sm.order1[v1], self.probe) if v1 in sm.order1 else missing
+                        getattr(sm.order1[v1], self.probe)
+                        if v1 in sm.order1
+                        else missing
                     )
                 else:
                     v12 = Pair(v1, v2)

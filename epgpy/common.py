@@ -1,9 +1,11 @@
-""" array operations """
+"""array operations"""
 
 import os
 import logging
 import warnings
 import numpy as np
+
+logging.basicConfig(level=os.environ.get("LOGLEVEL", "WARN").upper())
 
 LOGGER = logging.getLogger(__name__)
 

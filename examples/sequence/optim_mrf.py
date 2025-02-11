@@ -19,28 +19,27 @@ from epgpy import stats
 
 # define MRF sequence
 nTR = 400
-TE = 3 # ms
+TE = 3  # ms
 T1, T2 = 1380, 80
 
 # operators
 adc = operators.ADC
 spl = operators.S(1)
-inv = operators.T(180, 90) # inversion
-rlx0 = operators.E(20, 'T1', 'T2', duration=True) # initial relaxation
-rlx1 = operators.E(TE, 'T1', 'T2', duration=True) # before adc
+inv = operators.T(180, 90)  # inversion
+rlx0 = operators.E(20, "T1", "T2", duration=True)  # initial relaxation
+rlx1 = operators.E(TE, "T1", "T2", duration=True)  # before adc
 rf = lambda alpha: operators.T(alpha, 90)
-rlx2 = lambda TR: operators.E(Variable(TR) - TE, 'T1', 'T2', duration=True)
+rlx2 = lambda TR: operators.E(Variable(TR) - TE, "T1", "T2", duration=True)
 
 # parameters to optimize
-alphas = [f'alpha_{i:03d}' for i in range(nTR)]
-TRs = [f'TR_{i:03d}' for i in range(nTR)]
+alphas = [f"alpha_{i:03d}" for i in range(nTR)]
+TRs = [f"TR_{i:03d}" for i in range(nTR)]
 
 # build sequence
 seq = Sequence(
     [[inv, rlx0], [[rf(alphas[i]), rlx1, adc, rlx2(TRs[i]), spl] for i in range(nTR)]],
-    options={'max_nstate': 10},
+    options={"max_nstate": 10},
 )
-
 
 
 """ optimize sequence parameters
@@ -54,19 +53,21 @@ TR in [11, 16]
 
 """
 
-    
+
 # CLRB options
-options = {'sigma2': 1e1, 'log': False}
-weights = [1, 1 / T1 ** 2, 1 / T2 ** 2]
-targets = ['magnitude', 'T1', 'T2']
+options = {"sigma2": 1e1, "log": False}
+weights = [1, 1 / T1**2, 1 / T2**2]
+targets = ["magnitude", "T1", "T2"]
 
 # store parameters at each iteration
 iterations = []
 
+
 def callback(params):
-    """ store parameters """
+    """store parameters"""
     global iterations
     iterations.append(params)
+
 
 def signal(params):
     values = dict(zip(alphas + TRs, params))
@@ -83,15 +84,14 @@ def costfun(params):
 def costjac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
     values = dict(zip(alphas + TRs, params))
-    cost, grad = seq.crlb(targets, gradient=alphas + TRs, weights=weights, **options)(values, T1=T1, T2=T2)
+    cost, grad = seq.crlb(targets, gradient=alphas + TRs, weights=weights, **options)(
+        values, T1=T1, T2=T2
+    )
 
     # display
     niter = len(iterations)
     elaps = time.time() - tic
-    print(
-        f"({niter}) crlb={cost[0]:.8f} "
-        f"(elapsed time: {elaps:.0f}s)"
-    )
+    print(f"({niter}) crlb={cost[0]:.8f} " f"(elapsed time: {elaps:.0f}s)")
     return grad.ravel()
 
 
@@ -101,27 +101,30 @@ def constraint_function(params):
     diff[nTR:] = 0
     return 1 - np.abs(diff)
 
+
 # initial FA between 10 and 60
 random = np.random.RandomState(0)
 nFA = 300
 init_FA = []
-for i in range(nTR//nFA + 1):
+for i in range(nTR // nFA + 1):
     FA = np.sin(np.arange(1, 1 + nFA) * np.pi / nFA) * (60 - 10) + 10
     FA[-10:] = 0
     init_FA.extend(FA.tolist())
 init_FA = np.clip(init_FA[:nTR], 10, 60)
 
 
-# initial TR: Perlin noise 11.5 to 14.5 
+# initial TR: Perlin noise 11.5 to 14.5
 def smoothstep(x):
     s = x - np.floor(x)
-    return 3* s**2 - 2 * s**3
-Np = nTR // 10 # 10 random values
+    return 3 * s**2 - 2 * s**3
+
+
+Np = nTR // 10  # 10 random values
 coords = np.arange(nTR)
 rdm = random.uniform(-1, 1, (nTR - 1) // Np + 2)
 coeff1 = rdm[coords // Np] * (coords - Np * (coords // Np))
 coeff2 = rdm[coords // Np + 1] * (coords - Np * (coords // Np + 1))
-init_TR = coeff1 + smoothstep(coords/Np)*(coeff2 - coeff1)
+init_TR = coeff1 + smoothstep(coords / Np) * (coeff2 - coeff1)
 init_TR = init_TR / (Np / 2) * (14.5 - 11.5) / 2 + (14.5 + 11.5) / 2
 
 # initial parameters
@@ -140,11 +143,11 @@ config = {
 }
 
 # optimize
-print(f'Optimize MRF sequence')
-print(f'Num. TR: {nTR}')
-print(f'Num. states: {seq.options['max_nstate']}')
-print(f'Num. parameters (alpha/tau): {len(init)}')
-print(f'Initial cost: {costfun(init):.8f}')
+print(f"Optimize MRF sequence")
+print(f"Num. TR: {nTR}")
+print(f"Num. states: {seq.options['max_nstate']}")
+print(f"Num. parameters (alpha/tau): {len(init)}")
+print(f"Initial cost: {costfun(init):.8f}")
 
 tic = time.time()
 res = optimize.minimize(costfun, init, **config)
@@ -162,13 +165,13 @@ crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, **options)
 
 #
 # plot
-plt.close('all')
+plt.close("all")
 
 fig, axes = plt.subplots(nrows=2, num="mrf-optim", sharex=True)
 plt.sca(axes.flat[0])
 plt.plot(init[:nTR], label=f"initial")
 plt.plot(res.x[:nTR], label=f"optimized")
-plt.legend(loc='upper right')
+plt.legend(loc="upper right")
 plt.ylabel("flip angle [degree]")
 plt.xlim(0, nTR)
 plt.ylim(0, 70)
@@ -178,7 +181,7 @@ plt.plot(res.x[nTR:], label="optimized")
 plt.ylabel("TR [ms]")
 plt.xlabel("echo index")
 plt.ylim(10, 17)
-plt.suptitle('Sequence parameters')
+plt.suptitle("Sequence parameters")
 plt.tight_layout()
 
 
@@ -192,7 +195,7 @@ plt.plot(np.abs(sig1[:, 0]), label=f"optimized")
 plt.xlabel("echo index")
 plt.ylabel("signal [a.u.]")
 plt.title(f"MR ingerprint for T1={T1}ms, T2={T2}ms")
-plt.legend(loc='upper right')
+plt.legend(loc="upper right")
 plt.grid()
 plt.tight_layout()
 
@@ -205,7 +208,7 @@ plt.plot(crb_tot, label="CRLB total")
 plt.title(f"CRLB optimization (duration: {duration/60:.0f} min)")
 plt.xlabel("Iteration index")
 plt.ylabel("CRLB")
-plt.legend(loc='upper right')
+plt.legend(loc="upper right")
 plt.tight_layout()
 
 plt.show()

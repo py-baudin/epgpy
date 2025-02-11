@@ -2,7 +2,7 @@
 Random Spoiling in Fast Gradient Echo Imaging.
 
   Lin W, Song H
-  Improved signal spoiling in fast radial gradient-echo imaging: 
+  Improved signal spoiling in fast radial gradient-echo imaging:
   Applied to accurate T 1 mapping and flip angle correction
   Magn Reson Med 2009; 62:1185–1194.
 
@@ -41,7 +41,7 @@ seq = [[rfs, rlx, spl]] * Nrf + [[rfs, adc]]
 sim_ideal = epg.simulate(seq)[0]
 
 # rf spoiling
-print("quadratic RF spoiling") 
+print("quadratic RF spoiling")
 FA = [10, 60]
 PH = np.arange(0, 181, 3)
 rfs = [epg.T(FA, [(n + 1) * n * PH / 2]) for n in range(Nrf)]
@@ -67,8 +67,28 @@ plt.hlines(
     label=f"Ideal spoiling (FA=60°)",
     color=colors[1],
 )
-plt.plot(PH, np.abs(sim_rf)[0], 's-', label=f"RF-spoiling (FA=10°)", color=colors[0], ms=3, mfc='white', zorder=10, clip_on=False)
-plt.plot(PH, np.abs(sim_rf)[1], 'o-', label=f"RF-spoiling (FA=60°)", color=colors[1], ms=3, mfc='white', zorder=10, clip_on=False)
+plt.plot(
+    PH,
+    np.abs(sim_rf)[0],
+    "s-",
+    label=f"RF-spoiling (FA=10°)",
+    color=colors[0],
+    ms=3,
+    mfc="white",
+    zorder=10,
+    clip_on=False,
+)
+plt.plot(
+    PH,
+    np.abs(sim_rf)[1],
+    "o-",
+    label=f"RF-spoiling (FA=60°)",
+    color=colors[1],
+    ms=3,
+    mfc="white",
+    zorder=10,
+    clip_on=False,
+)
 plt.xticks(np.arange(7) * 30)
 plt.xlim(0, 180)
 plt.xlabel("RF phase angle (°)")
@@ -85,7 +105,7 @@ plt.tight_layout()
 # profiles and steady state
 print("Profiles at end of TR")
 
-random = np.random #.RandomState(1)
+random = np.random  # .RandomState(1)
 
 Nrf = 400
 TR = 1
@@ -105,7 +125,7 @@ sim_ideal = epg.simulate(seq)
 Mx = 20
 spl = epg.P(1, freqs)
 spl20 = epg.P(Mx, freqs)
-adc = epg.Adc(weights=1/npoint)
+adc = epg.Adc(weights=1 / npoint)
 img = epg.ADC
 phq = np.array([(n + 1) * n / 2 * 117 for n in range(Nrf)])
 rfq = [epg.T(60, 180 + phi) for phi in phq]
@@ -116,7 +136,7 @@ spr = [epg.P(1, k * freqs) for k in krs]
 spr20 = [epg.P(Mx, k * freqs) for k in krs]
 
 print("\tquadratic spoiling (phi=117°)")
-seq = [[rf, rlx, spl] for rf in rfq] + [img] 
+seq = [[rf, rlx, spl] for rf in rfq] + [img]
 sim_rf = epg.simulate(seq, asarray=False)
 prof_rf = sim_rf[-1]
 
@@ -141,8 +161,8 @@ stdy_rdgr20 = np.r_[sim_rdgr20] * np.exp(-1j * np.pi * phq / 180)
 print("\trandom rf and gradient spoiling")
 seq = [[rf, rlx, sp] for rf, sp in zip(rfr, spr)] + [img]
 sim_rd = epg.simulate(seq, asarray=False)
-prof_rd = sim_rd[-1] 
-seq = [[rf, adc, rlx, sp] for rf, sp in zip(rfr, spr20)] + [img] 
+prof_rd = sim_rd[-1]
+seq = [[rf, adc, rlx, sp] for rf, sp in zip(rfr, spr20)] + [img]
 sim_rd20 = epg.simulate(seq, asarray=False)
 stdy_rd20 = np.r_[sim_rd20[:-1]] * np.exp(-1j * np.pi * phr / 180)
 prof_rd20 = sim_rd20[-1]
@@ -169,7 +189,13 @@ for i in range(4):
     plt.ylabel("signal magnitude (a.u)")
     plt.legend(loc="upper right")
     plt.twinx()
-    plt.plot(np.angle(signals[i]) * 180 / np.pi, label="Phase", color=colors[1], alpha=0.5, zorder=1)
+    plt.plot(
+        np.angle(signals[i]) * 180 / np.pi,
+        label="Phase",
+        color=colors[1],
+        alpha=0.5,
+        zorder=1,
+    )
     plt.plot(np.angle(ideal) * 180 / np.pi, "k:", alpha=0.5, zorder=3)
     plt.yticks([-180, -90, 0, 90, 180])
     plt.ylabel("Phase (rad)")
@@ -192,7 +218,9 @@ xmin, xmax = pos.min(), pos.max()
 for i in range(4):
     ax = plt.subplot(2, 2, i + 1, sharex=ax, sharey=ax)
     plt.plot(pos, np.abs(profiles[i]), color=colors[0])
-    plt.plot(pos[[0, -1]], np.abs(profiles[i][[0, -1]]), 'o', color=colors[0], mfc='white')
+    plt.plot(
+        pos[[0, -1]], np.abs(profiles[i][[0, -1]]), "o", color=colors[0], mfc="white"
+    )
     plt.hlines(
         np.abs(np.mean(profiles[i])),
         xmin,
@@ -218,10 +246,10 @@ plt.tight_layout()
 # signal ratios
 NAX = np.newaxis
 
-TR = 1 # ms
+TR = 1  # ms
 T1, T2 = [60, 200], 40
 N1, N2 = 4 * 200 // TR, 400
-Mx = [2, 5, 10, 20, 50, 100] # max gradient moments (cycles/pix)
+Mx = [2, 5, 10, 20, 50, 100]  # max gradient moments (cycles/pix)
 
 npoint = 360
 pos = np.linspace(0, 1, npoint)
@@ -258,10 +286,12 @@ sim_rd *= np.exp(-1j * np.pi * phr[N1:] / 180)[:, NAX, NAX]
 
 def nmean(sig, ref):
     return np.mean(np.abs(sig), axis=0) / np.abs(ref[:, NAX])
-    
+
+
 def nstd(sig, ref):
     return np.std(np.abs(sig), axis=0) / np.abs(ref[:, NAX])
-    
+
+
 #
 # plot
 plt.figure("signal-ratios")
@@ -270,7 +300,7 @@ h = plt.plot(Mx, nmean(sim_rdgr, sim_ideal).T, "s-")
 plt.hlines(1, Mx[0], Mx[-1], color="k", linestyle=":")
 plt.title("Random gradient spoiling")
 plt.xticks([0, 20, 40, 60, 80, 100])
-plt.legend(h, [f'T1/TR={t1}' for t1 in T1], loc='upper right')
+plt.legend(h, [f"T1/TR={t1}" for t1 in T1], loc="upper right")
 plt.gca().set_prop_cycle(None)
 plt.plot(Mx, nstd(sim_rdgr, sim_ideal).T, "s:")
 plt.ylim(0, 2)
@@ -280,7 +310,7 @@ h = plt.plot(Mx, nmean(sim_rd, sim_ideal).T, "s-")
 plt.hlines(1, Mx[0], Mx[-1], color="k", linestyle=":")
 plt.title("Random gradient and RF spoiling")
 plt.xticks([0, 20, 40, 60, 80, 100])
-plt.legend(h, [f'T1/TR={t1}' for t1 in T1], loc='upper right')
+plt.legend(h, [f"T1/TR={t1}" for t1 in T1], loc="upper right")
 plt.gca().set_prop_cycle(None)
 plt.plot(Mx, nstd(sim_rd, sim_ideal).T, "s:")
 plt.ylim(0, 2)

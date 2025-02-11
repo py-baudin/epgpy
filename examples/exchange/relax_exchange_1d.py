@@ -3,7 +3,7 @@
 
 from:
     Van Landeghem M, Haber A, D’espinose De Lacaillerie J-B, Blümich B
-    Analysis of multisite 2D relaxation exchange NMR. 
+    Analysis of multisite 2D relaxation exchange NMR.
     Concepts Magn Reson 2010; 36A:153–169.
 """
 

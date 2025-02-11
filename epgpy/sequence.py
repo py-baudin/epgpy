@@ -1,4 +1,4 @@
-""" Sequence building tools
+"""Sequence building tools
 
 from epg.sequence import Variable, Sequence, operators
 
@@ -7,7 +7,7 @@ T1 = Variable("T1")
 T2 = Variable("T2")
 b1 = Variable("b1")
 
-# Get (virtual) operators to use in sequence 
+# Get (virtual) operators to use in sequence
 T = operators.T
 S = operators.S
 E = operators.S
@@ -20,7 +20,7 @@ seq = Sequence(ops)
 seq.variables --> {"b1", "T1", "T2"} # sequence's variables
 
 # Simulate signal, Jacobian and Hessian matrix (tensor)
-signal = seq.signal(b1=0.9, T1=1000, T2=30) 
+signal = seq.signal(b1=0.9, T1=1000, T2=30)
 # equivalently: seq(b1=0.9, T1=1000, T2=30)
 signal, jacobian = seq.jacobian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
 sig, grad, hess = seq.hessian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
@@ -28,11 +28,11 @@ sig, grad, hess = seq.hessian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
 # Other functions
 
 # Only build (non-virtual) EPG operators, without simulation
-seq.build({b1: 0.9, T1: 1000, T2: 30}) 
+seq.build({b1: 0.9, T1: 1000, T2: 30})
     --> [epg.T(0.9*90, 90), epg.S(1), epg.E(0.5, 1000, 30), ...]
 
 # Run epg.functions.simulate (more flexible than seq.signal)
-seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0') --> value 
+seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0') --> value
 
 # CRLB (sequence optimization objective function)
 seq.crlb(['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
@@ -60,8 +60,8 @@ seq.crlb([var1, var2], gradient=[var3])(...)
 seq = Sequence(ops, options={'max_nstate': 10, 'disp': True})
 seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 
-# Calling `signal`, `jacobian`, `hessian`, `crlb` or `confint` 
-# without passing the variable's values returns a function 
+# Calling `signal`, `jacobian`, `hessian`, `crlb` or `confint`
+# without passing the variable's values returns a function
 # with arguments: (values_dict=None, **values). For instance:
 seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2)
 
@@ -75,7 +75,7 @@ from . import operators as epgops, functions as epgfuncs, stats
 
 
 class Sequence:
-    """ Sequence building object """
+    """Sequence building object"""
 
     def __init__(self, ops=[], *, name=None, options=None):
         """Build sequence from a list of virtual operators
@@ -86,93 +86,93 @@ class Sequence:
         """
         ops = flatten(ops)
         ops = self.check(ops)
-        self.operators = ops # operator list
-        self.name = name # display name
-        self.options = options or {} # simulate options
+        self.operators = ops  # operator list
+        self.name = name  # display name
+        self.options = options or {}  # simulate options
 
     def __len__(self):
         return len(self.operators)
 
     def __iter__(self):
         return iter(self.operators)
-    
+
     def __getitem__(self, item):
         return self.operators[item]
-    
-    def __setitem__(self, item, op):  
+
+    def __setitem__(self, item, op):
         if isinstance(op, Sequence):
             ops = op.operators
         elif isinstance(op, list):
             ops = self.check(op)
-        else: # single insert
+        else:  # single insert
             ops = self.check([op])
             item = slice(item, item + 1)
         # assume bulk insert
         self.operators[item] = ops
 
-    def __delitem__(self, item):    
+    def __delitem__(self, item):
         del self.operators[item]
 
     def __add__(self, other):
         if not isinstance(other, Sequence):
-            raise ValueError(f'Expecting Sequence, not: {type(other)}')
+            raise ValueError(f"Expecting Sequence, not: {type(other)}")
         return self.copy(self.operators + other.operators)
-    
+
     def __repr__(self):
         return self.name if self.name else f"Sequence({len(self)})"
-    
+
     def __call__(self, *args, **kwargs):
-        """ call signal """
+        """call signal"""
         return self.signal(*args, **kwargs)
 
     @property
     def variables(self):
-        """ set of variables in the sequence"""
+        """set of variables in the sequence"""
         return {var for op in self.operators for var in op.variables}
-    
+
     def check(self, ops):
-        """ Check and convert provided operators """
+        """Check and convert provided operators"""
         # replace string objects with virtual operators
         ops = [operators.STR_OPS.get(op, op) for op in ops]
         # check operator type
         invalid = {op for op in ops if not isinstance(op, VirtualOperator)}
         if invalid:
-            raise ValueError(f'Invalid operator(s): {invalid}')
+            raise ValueError(f"Invalid operator(s): {invalid}")
         return ops
-    
+
     def copy(self, ops=None, **kwargs):
-        """ Copy sequence """
+        """Copy sequence"""
         ops = ops or self.operators
-        name = kwargs.get('name', self.name)
+        name = kwargs.get("name", self.name)
         return Sequence(ops, name=name)
 
     def build(self, values=None, *, order1=None, order2=None):
-        """ build EPG operators"""
+        """build EPG operators"""
         # check jacobian and hessian
         variables = self.variables
         if order1:
-            order1 = [var for var in order1 if var != 'magnitude']
+            order1 = [var for var in order1 if var != "magnitude"]
             invalid = set(order1) - variables
             if invalid:
-                raise ValueError(f'Unknown variable(s) in order1: {invalid}')
+                raise ValueError(f"Unknown variable(s) in order1: {invalid}")
         if order2:
-            order2 = [pair for pair in order2 if not 'magnitude' in pair]
+            order2 = [pair for pair in order2 if not "magnitude" in pair]
             hessvars = {var for pair in order2 for var in pair}
             invalid = hessvars - variables
             if invalid:
-                raise ValueError(f'Unknown variable(s) in order2: {invalid}')
+                raise ValueError(f"Unknown variable(s) in order2: {invalid}")
             if not order1:
                 order1 = list(hessvars)
 
         # build operators
-        unique = {} # unique operators
+        unique = {}  # unique operators
         return [
             unique.setdefault(op, op.build(values or {}, order1=order1, order2=order2))
             for op in self.operators
         ]
-    
+
     def simulate(self, values=None, *, order1=None, order2=None, probe=None, **kwargs):
-        """ Run epg.functions.simulate() on sequence's operators.
+        """Run epg.functions.simulate() on sequence's operators.
 
         Args:
             values: dict of variable's values
@@ -181,14 +181,14 @@ class Sequence:
         options = {**self.options, **kwargs}
         ops = self.build(values, order1=order1, order2=order2)
         return epgfuncs.simulate(ops, probe=probe, **options)
-    
+
     def adc_times(self, **values):
-        """ Return adc times """
+        """Return adc times"""
         ops = self.build(values=values)
         return epgfuncs.get_adc_times(ops)
-    
+
     def signal(self, *, options={}, **values):
-        """Simulate the sequence's signal 
+        """Simulate the sequence's signal
 
         Args:
             **values: variables' values
@@ -197,12 +197,14 @@ class Sequence:
             signal: (... x nADC) signal ndarray
         """
         probe = epgops.Probe("F0")
+
         def signal(valuesdict=None, **values):
             values.update(valuesdict or {})
             sim = self.simulate(values, probe=probe, asarray=True, **options)
             return np.moveaxis(sim, 0, -1)
+
         return signal(**values) if values else signal
-    
+
     def jacobian(self, variables, *, options={}, **values):
         """Simulate the signal's Jacobian matrix (tensor)
 
@@ -217,12 +219,16 @@ class Sequence:
         if isinstance(variables, str):
             variables = [variables]
         probe = [epgops.ADC, epgops.Jacobian(list(variables))]
+
         def jacobian(valuesdict=None, **values):
             values.update(valuesdict or {})
-            sim, jac = self.simulate(values, order1=variables, probe=probe, asarray=True, **options)
+            sim, jac = self.simulate(
+                values, order1=variables, probe=probe, asarray=True, **options
+            )
             return np.moveaxis(sim, 0, -1), np.moveaxis(jac, [0, 1], [-2, -1])
+
         return jacobian(**values) if values else jacobian
-    
+
     def hessian(self, variables1, variables2=None, *, options={}, **values):
         """Simulate the signal's Hessian matrix (tensor)
 
@@ -243,25 +249,35 @@ class Sequence:
             variables2 = variables1
         elif isinstance(variables2, str):
             variables2 = [variables2]
-            
+
         probe = [
-            epgops.ADC, 
-            epgops.Jacobian(list(variables1)), 
+            epgops.ADC,
+            epgops.Jacobian(list(variables1)),
             epgops.Hessian(list(variables1), list(variables2)),
         ]
         pairs = [(v1, v2) for v1 in variables1 for v2 in variables2 if v1 <= v2]
+
         def hessian(valuesdict=None, **values):
             values.update(valuesdict or {})
             sim, jac, hess = self.simulate(
-                values, order1=variables1, order2=pairs, probe=probe, asarray=True, **options)
+                values,
+                order1=variables1,
+                order2=pairs,
+                probe=probe,
+                asarray=True,
+                **options,
+            )
             return (
-                np.moveaxis(sim, 0, -1), 
-                np.moveaxis(jac, [0, 1], [-2, -1]), 
+                np.moveaxis(sim, 0, -1),
+                np.moveaxis(jac, [0, 1], [-2, -1]),
                 np.moveaxis(hess, [0, 1, 2], [-3, -2, -1]),
             )
+
         return hessian(**values) if values else hessian
-    
-    def crlb(self, variables, *, gradient=None, weights=None, log=False, sigma2=1, options={}):
+
+    def crlb(
+        self, variables, *, gradient=None, weights=None, log=False, sigma2=1, options={}
+    ):
         """Cramer-Rao lower bound for given variables
 
         Args:
@@ -270,13 +286,14 @@ class Sequence:
             weights: CRLB weights (same length as `variables`)
             log: True/[False]: returns log10(CRLB)
 
-        Returns: 
+        Returns:
             CRLB function with values passed as keywords or dictionary,
             with return values:
                 crlb: CRLB scalar (or ndarray if n-dimensional variable values passed)
             if `gradient` is provided:
                 crlb, Jcrlb: where Jcrlb is the gradient of the crlb w/r gradient variables.
         """
+
         def crlb(valuesdict=None, **values):
             values.update(valuesdict or {})
             hess = None
@@ -284,14 +301,16 @@ class Sequence:
                 _, jac = self.jacobian(variables, options=options)(values)
             else:
                 variables2 = variables if gradient is True else list(gradient)
-                _, jac, hess = self.hessian(variables, variables2, options=options)(values)
+                _, jac, hess = self.hessian(variables, variables2, options=options)(
+                    values
+                )
             return stats.crlb(jac, H=hess, W=weights, log=log, sigma2=sigma2)
+
         return crlb
 
-
     def confint(self, obs, variables, *, conflevel=0.95, return_cband=False):
-        """return 95% confidence interval for given observation 
-        
+        """return 95% confidence interval for given observation
+
         Args:
             obs: observations (... x nADC) ndarray
             variables: (nVar) list of variables for the confidence intervals
@@ -304,45 +323,51 @@ class Sequence:
                 cband: confidence band of prediction (... x nADC) ndarray
         """
         obs = np.asarray(obs)
+
         def confint(valuesdict=None, **values):
             values.update(valuesdict or {})
             # compute prediction and jacobian
             pred, jac = self.jacobian(variables, **values)
             # check dimensions
             if obs.shape != pred.shape:
-                raise ValueError(f'Mismatch between observation and prediction shapes')
+                raise ValueError(f"Mismatch between observation and prediction shapes")
             # compute confidence intervals
             cints, cband = stats.confint(obs, pred, jac, conflevel=conflevel)
             if return_cband:
                 return cints, cband
             return cints
+
         return confint
 
 
 class VirtualOperator(abc.ABC):
-    """ Virtual operator base class """
+    """Virtual operator base class"""
+
     OPERATOR = None
     POSITIONALS = []
     KEYWORDS = []
     OPTIONS = []
-    
+
     @property
     def variables(self):
-        """ set of variables"""
+        """set of variables"""
         variables = set()
-        for expr in self.positionals + list(self.keywords.values()): 
+        for expr in self.positionals + list(self.keywords.values()):
             variables |= {var for var in expr.variables}
         return variables
-    
+
     def __init__(self, *args, **kwargs):
         # list positionals
-        positionals = list(args) + [kwargs.pop(key) for key in set(kwargs) & set(self.POSITIONALS)]
+        positionals = list(args) + [
+            kwargs.pop(key) for key in set(kwargs) & set(self.POSITIONALS)
+        ]
         keywords = {key: kwargs.pop(key) for key in set(kwargs) & set(self.KEYWORDS)}
         options = kwargs
         # check options
         if not Ellipsis in self.OPTIONS:
             unknown = set(options) - set(self.OPTIONS)
-            if unknown: raise ValueError(f'Unknown option(s): {options}')
+            if unknown:
+                raise ValueError(f"Unknown option(s): {options}")
         # make expressions
         for i in range(len(positionals)):
             positionals[i] = to_expression(positionals[i])
@@ -368,14 +393,14 @@ class VirtualOperator(abc.ABC):
         return self.fix(values)
 
     def fix(self, values):
-        """ fix some values """
+        """fix some values"""
         args = [arg.fix(**values) for arg in self.positionals]
         keywords = {key: value.fix(**values) for key, value in self.keywords.items()}
         kwargs = {**keywords, **self.options}
         return type(self)(*args, **kwargs)
 
     def build(self, values={}, *, order1=None, order2=None):
-        """ build (non-virtual) EPG operator """
+        """build (non-virtual) EPG operator"""
         # solve expressions
         args = [arg(**values) for arg in self.positionals]
         keywords = {key: value(**values) for key, value in self.keywords.items()}
@@ -384,46 +409,47 @@ class VirtualOperator(abc.ABC):
         # build operator
         if not (order1 or order2):
             return self.OPERATOR(*args, **kwargs)
-        
+
         # build order1 and order2 dicts
-        order1 = list(order1 or [])
-        order2 = [pair for pair in (order2 or [])]
+        order1 = set(order1 or [])
+        order2 = {tuple(sorted(pair)) for pair in (order2 or [])}
         hesvars = {var for pair in order2 for var in pair}
 
-        exprs = list(zip(self.POSITIONALS, self.positionals)) 
+        exprs = list(zip(self.POSITIONALS, self.positionals))
         exprs += [(name, self.keywords[name]) for name in self.KEYWORDS]
         _order1, _order2 = {}, {}
         for param, expr in exprs:
             # get argument's variables
             variables = set(map(str, expr.variables))
-            for var in variables & (set(order1) | hesvars):
+            for var in variables & (order1 | hesvars):
                 # 1st order derivatives
                 d1param = expr.derive(var, **values)
                 _order1.setdefault(var, {}).update({param: d1param})
             for pair in order2:
-                if set(pair) <= variables:
+                if pair[0] in variables and pair[1] in variables:
                     # 2nd order derivative
                     _order2.setdefault(pair, {})
                     d2param = expr.derive(pair[0]).derive(pair[1], **values)
                     if not np.allclose(d2param, 0):
                         _order2[pair].update({param: d2param})
-                elif set(pair) & variables:
+                elif pair[0] in variables or pair[1] in variables:
                     # 1st order cross derivatives
                     _order2.setdefault(pair, {})
 
         if _order1:
-            kwargs['order1'] = _order1
+            kwargs["order1"] = _order1
         if _order2:
-            kwargs['order2'] = _order2
+            kwargs["order2"] = _order2
         return self.OPERATOR(*args, **kwargs)
-    
+
     def __repr__(self):
-        args = ', '.join(repr(arg) for arg in self.positionals)
-        return f'{self.OPERATOR.__name__}({args})'
-    
+        args = ", ".join(repr(arg) for arg in self.positionals)
+        return f"{self.OPERATOR.__name__}({args})"
+
 
 class VirtualOperatorInstance(VirtualOperator):
-    """ wrapper for ADC, SPOILER, etc."""
+    """wrapper for ADC, SPOILER, etc."""
+
     OPERATOR = None
     VARIABLES = []
     KEYWORDS = []
@@ -436,27 +462,28 @@ class VirtualOperatorInstance(VirtualOperator):
         self.options = {opt: getattr(operator, opt) for opt in options}
 
     def fix(self, *args):
-        raise NotImplementedError(f'Nothing to fix in {self}')
+        raise NotImplementedError(f"Nothing to fix in {self}")
 
     def build(self, *args, **kwargs):
         return self.operator
-    
+
     def __repr__(self):
         return repr(self.operator)
-    
+
 
 def virtual_operator(op, pos=[], kw=[], opt=[]):
-    """ make virtual operator """
+    """make virtual operator"""
     if isinstance(op, epgops.Operator):
         return VirtualOperatorInstance(op, positionals=pos, options=opt)
-    
+
     class Op(VirtualOperator):
         OPERATOR = op
         POSITIONALS = pos
         KEYWORDS = kw
         OPTIONS = opt
+
         def __init__(self, *args, **kwargs):
-            """ place holder for docstring """
+            """place holder for docstring"""
             super().__init__(*args, **kwargs)
 
     Op.__name__ = op.__name__
@@ -464,26 +491,28 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
     Op.__init__.__doc__ = op.__init__.__doc__
     return Op
 
-    
+
 class operators(types.SimpleNamespace):
-    """availabel virtual operators """
+    """availabel virtual operators"""
 
-    _std = ['name', 'duration']
-    _diff = ['order1', 'order2']
+    _std = ["name", "duration"]
+    _diff = ["order1", "order2"]
 
-    E = virtual_operator(epgops.E, ['tau', 'T1', 'T2', 'g'], [], _diff + _std)
-    P = virtual_operator(epgops.P, ['g'], [], _diff + _std)
-    R = virtual_operator(epgops.P, ['rT', 'rL', 'r0'], [], _diff + _std)
-    T = virtual_operator(epgops.T, ['alpha','phi'], [], _diff + _std)
-    Phi = virtual_operator(epgops.Phi, ['phi'], [], _diff + _std)
-    S = virtual_operator(epgops.S, ['k'], [], _std)
-    D = virtual_operator(epgops.D, ['tau', 'D', 'k'], [], _std)
-    X = virtual_operator(epgops.X, ['tau', 'khi'], ['T1', 'T2', 'g'], _std)
+    E = virtual_operator(epgops.E, ["tau", "T1", "T2", "g"], [], _diff + _std)
+    P = virtual_operator(epgops.P, ["g"], [], _diff + _std)
+    R = virtual_operator(epgops.P, ["rT", "rL", "r0"], [], _diff + _std)
+    T = virtual_operator(epgops.T, ["alpha", "phi"], [], _diff + _std)
+    Phi = virtual_operator(epgops.Phi, ["phi"], [], _diff + _std)
+    S = virtual_operator(epgops.S, ["k"], [], _std)
+    D = virtual_operator(epgops.D, ["tau", "D", "k"], [], _std)
+    X = virtual_operator(epgops.X, ["tau", "khi"], ["T1", "T2", "g"], _std)
 
     # utilities
-    Adc = virtual_operator(epgops.Adc, [], ['phase'], ['attr', 'reduce', 'weights'] + _std)
-    Wait = virtual_operator(epgops.Wait, ['duration'], [], ['name'])
-    Offset = virtual_operator(epgops.Offset, ['duration'], [], ['name'])
+    Adc = virtual_operator(
+        epgops.Adc, [], ["phase"], ["attr", "reduce", "weights"] + _std
+    )
+    Wait = virtual_operator(epgops.Wait, ["duration"], [], ["name"])
+    Offset = virtual_operator(epgops.Offset, ["duration"], [], ["name"])
     Spoiler = virtual_operator(epgops.Spoiler, [], [], _std)
     Reset = virtual_operator(epgops.Reset, [], [], _std)
     System = virtual_operator(epgops.System, [], [], _std + [None])
@@ -496,23 +525,25 @@ class operators(types.SimpleNamespace):
 
     # string operators
     STR_OPS = {
-        'ADC': ADC,
-        'NULL': NULL,
-        'SPOILER': SPOILER,
-        'RESET': RESET,
+        "ADC": ADC,
+        "NULL": NULL,
+        "SPOILER": SPOILER,
+        "RESET": RESET,
     }
+
 
 #
 # order1/order2 keywords
 def parse_order12(seq, order1=None, order2=None):
-    """ parse order1/order2 keywords """
+    """parse order1/order2 keywords"""
 
 
 #
 # Expressions
 
+
 def to_expression(obj):
-    """ return Expression """
+    """return Expression"""
     if isinstance(obj, Expression):
         return obj
     elif isinstance(obj, str):
@@ -522,8 +553,8 @@ def to_expression(obj):
 
 
 class Expression:
-    """ Mathematical expression """
-    
+    """Mathematical expression"""
+
     def __init__(self, function, arguments):
         self.function = function
         self.arguments = list(arguments)
@@ -533,19 +564,19 @@ class Expression:
         return self.function.repr(args)
 
     def __call__(self, /, **values):
-        """ compute expression """
+        """compute expression"""
         # solve arguments
         values = [arg(**values) for arg in self.arguments]
         # execute function
         return self.function.execute(*values)
-    
+
     def fix(self, /, **values):
-        """ transform variables into constants """
+        """transform variables into constants"""
         arguments = [arg.fix(**values) for arg in self.arguments]
         return Expression(self.function, arguments)
-    
+
     def map(self, mapping):
-        """ map expression variables """
+        """map expression variables"""
         if not mapping or not self.arguments:
             return self
         mapping = {str(key): value for key, value in mapping.items()}
@@ -558,9 +589,9 @@ class Expression:
             else:
                 args.append(arg)
         return Expression(self.function, args)
-    
+
     def derive(self, variable, /, **kwargs):
-        """ compute derivative expression """
+        """compute derivative expression"""
         variable = str(variable)
         d_expr = Constant(0)
         for i, arg in enumerate(self.arguments):
@@ -584,64 +615,65 @@ class Expression:
     def variables(self):
         unique = {var.name: var for arg in self.arguments for var in arg.variables}
         return set(unique.values())
-    
+
     @property
     def proxies(self):
         return sorted(
             {var for var in self.variables if isinstance(var, Proxy)},
             key=lambda var: var.position,
         )
-    
+
     # standard operators
     def __neg__(self):
         return Expression(functions.neg, [self])
-    
+
     def __abs__(self):
         return Expression(functions.abs, [self])
-    
+
     def __add__(self, other):
         other = to_expression(other)
         return Expression(functions.add, [self, other])
-    
+
     def __radd__(self, other):
         other = to_expression(other)
         return Expression(functions.add, [other, self])
-    
+
     def __sub__(self, other):
         other = to_expression(other)
         return Expression(functions.sub, [self, other])
-    
+
     def __rsub__(self, other):
         other = to_expression(other)
         return Expression(functions.sub, [other, self])
-    
+
     def __mul__(self, other):
         other = to_expression(other)
         return Expression(functions.mul, [self, other])
-    
+
     def __rmul__(self, other):
         other = to_expression(other)
         return Expression(functions.mul, [other, self])
-    
+
     def __truediv__(self, other):
         other = to_expression(other)
         return Expression(functions.div, [self, other])
-    
+
     def __rtruediv__(self, other):
         other = to_expression(other)
         return Expression(functions.div, [other, self])
-    
+
     def __pow__(self, other):
         other = to_expression(other)
         return Expression(functions.pow, [self, other])
-    
+
     def __rpow__(self, other):
         other = to_expression(other)
         return Expression(functions.pow, [other, self])
-    
+
 
 class Constant(Expression):
-    """ A scalar constant """
+    """A scalar constant"""
+
     function = None
     arguments = []
     variables = set()
@@ -651,89 +683,89 @@ class Constant(Expression):
             value = np.asarray(value)
             name = name or f'arr[{", ".join(map(str, value.shape))}]'
         self.value = value
-        self.name = name or f'{value}'
+        self.name = name or f"{value}"
 
     def __repr__(self):
         return self.name
-    
+
     def __eq__(self, other):
         other = other.value if isinstance(other, Constant) else other
         return np.all(self.value == other)
-    
+
     def __hash__(self):
         return hash(self.value)
 
     def __call__(self, /, **kwargs):
         return self.value
-    
+
     def fix(self, /, **kwargs):
         return self
-    
-    def derive(self, variable, /,  **kwargs):
+
+    def derive(self, variable, /, **kwargs):
         expr = Constant(0.0)
         return expr(**kwargs) if kwargs else expr
-    
+
 
 class Variable(Expression):
-    """ A scalar variable """
+    """A scalar variable"""
+
     function = None
     arguments = []
     variables = set()
 
     def __init__(self, name):
         if not isinstance(name, str):
-            raise ValueError(f'Expecting str, not {type(name)}')
+            raise ValueError(f"Expecting str, not {type(name)}")
         self.name = name
         self.variables = {self}
 
     def __repr__(self):
         return self.name
-    
+
     def __eq__(self, other):
         other = other.name if isinstance(other, Variable) else other
         return self.name == other
-    
+
     def __hash__(self):
         return hash(self.name)
 
     def __call__(self, /, **kwargs):
         if not self.name in kwargs:
-            raise ValueError(f'Missing variable: {self.name}')
+            raise ValueError(f"Missing variable: {self.name}")
         value = kwargs[self.name]
         if isinstance(value, (np.ndarray, list)):
             return np.asarray(value)
         return value
-    
+
     def fix(self, /, **kwargs):
         if self.name in kwargs:
             return Constant(kwargs[self.name])
         return self
-    
+
     def derive(self, variable, /, **kwargs):
         expr = Constant(1.0) if variable == self.name else Constant(0.0)
         return expr(**kwargs) if kwargs else expr
 
 
 class Proxy(Variable):
-    """ proxy scalar argument """
+    """proxy scalar argument"""
 
     def __init__(self, position):
         if not isinstance(position, int):
-            raise ValueError(f'Expecting int, not {type(position)}')
+            raise ValueError(f"Expecting int, not {type(position)}")
         self.position = position
-        self.name = f'<arg{position}>'
+        self.name = f"<arg{position}>"
         self.variables = {self}
 
     def __call__(self, /, **kwargs):
-        raise NotImplementedError(f'Cannot solve a proxy variable')
-    
+        raise NotImplementedError(f"Cannot solve a proxy variable")
+
     def derive(self, variable, /, **kwargs):
-        raise NotImplementedError(f'Cannot derive a proxy variable')
-        
+        raise NotImplementedError(f"Cannot derive a proxy variable")
 
 
 class Function:
-    """ Function wrapper including derivatives"""
+    """Function wrapper including derivatives"""
 
     def __init__(self, function, *, derivatives=None, name=None, fmt=None, kwargs=None):
         if not callable(function):
@@ -741,40 +773,42 @@ class Function:
         self.function = function
         self.kwargs = kwargs or {}
         self.name = name or function.__name__
-        self.fmt = fmt or '{name}({args})'
+        self.fmt = fmt or "{name}({args})"
 
         if derivatives:
             if not isinstance(derivatives, list):
                 raise ValueError(f"Expecting list of derivatives, not {type(function)}")
-            elif not all(isinstance(func, (type(None), Expression)) for func in derivatives):
+            elif not all(
+                isinstance(func, (type(None), Expression)) for func in derivatives
+            ):
                 types = [type(func) for func in derivatives]
                 raise ValueError(f"Expecting list of None or Function, not {types}")
         self.derivatives = derivatives
 
     def repr(self, args):
-        strargs = {'args': ', '.join(args)}
-        strargs.update({f'arg{i + 1}': arg for i, arg in enumerate(args)})
+        strargs = {"args": ", ".join(args)}
+        strargs.update({f"arg{i + 1}": arg for i, arg in enumerate(args)})
         return self.fmt.format(name=self.name, **strargs)
 
     def __repr__(self):
         return self.name
 
     def execute(self, *args):
-        """ execute the function """
+        """execute the function"""
         return self.function(*args, **self.kwargs)
-    
+
     def __call__(self, *args):
-        """ return expression """
+        """return expression"""
         args = [to_expression(arg) for arg in args]
         return Expression(self, args)
 
     def derive(self, i):
-        """ return ith derivative expression """
+        """return ith derivative expression"""
         if not self.derivatives:
-            raise ValueError(f'Undefined derivatives')
+            raise ValueError(f"Undefined derivatives")
         expr = self.derivatives[i]
         if not expr:
-            raise ValueError(f'Undefined {i}-th derivative')
+            raise ValueError(f"Undefined {i}-th derivative")
         return expr
 
 
@@ -783,82 +817,87 @@ def tofunction(derivatives=None, fmt=None):
     def wrapper(func):
         f = Function(func, derivatives=derivatives, fmt=fmt)
         return f
+
     return wrapper
-    
+
 
 class functions(types.SimpleNamespace):
-    """ available functions """
+    """available functions"""
+
     p1, p2 = Proxy(1), Proxy(2)
 
     # left and right
-    @tofunction([Constant(1), Constant(0)], fmt='{arg1}')
+    @tofunction([Constant(1), Constant(0)], fmt="{arg1}")
     def left(v1, v2):
         return v1
-    
-    @tofunction([Constant(0), Constant(1)], fmt='{arg2}')
+
+    @tofunction([Constant(0), Constant(1)], fmt="{arg2}")
     def right(v1, v2):
         return v2
-    
+
     # abs
     @tofunction()
     def sign(value):
         return np.sign(value)
 
     # neg
-    @tofunction([Constant(-1)], fmt='(-{arg1})')
+    @tofunction([Constant(-1)], fmt="(-{arg1})")
     def neg(value):
-        return - value
-    
+        return -value
+
     # abs
     @tofunction()
     def abs(value):
         return np.abs(value)
 
     # add
-    @tofunction([Constant(1), Constant(1)], fmt='({arg1}+{arg2})')
+    @tofunction([Constant(1), Constant(1)], fmt="({arg1}+{arg2})")
     def add(v1, v2):
         return v1 + v2
-    
+
     # sub
-    @tofunction([Constant(1), Constant(-1)], fmt='({arg1}-{arg2})')
+    @tofunction([Constant(1), Constant(-1)], fmt="({arg1}-{arg2})")
     def sub(v1, v2):
         return v1 - v2
-  
+
     # mul
-    @tofunction([right(p1, p2), left(p1, p2)], fmt='({arg1}*{arg2})')
+    @tofunction([right(p1, p2), left(p1, p2)], fmt="({arg1}*{arg2})")
     def mul(v1, v2):
         return v1 * v2
-    
+
     # inv
-    @tofunction(fmt='(1/{arg1})')
+    @tofunction(fmt="(1/{arg1})")
     def inv(value):
         return 1.0 / value
 
     # div
-    @tofunction(fmt='({arg1}/{arg2})')
+    @tofunction(fmt="({arg1}/{arg2})")
     def div(v1, v2):
         return v1 / v2
 
-    # pow 
-    @tofunction(fmt='({arg1}**{arg2})')
+    # pow
+    @tofunction(fmt="({arg1}**{arg2})")
     def pow(v1, v2):
-        return v1 ** v2
+        return v1**v2
 
     # log
     @tofunction()
     def log(value):
         return np.log(value)
-    
+
     # exp
     @tofunction()
     def exp(value):
         return np.exp(value)
-    
+
     # set missing derivatives
     abs.derivatives = [sign(p1)]
     inv.derivatives = [div(Constant(-1), pow(p1, Constant(2)))]
     div.derivatives = [inv(right(p1, p2)), div(neg(p1), pow(p2, Constant(2)))]
-    pow.derivatives = [mul(p2, pow(p1, add(p2, Constant(-1)))), mul(log(p1), pow(p1, p2))]
+    pow.derivatives = [
+        mul(p2, pow(p1, add(p2, Constant(-1)))),
+        mul(log(p1), pow(p1, p2)),
+    ]
     log.derivatives = [inv(p1)]
     exp.derivatives = [exp(p1)]
 
@@ -866,8 +905,9 @@ class functions(types.SimpleNamespace):
 #
 # utilities
 
+
 def flatten(seq):
-    """ flatten nested list"""
+    """flatten nested list"""
     if not isinstance(seq, (list, tuple)):
         return [seq]
     return sum([flatten(item) for item in seq], start=[])

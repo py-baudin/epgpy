@@ -1,4 +1,4 @@
-""" Magnetization transfer operators and functions """
+"""Magnetization transfer operators and functions"""
 
 import numpy as np
 from . import utils

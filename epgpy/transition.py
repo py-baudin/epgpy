@@ -1,4 +1,4 @@
-""" EPG Transition operator and functions"""
+"""EPG Transition operator and functions"""
 
 import numpy as np
 from . import common, opmatrix

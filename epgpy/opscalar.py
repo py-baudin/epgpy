@@ -1,4 +1,4 @@
-""" Scalar operator and functions """
+"""Scalar operator and functions"""
 
 import abc
 import numpy as np

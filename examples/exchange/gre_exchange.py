@@ -2,8 +2,8 @@
 Steady State and Transient Behavior of Gradient-Echo Sequences
 
 from:
-    Malik SJ, Teixeira RPAG, Hajnal JV: 
-    Extended phase graph formalism for systems with magnetization transfer and exchange: 
+    Malik SJ, Teixeira RPAG, Hajnal JV:
+    Extended phase graph formalism for systems with magnetization transfer and exchange:
     Magn Reson Med 2018; 80:767–779.
 
 """
