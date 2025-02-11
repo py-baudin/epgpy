@@ -281,10 +281,10 @@ class Sequence:
             values.update(valuesdict or {})
             hess = None
             if not gradient:
-                _, jac = self.jacobian(variables, options=options, **values)
+                _, jac = self.jacobian(variables, options=options)(values)
             else:
                 variables2 = variables if gradient is True else list(gradient)
-                _, jac, hess = self.hessian(variables, variables2, options=options, **values)
+                _, jac, hess = self.hessian(variables, variables2, options=options)(values)
             return stats.crlb(jac, H=hess, W=weights, log=log, sigma2=sigma2)
         return crlb
 

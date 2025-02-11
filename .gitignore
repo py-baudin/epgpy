@@ -162,6 +162,7 @@ cython_debug/
 # profiling
 *.dat
 *.*prof
+profile.svg
 
 # vscode
 *workspace
