@@ -1,4 +1,4 @@
-""" test epgpy.diffusion"""
+"""test epgpy.diffusion"""
 
 import numpy as np
 import pytest
@@ -184,14 +184,16 @@ def test_D_class():
 
     # expected attenuation
     k = sm.kvalue  # rad/m
-    bT = common.asnumpy(sum(
-        [
-            diffusion.compute_bmatrix(1, [0, 0], [k, k]),
-            diffusion.compute_bmatrix(2e-1, [k, k]),
-            diffusion.compute_bmatrix(2e-1, [-k, -k]),
-            diffusion.compute_bmatrix(1, [-k, -k], [0, 0]),
-        ]
-    ))  # s/mm^2
-    
+    bT = common.asnumpy(
+        sum(
+            [
+                diffusion.compute_bmatrix(1, [0, 0], [k, k]),
+                diffusion.compute_bmatrix(2e-1, [k, k]),
+                diffusion.compute_bmatrix(2e-1, [-k, -k]),
+                diffusion.compute_bmatrix(1, [-k, -k], [0, 0]),
+            ]
+        )
+    )  # s/mm^2
+
     att = np.exp(-np.trace(bT @ D, axis1=-2, axis2=-1))
     assert np.isclose(sm.F0, att)

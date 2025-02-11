@@ -1,4 +1,4 @@
-""" compartment exchange """
+"""compartment exchange"""
 
 import numpy as np
 from . import common, operator

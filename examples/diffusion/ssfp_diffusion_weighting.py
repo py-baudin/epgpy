@@ -2,11 +2,12 @@
 Diffusion-weighted SSFP simulation
 
 based on:
-> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M: 
+> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M:
   Three‐dimensional spatially resolved phase graph framework. Magn Reson Med 2021; 86:551–560.
   Part "3.1 Off-resonance simulation"
 
 """
+
 import numpy as np
 from matplotlib import pyplot as plt
 from epgpy import operators, functions, utils

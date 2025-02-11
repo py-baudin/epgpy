@@ -1,4 +1,4 @@
-""" Shift functions """
+"""Shift functions"""
 
 import numpy as np
 from . import common, diff, utils
@@ -348,6 +348,7 @@ def shiftnd(states, indices, shift, *, nmax=None, prune=True, tol=1e-8):
 
     return sm2, k2
 
+
 def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
     """nd shift-merge for arbitrary wavenumbers
 
@@ -435,7 +436,7 @@ def shiftmerge(states, wavenums, shift, *, grid=1, prune=True, tol=1e-8):
 
 def add_at(dest, indices, source):
     xp = common._xp
-    if xp.__name__ == 'cupy':
+    if xp.__name__ == "cupy":
         xp.add.at(dest.real, indices, source.real)
         xp.add.at(dest.imag, indices, source.imag)
     else:
@@ -443,11 +444,11 @@ def add_at(dest, indices, source):
 
 
 def unique_1d(values, axis=0):
-    """faster unique """
+    """faster unique"""
     xp = common.get_array_module()
     if not set(values.shape[:-2]) <= {1}:
         return xp.unique(values, axis=axis, return_inverse=True)
-    
+
     squeeze = (0,) * (values.ndim - 2)
     indices = xp.lexsort(values[squeeze].T[::-1])
     sorted = values[..., indices, :]
@@ -455,7 +456,7 @@ def unique_1d(values, axis=0):
     unique = sorted[..., mask, :]
     # compute inverse
     inverse = xp.zeros_like(indices)
-    inverse[indices] = xp.cumsum(mask) - 1 
+    inverse[indices] = xp.cumsum(mask) - 1
     return unique, inverse
 
 
@@ -478,7 +479,9 @@ def _unique_1d(values, axis=0):
 
     # "hash" rows (faster)
     vrange = xp.ptp(values) + 1
-    hash = xp.dot(values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])]))
+    hash = xp.dot(
+        values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])])
+    )
     # inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
     inverse = [unique_set.setdefault(row.tobytes(), len(unique_set)) for row in hash]
 

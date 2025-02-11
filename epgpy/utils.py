@@ -37,7 +37,7 @@ def imaging(
 
     def cexp(arr):
         # complex modulation
-        ret = np.empty_like(arr, dtype='complex')
+        ret = np.empty_like(arr, dtype="complex")
         xp.cos(arr, out=ret.real)
         xp.sin(arr, out=ret.imag)
         return ret
@@ -72,8 +72,8 @@ def imaging(
         modulation = xp.asarray(modulation)
         mod = xp.exp(xp.abs(t) * modulation.real[..., NAX])
         mmask = xp.any(mod > tol, axis=tuple(range(F.ndim - 1)))
-        F, k, mod = F[..., mmask], k[...,mmask,:], mod[..., mmask]
-        if getattr(voxel, 'shape', None):
+        F, k, mod = F[..., mmask], k[..., mmask, :], mod[..., mmask]
+        if getattr(voxel, "shape", None):
             voxel = voxel[..., mmask]
         if xp.iscomplexobj(modulation):
             freq = t[..., mmask] * 2 * xp.pi * modulation.imag[..., NAX]
@@ -89,7 +89,7 @@ def imaging(
     kdim = pos.shape[-1]
     kpos = xp.einsum("...ni,...i->...n", k[..., :kdim], pos)
     im = (voxel * mod * F) * xp.exp(1j * kpos)
-    
+
     # weights
     if weights is not None:
         im *= xp.asarray(weights)[..., NAX]

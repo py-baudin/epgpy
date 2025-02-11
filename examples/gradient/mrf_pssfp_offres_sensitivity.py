@@ -2,11 +2,12 @@
 Simulation of MRF sensitivity to off-resonance patterns
 
 Based on:
-> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M: 
+> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M:
   Three‐dimensional spatially resolved phase graph framework. Magn Reson Med 2021; 86:551–560.
   Part "3.1 Off-resonance simulation"
 
 """
+
 import time
 import numpy as np
 from matplotlib import pyplot as plt
@@ -173,6 +174,8 @@ plt.legend(handles=[h1[0], h2[0], h3[0]])
 plt.title("Protocol parameters")
 
 
-plt.suptitle("Simulation of off-resonance effects in pSSFP-MRF with spatially-resolved EPG")
+plt.suptitle(
+    "Simulation of off-resonance effects in pSSFP-MRF with spatially-resolved EPG"
+)
 plt.tight_layout()
 plt.show()

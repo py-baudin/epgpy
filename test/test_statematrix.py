@@ -97,7 +97,9 @@ def test_arraycollection_class():
     coll.set("arr4", array(1, 2), layout=(..., "ax1"), resize=True)
     assert coll.get("arr4").shape == coll.shape + (5,)
     # arr4 was padded with zeros
-    assert np.allclose(coll.get("arr4")[0, 0], np.r_[array(1) * 0, array(2), array(2) * 0])
+    assert np.allclose(
+        coll.get("arr4")[0, 0], np.r_[array(1) * 0, array(2), array(2) * 0]
+    )
     with pytest.raises(ValueError):  #
         coll.set("arr5", array(1, 7), layout=(..., "ax1"))
     coll.set("arr5", array(1, 7), layout=(..., "ax1"), resize=True)

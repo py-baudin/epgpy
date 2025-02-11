@@ -1,8 +1,8 @@
-""" 1d inverse Laplace Transform
+"""1d inverse Laplace Transform
 
 An attempt at implementing similar examples as found in:
 
-> Eads CD: Analysis of multicomponent exponential magnetic resonance relaxation data: 
+> Eads CD: Analysis of multicomponent exponential magnetic resonance relaxation data:
   automatable parameterization and interpretable display protocols.
 
 Does not work very well for now...

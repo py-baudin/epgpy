@@ -1,4 +1,5 @@
-""" Pulse profile simulation """
+"""Pulse profile simulation"""
+
 import numpy as np
 from epgpy import operators, functions, rfpulse
 from matplotlib import pyplot as plt

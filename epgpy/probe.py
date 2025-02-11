@@ -178,7 +178,7 @@ class Imaging(Probe):
         coords = self.coords
         if coords is None:
             coords = sm.system.get("coords", broadcast=False)
-        modulation = self.opts.pop('modulation', None)
+        modulation = self.opts.pop("modulation", None)
         if modulation is None:
             modulation = sm.system.get("modulation", broadcast=False)
         weights = self.opts.pop("weights", None)

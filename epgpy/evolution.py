@@ -1,4 +1,4 @@
-""" Evolution functions """
+"""Evolution functions"""
 
 import numpy as np
 

@@ -1,9 +1,9 @@
-""" Implements the Extended Phase Graph NMR signal model
+"""Implements the Extended Phase Graph NMR signal model
 
-    core.epglib:
-        Main EPG bricks and functions
-    core.iopulse:
-        I/O for pulse files
+core.epglib:
+    Main EPG bricks and functions
+core.iopulse:
+    I/O for pulse files
 
 """
 

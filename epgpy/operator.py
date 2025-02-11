@@ -1,4 +1,4 @@
-""" base operator classes """
+"""base operator classes"""
 
 # Python core imports
 import abc
@@ -348,7 +348,7 @@ class System(Operator):
 
     def _apply(self, sm):
         for prop, value in self.properties.items():
-            if prop in ['kvalue', 'tvalue']:
+            if prop in ["kvalue", "tvalue"]:
                 setattr(sm, prop, value)
             else:
                 sm.system.set(prop, value)
