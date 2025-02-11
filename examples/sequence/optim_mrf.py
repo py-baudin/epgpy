@@ -154,7 +154,7 @@ print(f"Optimization time: {duration/60:.1f} min")
 
 # compute crlb for each parameters
 jacs = [
-    seq.jacobian(['T1', 'T2'])(dict(zip(alphas + TRs, params)), T1=T1, T2=T2)[0]
+    seq.jacobian(targets)(dict(zip(alphas + TRs, params)), T1=T1, T2=T2)[1]
     for params in iterations
 ]
 crb_tot = stats.crlb(jacs, W=weights, **options)
