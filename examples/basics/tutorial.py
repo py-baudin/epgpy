@@ -98,7 +98,9 @@ mse = [excit] + [shift, relax, inversion, shift, relax, adc] * necho
 # note: the operateur "epg.Adc" accepts a `phase` argument to compensate for the RF pulse phase
 necho = 400
 phases = 58.5 * np.arange(necho) ** 2
-spgr = [[epg.T(14.8, phase), relax, epg.Adc(phase=-phase), relax, shift] for phase in phases]
+spgr = [
+    [epg.T(14.8, phase), relax, epg.Adc(phase=-phase), relax, shift] for phase in phases
+]
 
 
 # Double echo in steady state (DESS)

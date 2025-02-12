@@ -33,7 +33,7 @@ is to use the `diff.Jacobian` probe operator.
 """
 
 # signal jacobian
-jprobe = epg.Jacobian(["alpha", 'T2'])
+jprobe = epg.Jacobian(["alpha", "T2"])
 # retrieve the 17x2 Jacobian matrix
 jac = epg.simulate(seq, probe=jprobe)
 
@@ -61,9 +61,9 @@ plt.xlabel("time (ms)")
 plt.ylabel("signal")
 plt.title(r"MSE signal and its derivatives ($\alpha$ and $T2$)")
 plt.twinx()
-halpha = plt.plot(times, jac[:, 0].real)
+halpha = plt.plot(times, jac[..., 0].real)
 halpha2 = plt.plot(times, fdiff_alpha.real, "+")
-ht2 = plt.plot(times, jac[:, 1].real)
+ht2 = plt.plot(times, jac[..., 1].real)
 ht22 = plt.plot(times, fdiff_T2.real, "+")
 plt.ylabel("signal derivative")
 legend = plt.legend(
@@ -88,7 +88,7 @@ relax = epg.E(4.5, 1400, 30, order2="T2")
 seq = [excit] + [shift, relax, invert, shift, relax, adc] * necho
 
 # retrieve the Hessian 17x2x2 tensor using the Hessian probe operator
-hprobe = epg.Hessian(['alpha', 'T2'])
+hprobe = epg.Hessian(["alpha", "T2"])
 hessian = epg.simulate(seq, probe=hprobe)
 
 
@@ -96,16 +96,18 @@ hessian = epg.simulate(seq, probe=hprobe)
 """
 
 # 1st order finite differences of signal's derivative
-relax_T2 = epg.E(4.5, 1400, 30 + eps, order1="T2") # add order1 derivatives
+relax_T2 = epg.E(4.5, 1400, 30 + eps, order1="T2")  # add order1 derivatives
 seq_T2 = [excit] + [shift, relax_T2, invert, shift, relax_T2, adc] * necho
-jprobe = epg.Jacobian('alpha')
-fdiff_alpha_t2 = (epg.simulate(seq_T2, probe=jprobe)[:, 0] - jac[:, 0]) / eps
+jprobe = epg.Jacobian("alpha")
+fdiff_alpha_t2 = (epg.simulate(seq_T2, probe=jprobe)[:, 0] - jac[..., 0]) / eps
 
 # plot 2nd derivative of signal w/r (T2, alpha)
 plt.figure("mse-diff2")
 plt.title(r"MSE: 2nd derivative ($\alpha$, $T2$) vs finite differences")
-plt.plot(times, hessian[:, 0, 1].real, label=r"$\partial^2 S / \partial \alpha \partial T2$")
-plt.plot(times, fdiff_alpha_t2.real, "+:", label='finite difference')
+plt.plot(
+    times, hessian[:, 0, 1].real, label=r"$\partial^2 S / \partial \alpha \partial T2$"
+)
+plt.plot(times, fdiff_alpha_t2.real, "+:", label="finite difference")
 plt.xlabel("time (ms)")
 plt.ylabel("2nd derivatives")
 plt.legend()
@@ -135,12 +137,12 @@ noise *= np.sqrt(1e-2 / np.sum(noise**2))
 obs = np.maximum(signal.real[:, 0] + noise, 0)
 pred = signal.real[:, 0]
 
-# sum of squared error 
+# sum of squared error
 sse = np.sum((pred - obs) ** 2)
 
 # Jacobian and hessian
-J = jac[..., 0]
-H = hessian[..., 0]
+J = jac[:, 0]
+H = hessian[:, 0]
 nobs, nparam = J.shape
 
 # number of degrees of freedom: num. echo - 2 (alpha and T2)
@@ -148,9 +150,9 @@ dof = nobs - nparam
 
 # variance-covariance matrix
 # V = np.linalg.inv((J.T @ J).real) # 1st order
-V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real) # 2nd order
+V = np.linalg.inv((J.T @ J + H.T @ (pred - obs)).real)  # 2nd order
 V *= sse / dof
- 
+
 # c.int of reduced t statistics (mean=0, variance=1)
 tval = np.asarray(stats.t.interval(0.95, dof))[1]
 
@@ -159,7 +161,7 @@ cint_alpha = np.sqrt(V[0, 0]) * tval
 cint_T2 = np.sqrt(V[1, 1]) * tval
 
 # confidence bands
-predvar = np.einsum('np,pq,nq->n', J, V, J).real
+predvar = np.einsum("np,pq,nq->n", J, V, J).real
 cband = np.sqrt(predvar) * tval
 
 # prediction bands
@@ -169,12 +171,12 @@ print(rf"c.int alpha: 150 +/- {cint_alpha}")
 print(rf"c.int T2: 30 +/- {cint_T2}")
 
 plt.figure("mse-cint")
-plt.plot(times, obs, 'b+', label='observation')
-plt.plot(times, pred, 'b', label='prediction')
+plt.plot(times, obs, "b+", label="observation")
+plt.plot(times, pred, "b", label="prediction")
 plt.fill_between(
-    times, pred - cband, pred + cband, alpha=0.3, label='95% confidence band'
+    times, pred - cband, pred + cband, alpha=0.3, label="95% confidence band"
 )
-plt.plot(times, pred - pband, "k:", label='95% prediction band')
+plt.plot(times, pred - pband, "k:", label="95% prediction band")
 plt.plot(times, pred + pband, "k:")
 
 plt.title(
@@ -184,7 +186,7 @@ plt.title(
 )
 plt.xlabel("time (ms)")
 plt.ylabel("signal")
-plt.legend(loc='upper right')
+plt.legend(loc="upper right")
 plt.grid()
 plt.tight_layout()
 plt.show()

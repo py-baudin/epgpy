@@ -1,10 +1,11 @@
-""" Differential operators 
+"""Differential operators
 
 Note: only works with linear/affine operators
 """
 
 import itertools
 import abc
+import warnings
 import logging
 import numpy as np
 from . import operator, common, probe
@@ -79,16 +80,18 @@ class DiffOperator(operator.Operator, abc.ABC):
 
     @property
     def parameters_order1(self):
-        return set(self.order1.values())
+        return set(param for var in self.order1 for param in self.order1[var])
 
     @property
     def parameters_order2(self):
         """Pairs of parameters used in 2nd order derivatives"""
         return {
             Pair(p1, p2)
-            for v1, p1 in self.order1.items()
-            for v2, p2 in self.order1.items()
-            if Pair(v1, v2) in self.order2
+            for v1, v2 in self.order2
+            for p1 in self.order1.get(v1, [])
+            for p2 in self.order1.get(v2, [])
+            # keep only valid parameter pairss
+            if {(p1, p2), (p2, p1)} & self.PARAMETERS_ORDER2
         }
 
     def derive0(self, sm, inplace=False):
@@ -165,25 +168,31 @@ class DiffOperator(operator.Operator, abc.ABC):
 
         elif order1 is True:
             # action: compute magnetisation order1 w/r all operator's parameters
-            order1 = {param: param for param in parameters}
+            order1 = {param: {param: 1} for param in parameters}
 
         elif isinstance(order1, list):
-            # derive with respect to operator's parameters
-            invalid = set(order1) - parameters
-            if invalid:
-                raise ValueError(f"Unknown parameter(s): {invalid}")
-            order1 = {param: param for param in order1}
+            # list of parameters
+            order1 = {param: {param: 1} for param in order1}
 
         elif isinstance(order1, dict) and all(
-            isinstance(param, str) for param in order1.values()
+            isinstance(value, str) for value in order1.values()
         ):
-            # use parameter aliases
-            invalid = {param for param in order1 if not order1[param] in parameters}
-            if invalid:
-                raise ValueError(f"Unknown parameter(s): {invalid}")
+            # parameter aliases
+            order1 = {var: {order1[var]: 1} for var in order1}
+
+        elif isinstance(order1, dict) and all(
+            isinstance(value, dict) for value in order1.values()
+        ):
+            # parameters derivatives for given variables
+            pass
 
         else:
             raise ValueError(f"Invalid parameter 'order1' value: {order1}")
+
+        # check parameters
+        invalid = {param for var in order1 for param in set(order1[var]) - parameters}
+        if invalid:
+            raise ValueError(f"Unknown parameter(s): {invalid}")
 
         if not order2:
             return order1, set()
@@ -194,36 +203,61 @@ class DiffOperator(operator.Operator, abc.ABC):
         # 2nd order derivatives
         if order2 == True:
             # compute all 2nd order partial derivatives
-            order2 = set(self.PARAMETERS_ORDER2)
+            order2 = {pair: {} for pair in self.PARAMETERS_ORDER2}
 
         elif isinstance(order2, str):
             # single variable
-            if not order2 in order1:
-                raise ValueError(f"Unknown parameter in {self}: {order2}")
-            if not (order2, order2) in self.PARAMETERS_ORDER2:
-                raise ValueError(f"Invalid parameters pair in {self}: {order2, order2}")
-            order2 = {(order2, order2)}
+            order2 = {(order2, order2): {}}
 
         elif all(isinstance(param, str) for param in order2):
             # list of variables: derivatives w/r to all variable pairs
-            invalid = {param for param in order2 if not param in order1}
-            if invalid:
-                raise ValueError(f"Unknown parameter(s) in {self}: {invalid}")
-            order2 = {
-                Pair(pair) for pair in get_combinations(order2)
-            } & self.PARAMETERS_ORDER2
+            order2 = {{Pair(pair): {}} for pair in get_combinations(order2)}
 
-        elif all(isinstance(pair, tuple) and len(pair) == 2 for pair in order2):
+        elif not isinstance(order2, dict) and all(
+            isinstance(pair, tuple) for pair in order2
+        ):
             # compute *some* 2nd order partial derivatives
-            order2 = {Pair(pair) for pair in order2}
-            invalid = {pair for pair in order2 if not set(pair) & set(order1)}
-            if invalid:
-                raise ValueError(
-                    f"Unknown parameters pair(s) in {self}: {sorted(invalid)}"
-                )
+            order2 = {Pair(pair): {} for pair in order2}
+
+        elif isinstance(order2, dict) and all(
+            isinstance(pair, tuple) and isinstance(order2[pair], dict)
+            for pair in order2
+        ):
+            # pass 2nd order partials of the parameters w/r variable pairs
+            order2 = {Pair(pair): order2[pair] for pair in order2}
 
         elif order2:
             raise ValueError(f"Invalid parameter 'order2' value: {order2}")
+
+        # check order2 parameters
+        invalid = {pair for pair in order2 if not (set(pair) & set(order1))}
+        if invalid:
+            raise ValueError(
+                f"Invalid variable pair(s), no match in order1 variables: {invalid}"
+            )
+        cross_vars = {pair for pair in order2 if (set(pair) - set(order1))}
+        invalid = {pair for pair in cross_vars if order2[pair]}
+        if invalid:
+            raise ValueError(
+                f"Invalid variable pair(s), expecting no coefficient: {invalid}"
+            )
+        invalid = {
+            param for pair in order2 for param in (set(order2[pair]) - parameters)
+        }
+        if invalid:
+            raise ValueError(f"Unknown parameter(s) in order2: {invalid}")
+        param_pairs = {
+            Pair(p1, p2)
+            for v1, v2 in order2
+            for p1 in order1.get(v1, [])
+            for p2 in order1.get(v2, [])
+        }
+
+        # authorize invalid parameter pairs but warn user
+        invalid = param_pairs - set(self.PARAMETERS_ORDER2)
+        if invalid:
+            warnings.warn(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
+            # raise ValueError(f"Invalid parameters pair(s) in {self}: {sorted(invalid)}")
 
         return order1, order2
 
@@ -240,14 +274,14 @@ class DiffOperator(operator.Operator, abc.ABC):
         derive1 = derive1 or self.derive1
 
         # apply operator to previous 1st-order partials
-        order1_previous = {
-            param: derive0(order1[param], inplace=inplace) for param in order1
-        }
+        order1_previous = {var: derive0(order1[var], inplace=inplace) for var in order1}
         # apply derived opertors to previous element
-        order1_current = {
-            param: derive1(sm, self.order1[param], inplace=False)
-            for param in self.order1
+        order1_partials = {
+            param: derive1(sm, param, inplace=False) for param in self.parameters_order1
         }
+        # combine partials
+        order1_current = combine_partials(self.order1, order1_partials)
+
         # accumulate derivatives
         order1 = accumulate(order1_previous, order1_current)
 
@@ -276,35 +310,64 @@ class DiffOperator(operator.Operator, abc.ABC):
             pair: derive0(order2[pair], inplace=inplace) for pair in order2
         }
 
+        # 2nd order coefficient (often 0) and 1st derivative
+        params_order1 = {param for pair in self.order2 for param in self.order2[pair]}
+        order1_partials = {param: derive1(sm, param) for param in params_order1}
+        order1_previous = combine_partials(self.order2, order1_partials)
+
         # 2nd derivatives of current operator
-        params_order2 = {
-            Pair(p1, p2): (self.order1[p1], self.order1[p2])
-            for p1 in self.order1
-            for p2 in self.order1
-            if Pair(p1, p2) in self.order2
+        order2_partials = {
+            (p1, p2): derive2(sm, (p1, p2)) for p1, p2 in self.parameters_order2
         }
-        order2_current = {
-            pair: derive2(sm, params_order2[pair]) for pair in params_order2
+        order2_coeffs = {
+            Pair(v1, v2): {
+                Pair(p1, p2): c1 * c2
+                for p1, c1 in self.order1.get(v1, {}).items()
+                for p2, c2 in self.order1.get(v2, {}).items()
+            }
+            for v1, v2 in self.order2
         }
+        order2_current = combine_partials(order2_coeffs, order2_partials)
 
         # cross derivatives
-        params_cross = {(p1, p2) for p1 in order1 for p2 in self.order1}
-        if not self.auto_cross_derivatives:
-            # keep only selected pairs
-            params_cross = {pair for pair in params_cross if Pair(pair) in self.order2}
-        order2_cross = {
-            (p1, p2): derive1(order1[p1], self.order1[p2]) for p1, p2 in params_cross
+        if self.auto_cross_derivatives:
+            vars_cross = {Pair(v1, v2) for v1 in self.order1 for v2 in order1}
+        else:
+            vars_cross = set(self.order2)
+        params_cross = {
+            param
+            for pair in vars_cross
+            for var in pair
+            for param in self.order1.get(var, [])
         }
-        order2_cross1 = {
-            (p1, p2): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 <= p2
+
+        order2_partials = {
+            (param, var): derive1(order1[var], param)
+            for var in order1
+            for param in params_cross
         }
-        order2_cross2 = {
-            (p2, p1): order2_cross[(p1, p2)] for p1, p2 in params_cross if p1 >= p2
+        order2_coeffs1 = {
+            Pair(v1, v2): {(p1, v1): c1 for p1, c1 in self.order1[v2].items()}
+            for v1 in order1
+            for v2 in self.order1
+            if (Pair(v1, v2) in vars_cross) and (v1 >= v2)
         }
+        order2_cross1 = combine_partials(order2_coeffs1, order2_partials)
+        order2_coeffs2 = {
+            Pair(v1, v2): {(p1, v1): c1 for p1, c1 in self.order1[v2].items()}
+            for v1 in order1
+            for v2 in self.order1
+            if (Pair(v1, v2) in vars_cross) and (v1 <= v2)
+        }
+        order2_cross2 = combine_partials(order2_coeffs2, order2_partials)
 
         # accumulate partial derivatives
         order2 = accumulate(
-            order2_previous, order2_current, order2_cross1, order2_cross2
+            order2_previous,
+            order1_previous,
+            order2_current,
+            order2_cross1,
+            order2_cross2,
         )
 
         # store 2nd order partials as (v1, v2) and (v2, v1)
@@ -312,7 +375,6 @@ class DiffOperator(operator.Operator, abc.ABC):
             if pair[0] == pair[1]:
                 continue
             order2[pair[::-1]] = order2[pair]
-
         return order2
 
 
@@ -340,7 +402,7 @@ class Jacobian(probe.Probe):
     def _acquire(self, sm):
         """return signal's Jacobian"""
         xp = sm.array_module
-        zeros = xp.zeros(1)
+        zeros = xp.zeros(sm.shape)
         _variables = [var for var in self.variables if var != "magnitude"]
         # retrieve jacobian arrays except for magnitude
         arrays = [
@@ -350,7 +412,8 @@ class Jacobian(probe.Probe):
         if "magnitude" in self.variables:
             index = self.variables.index("magnitude")
             arrays.insert(index, getattr(sm, self.probe))
-        return common.asnumpy(xp.stack(arrays))  # copy
+        # copy
+        return common.asnumpy(xp.stack(arrays, axis=-1))  
 
 
 class Hessian(probe.Probe):
@@ -381,35 +444,36 @@ class Hessian(probe.Probe):
     def _acquire(self, sm):
         """return signal's Hessian"""
         xp = sm.array_module
-        zeros = xp.zeros(1)
+        missing = xp.zeros(sm.shape)
 
         arrays = []
         for v1 in self.variables1:
             arrays.append([])
             for v2 in self.variables2:
                 if "magnitude" == v1:
-                    # hess = getattr(sm.order1.get(v2, sm.zeros), self.probe)
                     hess = (
-                        getattr(sm.order1[v2], self.probe) if v2 in sm.order1 else zeros
+                        getattr(sm.order1[v2], self.probe)
+                        if v2 in sm.order1
+                        else missing
                     )
                 elif "magnitude" == v2:
-                    # hess = getattr(sm.order1.get(v1, sm.zeros), self.probe)
                     hess = (
-                        getattr(sm.order1[v1], self.probe) if v2 in sm.order1 else zeros
+                        getattr(sm.order1[v1], self.probe)
+                        if v1 in sm.order1
+                        else missing
                     )
                 else:
-                    # hess = getattr(sm.order2.get(Pair(v1, v2), sm.zeros), self.probe)
                     v12 = Pair(v1, v2)
                     hess = (
                         getattr(sm.order2[v12], self.probe)
                         if v12 in sm.order2
-                        else zeros
+                        else missing
                     )
 
                 arrays[-1].append(hess)
-            arrays[-1] = xp.stack(arrays[-1])
-
-        return common.asnumpy(xp.stack(arrays))  # copy
+            arrays[-1] = xp.stack(arrays[-1], axis=-1)
+        # copy
+        return common.asnumpy(xp.stack(arrays, axis=-2))  
 
 
 class PartialsPruner:

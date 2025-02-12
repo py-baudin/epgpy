@@ -2,10 +2,11 @@
 Point-resolved spectroscopy simulation
 
 based on:
-> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M: 
+> Gao X, Kiselev VG, Lange T, Hennig J, Zaitsev M:
   Three‐dimensional spatially resolved phase graph framework. Magn Reson Med 2021; 86:551–560.
   Part "3.3 Point-resolved spectroscopy simulation"
 """
+
 import numpy as np
 from matplotlib import pyplot as plt
 from epgpy import operators, functions, utils

@@ -78,7 +78,7 @@ class Probe(operator.EmptyOperator):
         return sm
 
     def __repr__(self):
-        return f"Probe({self._repr})"
+        return self.name or f"Probe({self._repr})"
 
 
 class Adc(Probe):
@@ -112,7 +112,7 @@ class Adc(Probe):
         # reduction weights
         ndim = max(len(np.shape(weights)), 1)
         if weights is not None:
-            self._mult *= np.asarray(weights)
+            self._mult = self._mult * np.asarray(weights)
             if reduce is None:
                 # reduce along all weights axes
                 reduce = tuple(range(ndim))
@@ -178,7 +178,7 @@ class Imaging(Probe):
         coords = self.coords
         if coords is None:
             coords = sm.system.get("coords", broadcast=False)
-        modulation = self.opts.pop('modulation', None)
+        modulation = self.opts.pop("modulation", None)
         if modulation is None:
             modulation = sm.system.get("modulation", broadcast=False)
         weights = self.opts.pop("weights", None)

@@ -1,4 +1,4 @@
-""" Multi-spin echo simulation and profiling
+"""Multi-spin echo simulation and profiling
 
 Simulate several T2 values and B1-attenuations at once through vectorization.
 
@@ -8,8 +8,8 @@ import time
 import numpy as np
 import epgpy as epg
 
-num_t2 = 100 # number of T2 values
-num_b1 = 50 # number of B1 attenuation values
+num_t2 = 200  # number of T2 values
+num_b1 = 200  # number of B1 attenuation values
 
 # parameters
 necho = 18
@@ -27,7 +27,7 @@ adc = epg.ADC
 seq = [exc] + [shift, rlx, rfc, shift, rlx, adc] * necho
 
 # simulate
-shape = epg.getshape(seq) # get signal's shape
+shape = epg.getshape(seq)  # get signal's shape
 print(f"Simulate {np.prod(shape)} signals")
 
 time0 = time.time()

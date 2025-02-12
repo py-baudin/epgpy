@@ -2,7 +2,7 @@
 Diffusion sensitivity of a RARE sequence with low constant flip angles
 
 from
-> Weigel M, Schwenk S, Kiselev VG, Scheffler K, Hennig J: 
+> Weigel M, Schwenk S, Kiselev VG, Scheffler K, Hennig J:
   Extended phase graphs with anisotropic diffusion. Journal of Magnetic Resonance 2010; 205:276–285.
 
 """

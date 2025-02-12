@@ -1,4 +1,4 @@
-""" test epglib module """
+"""test epglib module"""
 
 import pytest
 import itertools

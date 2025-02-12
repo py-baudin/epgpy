@@ -1,4 +1,4 @@
-""" io functions for pulse files """
+"""io functions for pulse files"""
 
 import pathlib
 import csv

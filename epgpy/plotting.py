@@ -1,4 +1,4 @@
-""" EPG plots / sequence diagrams """
+"""EPG plots / sequence diagrams"""
 
 import numpy as np
 from matplotlib import pyplot as plt

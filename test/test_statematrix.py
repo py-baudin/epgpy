@@ -97,7 +97,9 @@ def test_arraycollection_class():
     coll.set("arr4", array(1, 2), layout=(..., "ax1"), resize=True)
     assert coll.get("arr4").shape == coll.shape + (5,)
     # arr4 was padded with zeros
-    assert np.allclose(coll.get("arr4")[0, 0], np.r_[array(1) * 0, array(2), array(2) * 0])
+    assert np.allclose(
+        coll.get("arr4")[0, 0], np.r_[array(1) * 0, array(2), array(2) * 0]
+    )
     with pytest.raises(ValueError):  #
         coll.set("arr5", array(1, 7), layout=(..., "ax1"))
     coll.set("arr5", array(1, 7), layout=(..., "ax1"), resize=True)
@@ -190,7 +192,7 @@ def test_state_matrix_class():
     assert sm.equilibrium.shape[-2:] == sm.states.shape[-2:]
     sm.resize(0)
     assert sm.nstate == 0
-    assert np.all(sm == [[[0, 0, 1]]])
+    assert np.allclose(sm, [[[0, 0, 1]]])
 
     # reshape
     sm = statematrix.StateMatrix(shape=(3,))
@@ -208,14 +210,14 @@ def test_state_matrix_class():
     # operators eq, add and iadd
     sm1 = statematrix.StateMatrix([0, 0, 1])
     sm2 = statematrix.StateMatrix([1, 1, 0])
-    assert np.all(sm1 == [0, 0, 1])
-    assert np.all((sm1 + sm2) == [1, 1, 1])
+    assert np.allclose(sm1, [0, 0, 1])
+    assert np.allclose((sm1 + sm2), [1, 1, 1])
     sm1 += sm2
-    assert np.all(sm1 == [1, 1, 1])
+    assert np.allclose(sm1, [1, 1, 1])
 
     # as array
-    assert np.all(common.asnumpy(sm1) == common.asnumpy(sm1.states))
-    assert np.all(sm1 + [1, 1, 1] == [2, 2, 2])
+    assert np.allclose(common.asnumpy(sm1), common.asnumpy(sm1.states))
+    assert np.allclose(sm1 + [1, 1, 1], [2, 2, 2])
 
     # options
     sm = statematrix.StateMatrix(max_nstate=3, kgrid=2)

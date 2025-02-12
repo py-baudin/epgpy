@@ -1,4 +1,4 @@
-""" Simulate RF-pulse
+"""Simulate RF-pulse
 
 operator RFPulse:
     Subtype of epg.Sequence.

@@ -1,4 +1,3 @@
-import math
 import numpy as np
 
 from . import common
@@ -14,29 +13,21 @@ def crlb(J, H=None, *, W=None, sigma2=1, log=False):
     # Fisher information  matrix
     I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
 
-    # or ?
-    # if np.iscomplexobj(J):
-    #    J = xp.concatenate([J.real, J.imag], axis=-2)
-    # I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
-
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
 
     if W is not None:  # apply weights
-        W = xp.asarray(W)[:, np.newaxis]
+        W = xp.asarray(W)[..., np.newaxis]
     else:
         W = 1
-
     cost = xp.trace(W * lb, axis1=-2, axis2=-1)
+
     if H is None:
+        # return CRLB
         return cost if not log else np.log10(cost)
 
-    # H is the derivative of J
-    # H: npoint x nparam1 x nparam2 x ...
-    # if np.iscomplexobj(H):
-    #     H = xp.concatenate([H.real, H.imag], axis=-3)
-    # grad = -2 * xp.einsum("...np,...pq,...nqr->...r", J, lb @ (W * lb), H)
+    # return CRLB and its gradient
     HJ = xp.einsum("...npx,...nq->...qpx", H.conj(), J) * 1 / sigma2
     HJ += np.moveaxis(HJ, -3, -2).conj()
     grad = -xp.einsum("...pq,...qrx,...rp->...x", W * lb, HJ.real, lb)
@@ -49,14 +40,11 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     """CRB for each variables in Jacobian"""
     xp = common.get_array_module(J)
     J = xp.asarray(J)
-
-    # J.shape: npoint x nparam x ...
-    if np.iscomplexobj(J):
-        J = xp.concatenate([J.real, J.imag], axis=-2)
-    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
+    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
+    
     idiag = xp.arange(lb.shape[-1])
     crb = lb[..., idiag, idiag]
     if W is not None:  # apply weights
@@ -66,32 +54,34 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     return xp.moveaxis(crb, -1, 0)
 
 
-def confint(obs, S, J, H=None, *, alpha=0.05):
+def confint(obs, pred, jac, hess=None, *, conflevel=0.95):
     """Delta method for confidence intervals and confidence bands"""
-    nobs, nparam = J.shape[-2:]
+    nobs, nparam = jac.shape[-2:]
     dof = nobs - nparam
-    res = S - obs
-    sse = np.sum(res**2)
+    res = obs - pred
+    sse = np.sum(res * res.conj(), axis=-1)
 
     # covariance matrix
-    if H is not None:
+    if hess is not None:
         # hessian of MLE
-        Hmle = np.einsum("...nqp,...y->...pq", H.conj(), res).real
-        Hmle += np.einsum("...np,...nq->...pq", J.conj(), J).real
+        Hmle = np.einsum("...nqp,...y->...pq", hess.conj(), res).real
+        Hmle += np.einsum("...np,...nq->...pq", jac.conj(), jac).real
         cov = np.linalg.inv(Hmle)
     else:
-        JJ = np.einsum("...np,...nq->...pq", J.conj(), J).real
-        cov = np.linalg.inv(JJ)
+        jac2 = np.einsum("...np,...nq->...pq", jac.conj(), jac).real
+        cov = np.linalg.inv(jac2)
+    cov *= sse / dof
+
     # tvalue
-    tval = get_tstat_interval(1 - alpha, dof)
+    tval = get_tstat_interval(conflevel, dof)
 
     # confidence intervals for the parameters
     idiag = np.arange(nparam)
-    cints = tval * cov[..., idiag, idiag] * sse / dof
+    cints = tval * np.sqrt(cov[..., idiag, idiag])
 
     # confidence band for the prediction
-    predvar = np.einsum("...np,...pq,...nq->...n", J, cov, J)
-    cband = tval * np.sqrt(predvar * sse / dof)
+    predvar = np.einsum("...np,...pq,...nq->...n", jac.conj(), cov, jac).real
+    cband = tval * np.sqrt(predvar)
 
     return cints, cband
 

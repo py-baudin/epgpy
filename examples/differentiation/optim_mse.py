@@ -58,13 +58,13 @@ Example: for necho=1, the optimum tau is 1/2, ie. the inter echo spacing (ESP) i
 
 plt.figure("seq-mse-crlb")
 tau = np.linspace(0.5, 10, 1000)
-rlx = epg.E(tau, T1, T2, order1='T2')
+rlx = epg.E(tau, T1, T2, order1="T2")
 colors = {}
 for necho in range(1, 7):
     seq = [exc] + [grd, rlx, inv, grd, rlx, adc] * necho
-    jac = epg.simulate(seq, probe=epg.Jacobian('T2'))
+    jac = epg.simulate(seq, probe=epg.Jacobian("T2"))
     # log10(CRB) of the MSE sequence
-    cost = stats.crlb(np.moveaxis(jac, -1, 0), log=True, W=[10])
+    cost = stats.crlb(np.moveaxis(jac, -2, 0), log=True, W=[10])
     # index of optimal tau value
     argmin = np.argmin(cost)
     h = plt.plot(2 * tau / 10, cost, label=f"Nechos={necho}")
@@ -80,13 +80,13 @@ plt.legend()
 
 plt.figure("seq-mse-crlb-s0")
 tau = np.linspace(0.5, 10, 1000)
-rlx = epg.E(tau, T1, T2, order1='T2')
+rlx = epg.E(tau, T1, T2, order1="T2")
 
 for necho in range(2, 7):
     seq = [exc] + [grd, rlx, inv, grd, rlx, adc] * necho
-    jac = epg.simulate(seq, probe=epg.Jacobian(['magnitude', 'T2']))
+    jac = epg.simulate(seq, probe=epg.Jacobian(["magnitude", "T2"]))
     # log10(CRB) of the MSE sequence
-    cost = stats.crlb(np.moveaxis(jac, -1, 0), log=True, W=[1, 10])
+    cost = stats.crlb(np.moveaxis(jac, -2, 0), log=True, W=[1, 10])
     # index of optimal tau value
     argmin = np.argmin(cost)
     plt.plot(2 * tau / 10, cost, color=colors[necho], label=f"Nechos={necho}")

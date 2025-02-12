@@ -172,7 +172,7 @@ class StateMatrix:
             coords = _setup_coords(self.nstate, 1, self.ndim)
         kvalue = self.kvalue
         if not common.isscalar(kvalue):
-            kvalue = kvalue[:coords.shape[-1]]
+            kvalue = kvalue[: coords.shape[-1]]
         return coords[..., :3] * kvalue
 
     @property
@@ -235,7 +235,7 @@ class StateMatrix:
         elif xp.isscalar(other):
             value = other
         else:  # array
-            value = xp.asarray(other)
+            value = xp.asarray(other)[..., xp.newaxis, xp.newaxis]
         return value
 
     def __add__(self, other):

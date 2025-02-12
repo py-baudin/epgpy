@@ -14,72 +14,32 @@ import time
 import numpy as np
 from scipy import optimize
 from matplotlib import pyplot as plt
-from epgpy import epg, stats
+from epgpy.sequence import Sequence, Variable, operators
+from epgpy import stats
 
 # define MRF sequence
 nTR = 400
 TE = 3  # ms
 T1, T2 = 1380, 80
-phi = 90
 
 # operators
-adc = epg.ADC
-grd = epg.S(1)
-inv = epg.T(180, phi)  # inversion
-rlx0 = epg.E(20, T1, T2, order1=["T1", "T2"], duration=True)  # inversion delay
-
+adc = operators.ADC
+spl = operators.S(1)
+inv = operators.T(180, 90)  # inversion
+rlx0 = operators.E(20, "T1", "T2", duration=True)  # initial relaxation
+rlx1 = operators.E(TE, "T1", "T2", duration=True)  # before adc
+rf = lambda alpha: operators.T(alpha, 90)
+rlx2 = lambda TR: operators.E(Variable(TR) - TE, "T1", "T2", duration=True)
 
 # parameters to optimize
 alphas = [f"alpha_{i:03d}" for i in range(nTR)]
 TRs = [f"TR_{i:03d}" for i in range(nTR)]
 
-# cross derivatives to compute in RF operator
-order2_rf1 = [("T1", alphas[i]) for i in range(nTR)]
-order2_rf2 = [("T2", alphas[i]) for i in range(nTR)]
-
-
-def rf(i, alpha, jac=False):
-    if not jac:
-        return epg.T(alpha, phi)
-    return epg.T(
-        alpha,
-        phi,
-        order1={alphas[i]: "alpha"},  # use parameter alias
-        order2=[order2_rf1[i], order2_rf2[i]],  # select cross derivatives
-    )
-
-
-# cross derivatives to compute in relaxation operator
-order2_rlx = [("T1", TRs[i]) for i in range(nTR)] + [("T2", TRs[i]) for i in range(nTR)]
-order2_rlx += order2_rf1 + order2_rf2
-
-rlx1_nojac = epg.E(TE, T1, T2, order1=["T1", "T2"], duration=True)
-rlx1_jac = epg.E(TE, T1, T2, order1=["T1", "T2"], order2=order2_rlx, duration=True)
-
-
-def rlx1(jac=False):
-    return rlx1_nojac if not jac else rlx1_jac
-
-
-def rlx2(i, TR, jac=False):
-    if not jac:
-        return epg.E(TR - TE, T1, T2, order1=["T1", "T2"], duration=True)
-    return epg.E(
-        TR - TE,
-        T1,
-        T2,
-        order1={"T1": "T1", "T2": "T2", TRs[i]: "tau"},  # use parameter aliases
-        order2=order2_rlx,  # select cross derivatives
-        duration=True,
-    )
-
-
-# sequence generator function
-def sequence(angles, times, jac=False):
-    return [inv, rlx0] + [
-        [rf(i, angles[i], jac), rlx1(jac), adc, rlx2(i, times[i], jac), grd]
-        for i in range(nTR)
-    ]
+# build sequence
+seq = Sequence(
+    [[inv, rlx0], [[rf(alphas[i]), rlx1, adc, rlx2(TRs[i]), spl] for i in range(nTR)]],
+    options={"max_nstate": 10},
+)
 
 
 """ optimize sequence parameters
@@ -92,14 +52,12 @@ TR in [11, 16]
 # W = diag(1, 1/T1^2, 1/T2^2)
 
 """
-# maximum number of phase states
-nstate = 10
-# CLRB weights
+
+
+# CLRB options
+options = {"sigma2": 1e1, "log": False}
 weights = [1, 1 / T1**2, 1 / T2**2]
-# Probe operators for Jacobien and Hessian
-Jac = epg.Jacobian(["magnitude", "T1", "T2"])
-Hes = epg.Hessian(["magnitude", "T1", "T2"], alphas + TRs)
-sigma2 = 1e1
+targets = ["magnitude", "T1", "T2"]
 
 # store parameters at each iteration
 iterations = []
@@ -112,37 +70,25 @@ def callback(params):
 
 
 def signal(params):
-    alphas, TRs = params[:nTR], params[nTR:]
-    return epg.simulate(sequence(alphas, TRs), max_nstate=nstate)
+    values = dict(zip(alphas + TRs, params))
+    return seq.signal()(values, T1=T1, T2=T2)
 
 
 def costfun(params):
     """crlb cost function"""
-    alphas, TRs = params[:nTR], params[nTR:]
-    jac = epg.simulate(sequence(alphas, TRs), probe=Jac, max_nstate=nstate)
-    cost = stats.crlb(np.moveaxis(jac, -2, 0), W=weights, log=False, sigma2=sigma2)
+    values = dict(zip(alphas + TRs, params))
+    cost = seq.crlb(targets, weights=weights, **options)(values, T1=T1, T2=T2)
     return cost[0]
 
 
 def costjac(params):
     """jacobian of cost function w/r to parameters alpha_xx and tau_xx"""
-    alphas, TRs = params[:nTR], params[nTR:]
-    # simulate sequence
-    jac = epg.simulate(sequence(alphas, TRs, jac=False), probe=Jac, max_nstate=nstate)
-    hes = epg.simulate(
-        sequence(alphas, TRs, jac=True),
-        probe=Hes,
-        max_nstate=nstate,
-        parallel=True,
+    values = dict(zip(alphas + TRs, params))
+    cost, grad = seq.crlb(targets, gradient=alphas + TRs, weights=weights, **options)(
+        values, T1=T1, T2=T2
     )
-    # CRLB
-    cost, grad = stats.crlb(
-        np.moveaxis(jac, -2, 0),
-        np.moveaxis(hes, -3, 0),
-        W=weights,
-        sigma2=sigma2,
-        log=False,
-    )
+
+    # display
     niter = len(iterations)
     elaps = time.time() - tic
     print(f"({niter}) crlb={cost[0]:.8f} " f"(elapsed time: {elaps:.0f}s)")
@@ -199,7 +145,7 @@ config = {
 # optimize
 print(f"Optimize MRF sequence")
 print(f"Num. TR: {nTR}")
-print(f"Num. states: {nstate}")
+print(f"Num. states: {seq.options['max_nstate']}")
 print(f"Num. parameters (alpha/tau): {len(init)}")
 print(f"Initial cost: {costfun(init):.8f}")
 
@@ -211,11 +157,11 @@ print(f"Optimization time: {duration/60:.1f} min")
 
 # compute crlb for each parameters
 jacs = [
-    epg.simulate(sequence(params[:nTR], params[nTR:]), probe=Jac, max_nstate=10)[..., 0]
+    seq.jacobian(targets)(dict(zip(alphas + TRs, params)), T1=T1, T2=T2)[1]
     for params in iterations
 ]
-crb_tot = stats.crlb(jacs, W=weights, log=False, sigma2=sigma2)
-crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, log=False, sigma2=sigma2)
+crb_tot = stats.crlb(jacs, W=weights, **options)
+crb_mag, crb_T1, crb_T2 = stats.crlb_split(jacs, W=weights, **options)
 
 #
 # plot
@@ -244,8 +190,8 @@ sig0 = signal(init)
 crb0 = costfun(init)
 sig1 = signal(res.x)
 crb1 = costfun(res.x)
-plt.plot(np.abs(sig0[:, 0]), label=f"initial")
-plt.plot(np.abs(sig1[:, 0]), label=f"optimized")
+plt.plot(np.abs(sig0[0]), label=f"initial")
+plt.plot(np.abs(sig1[0]), label=f"optimized")
 plt.xlabel("echo index")
 plt.ylabel("signal [a.u.]")
 plt.title(f"MR ingerprint for T1={T1}ms, T2={T2}ms")
