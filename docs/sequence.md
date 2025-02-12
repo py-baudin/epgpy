@@ -1,4 +1,4 @@
-# Sequence definition
+# The `epg.sequence` module
 
 ## Introduction
 
