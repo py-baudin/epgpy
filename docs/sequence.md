@@ -5,6 +5,22 @@
 The `epg.sequence` module provides a simplified syntax to define EPG sequences and
 simulate the resulting signal and its derivatives.
 
+```python
+from epgpy.sequence import Sequence, operators
+T, E, S = operators.T, operators.E, operators.S
+
+# define a sequence using operators and variables
+seq = Sequence([T(90,90)] + [S(1), E(5,'T1','T2'), T(180, 0), S(1), E(5, 'T1', 'T2'), 'ADC'] * 10)
+
+seq.variables
+# -> {'T1', 'T2'}
+
+# simulate the sequence by setting the variable's values
+seq(T1=1.4e3, T2=3e1)
+# -> array([[0.90483742, 0.81873075, 0.74081822, 0.67032005, 0.60653066, 0.54881164, 0.4965853 , 0.44932896, 0.40656966, 0.36787944]])
+```
+
+
 New objects are defined:
 
 - `Variable`: a variable
