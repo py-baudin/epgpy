@@ -40,14 +40,11 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     """CRB for each variables in Jacobian"""
     xp = common.get_array_module(J)
     J = xp.asarray(J)
-
-    # J.shape: npoint x nparam x ...
-    if np.iscomplexobj(J):
-        J = xp.concatenate([J.real, J.imag], axis=-2)
-    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J, J)
+    I = 1 / sigma2 * xp.einsum("...np,...nq->...pq", J.conj(), J).real
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
+    
     idiag = xp.arange(lb.shape[-1])
     crb = lb[..., idiag, idiag]
     if W is not None:  # apply weights
