@@ -5,7 +5,8 @@ import logging
 import warnings
 import numpy as np
 
-logging.basicConfig(level=os.environ.get("LOGLEVEL", "WARN").upper())
+# get environment variable with LOG_LEVEL
+logging.basicConfig(level=os.environ.get("LOG_LEVEL", "WARN").upper())
 
 LOGGER = logging.getLogger(__name__)
 

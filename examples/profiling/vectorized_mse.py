@@ -3,7 +3,6 @@
 Simulate several T2 values and B1-attenuations at once through vectorization.
 
 """
-
 import time
 import numpy as np
 import epgpy as epg
@@ -31,8 +30,11 @@ shape = epg.getshape(seq)  # get signal's shape
 print(f"Simulate {np.prod(shape)} signals")
 
 time0 = time.time()
-signal = epg.simulate(seq)
+signal = epg.simulate(seq, disp=True)
 duration = time.time() - time0
 
 print(f"Duration: {duration:.2f}s")
 print(f"Output shape: {signal.shape}")
+
+if epg.get_array_module().__name__ == 'numpy':
+    print('(You may consider using `cupy` with `export ARRAY_MODULE=cupy`)')
