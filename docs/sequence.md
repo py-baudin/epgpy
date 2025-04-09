@@ -63,7 +63,7 @@ wait = operators.Wait(1.) # do nothing for some time (ms)
 ### Variables and operators
 
 Operator's variables can be defined explicitly using the `Variable` class, or
-implicitly, by passing string arguments to operators.
+implicitly, by passing str arguments to operators.
 
 ```python
 from epg.sequence import Variable, Sequence, operators
@@ -73,7 +73,7 @@ T1 = 1000 # constant
 T2 = "T2" # implicit T2 variable definition
 rlx = operators.E(tau, T1, T2) 
 
-# set of variables for operator `relax`
+# set of variables for operator `rlx`
 assert rlx.variables == {"tau", "T2"}
 
 ```
@@ -125,13 +125,10 @@ signal = seq(b1=1, tau=5, T2=[30, 40, 50])
 assert signal.shape == (3, 10) # 3x T2 values, 10x ADC
 ```
 
-Various simulation functions are available: 
+Various simulation functions are available for simulating the signal, its derivatives and useful statistics.
+The returned values are `numpy.ndarray` whose shape depend on the passed values' own shape and the selected function.
 
 ```python
-# simple wrapper of the epgpy.function.simulate function
-signal = seq.simulate({'b1': '0.8', 'tau': '5', 'T2': '30'})
-assert signal.shape == (10, 1) # 10x ADC, 1x dimension
-
 # signal simulation
 signal = seq(b1=0.8, tau=5, T2=30) # or
 signal = seq.signal(b1=0.8, tau=5, T2=30)
@@ -144,11 +141,18 @@ signal, jac = seq.jacobian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"])(b1=0.8, tau=5, T2=30)
 
 # CRLB (sequence optimization objective function)
-seq.crlb(['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
+crlb = seq.crlb(['T2', 'b1'])(b1=0.9, tau=5, T2=30)
+assert crlb.shape == (1,) # 1x dimension
 
 # Confidence intervals
-seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
+confint = seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
+assert confint.shape == (1,) # 1x dimension
 
+# Wrapper of the epgpy.function.simulate function,
+# use for more customizable simulations (cf. `simulate` documentation)
+# Note: the first dimension is the number of ADCs
+z0_signal = seq.simulate({'b1': 0.8, 'tau': 5, 'T2': 30}, probe='Z0')
+assert z0_signal.shape == (10, 1) # 10x ADC, 1x dimension
 
 ```
 
@@ -156,10 +160,10 @@ seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
 ### Tips
 
 ```python
-# Operator's variables can be passed directly as string
+# Operator's variables can be passed directly as str
 seq = Sequence([E('tau', T1, T2), T('alpha', phi), ...])
 
-# ADC, SPOILER, RESET operators can be passed as string
+# ADC, SPOILER, RESET operators can be passed as str
 `Sequence([op1, op2, ..., 'ADC', 'SPOILER'])
 
 # keyword options to epg.functions.simulate can be set at different places:
@@ -169,7 +173,7 @@ seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 # Calling `Sequence.signal`, `.jacobian`, `.hessian`, `.crlb` or `.confint`
 # without passing the variable's values returns a function
 # with arguments: (values_dict=None, **values). For instance:
-seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2)
+seq.signal(**options)({var1: value1}, var2=value2)
 ```
 
 
@@ -177,7 +181,7 @@ seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2
 
 ### Multi-spin echo simulation (MSE)
 
-Make sure to reuse operators for efficiency.
+The same operator object can be used at multiple locations (this is more efficient than creating new instances).
 
 ```python
 # operators
@@ -197,7 +201,7 @@ times, signal = seq.simulate({'T2': 50}, adc_time=True)
 
 ### Spoiled gradient echo (SPGR)
 
-Nested lists can be used for more compact definitions.
+Nested lists can be used for more compact sequence definitions.
 
 ```python
 # operators
@@ -218,7 +222,7 @@ times, signal = seq.simulate({'T2': 50}, adc_time=True)
 
 ### Double echo in steady state (DESS)
 
-The same variables can be shared by different operators.
+Variables can be shared by different operators. For instance, a single T2 variable is generally used in all relaxation operators.
 
 ```python
 # operators
@@ -247,9 +251,9 @@ This is done using the `gradient` and `hessian` functions of the sequence object
 
 ```python
 signal = seq.signal(b1=0.8, tau=5, T2=30)
-assert hess.shape == (1, 10)
+assert signal.shape == (1, 10)
 signal, jac = seq.gradient(["T2", "b1"])(b1=0.8, tau=5, T2=30)
-assert hess.shape == (1, 10, 2)
+assert jac.shape == (1, 10, 2)
 signal, grad, hess = seq.hessian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 assert hess.shape == (1, 10, 2, 2)
 
@@ -259,8 +263,7 @@ signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"], b1=0.8, tau=5, T2=30
 assert hess.shape == (1, 10, 3, 3)
 ```
 
-
-When dealing with 2nd derivatives, avoid computing unnecessary partial derivatives in the Hessian tensors 
+When dealing with 2nd order derivatives, avoid computing unnecessary partial derivatives in the Hessian tensors 
 by passing different variables for the "rows" (axis=-2) and the "columns" (axis=-1):
 
 ```python
@@ -269,15 +272,15 @@ signal, grad, hess = seq.hessian(["magnitude", "T2"], ["tau"])(b1=0.8, tau=5, T2
 assert hess.shape == (1, 10, 2, 1)
 ```
 
-The CRLB of the signal, and its gradient are also available:
+The Cramer-Rao lower bound (CRLB) of the signal and its gradient are also available:
 
 ```python
-# compute the CRLB (internally calling seq.gradient)
+# compute the CRLB for some target variables (internally calling seq.gradient)
 crlb = seq.crlb(["T2", "b1"])(b1=0.8, tau=5, T2=[30, 40, 50])
-assert crlb.shape == (3,) # 3 T2 values
+assert crlb.shape == (3,) # 3x T2 values
 
 # compute the CRLB and its gradient (internally calling seq.hessian)
-crlb, dcrlb = seq.crlb(["T2", "b1"], gradient=["tau"])(b1=0.8, tau=5, T2=[30, 40, 50])
-assert dcrlb.shape == (3, 1) # 3 T2 values, 1 gradient variable
+crlb, d_crlb = seq.crlb(["T2", "b1"], gradient=["tau"])(b1=0.8, tau=5, T2=[30, 40, 50])
+assert d_crlb.shape == (3, 1) # 3x T2 values, 1x gradient variable
 ```
 
