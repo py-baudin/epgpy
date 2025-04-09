@@ -10,7 +10,6 @@ from epgpy import stats
 
 # define MRF sequence
 nTR = 400
-TE = 3  # ms
 T1, T2 = 1380, 80
 
 # define parameters to optimize
