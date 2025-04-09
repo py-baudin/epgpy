@@ -65,4 +65,4 @@ hes = epg.simulate(
 )
 
 toc = time.time()
-print(f"Done. " f"Duration: {toc - tic:.1f}s, ")
+print(f"Done. Duration: {toc - tic:.1f}s")

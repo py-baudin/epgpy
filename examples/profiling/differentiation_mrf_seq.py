@@ -42,4 +42,4 @@ tic = time.time()
 sig, grad, hess = hessfunc({**values_alphas, **values_TRs}, T1=T1, T2=T2)
 
 toc = time.time()
-print(f"Done. " f"Duration: {toc - tic:.1f}s, ")
+print(f"Done. Duration: {toc - tic:.1f}s")
