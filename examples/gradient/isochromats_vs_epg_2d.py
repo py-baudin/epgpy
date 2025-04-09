@@ -27,9 +27,9 @@ csf = ndimage.zoom(csf, zoom)
 mask = np.max([wm, gm, csf], axis=0) > 1e-5
 
 # acquisition
-FA = 30  # degrees
-TR = 10  # ms
-FOV = 200e-3  # m
+FA = 30 # degrees
+TR = 10 # ms
+FOV = 200e-3 # m
 nread, nphase = mask.shape
 
 pixsize = FOV / nread

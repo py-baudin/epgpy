@@ -23,16 +23,16 @@ T1, T2 = 830, 70  # ms
 T2p = 30  # ms (T2 prime)
 
 # EPG
-print("EPG")
-adc = epg.Imaging(pixels, voxel_size=pixsize)
-init = epg.System(weights=pd, modulation=-1 / T2p)
-rf = epg.T(FA, 0)
-rlx = epg.E(TR / nread, T1, T2)
-rlx *= epg.C(TR / nread)  # time accumulation
-# readout gradient
-k = 2 * np.pi / FOV  # rad/m
-gxpre = epg.S(-k * nread / 2)
-gx = epg.S(k)
+print('EPG')
+adc = epg.Imaging(pixels, voxel_size=pixsize) 
+init = epg.System(weights=pd, modulation=-1/T2p)
+rf = epg.T(FA, 90)
+rlx = epg.E(TR, T1, T2)
+rlx *= epg.C(TR) # time accumulation
+# readout gradient 
+k = 2 * np.pi / FOV # rad/m
+gxpre = epg.S(-k * nread/2)
+gx = epg.S(k) 
 seq = [init, rf, gxpre] + [adc, rlx, gx] * nread
 # simulate
 kspace = epg.simulate(seq, kgrid=0.1)
@@ -49,13 +49,13 @@ for niso in [10, 100, 1000, 10000]:
     # omega = np.tan(0.999 * np.pi * random.uniform(-0.5, 0.5, niso)) / 2 / np.pi
     adc = epg.ADC
     init = epg.PD(pd)
-    rf = epg.T(FA, 0)
-    rlx = epg.E(TR / nread, T1, T2)
-    rlx *= epg.P(TR / nread, 1 / T2p * omega[NAX])  # T2'
-    # readout gradient
-    g = (pixels[:, NAX] + iso) / FOV  # (num cycles)
-    gxpre = epg.P(1, -g * nread / 2)
-    gx = epg.P(1, g)
+    rf = epg.T(FA, 90)
+    rlx = epg.E(TR, T1, T2)
+    rlx *= epg.P(TR, 1/T2p * omega[NAX]) # T2' 
+    # readout gradient 
+    g = (pixels[:, NAX] + iso) / FOV # (num cycles)
+    gxpre = epg.P(1, -g * nread / 2 ) 
+    gx = epg.P(1, g) 
     # simulate
     seq = [init, rf, gxpre] + [adc, rlx, gx] * nread
     sim_iso = epg.simulate(seq)
