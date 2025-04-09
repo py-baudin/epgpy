@@ -19,8 +19,8 @@ order2_rf = [[("T1", alphas[i]), ("T2", alphas[i])] for i in range(nTR)]
 order2_rlx = [[("T1", TRs[i]), ("T2", TRs[i])] for i in range(nTR)]
 
 # operators
-grd = epg.S(1)
 adc = epg.ADC
+spl = epg.S(1)
 
 
 def rf(i, alpha):
@@ -45,7 +45,7 @@ def rlx(i, tau):
 
 # MRF sequence
 def sequence(angles, times):
-    return [[rf(i, angles[i]), rlx(i, times[i]), adc, grd] for i in range(nTR)]
+    return [[rf(i, angles[i]), rlx(i, times[i]), adc, spl] for i in range(nTR)]
 
 
 # random flip angle and TR values
