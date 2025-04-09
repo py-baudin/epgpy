@@ -59,7 +59,7 @@ def confint(obs, pred, jac, hess=None, *, conflevel=0.95):
     nobs, nparam = jac.shape[-2:]
     dof = nobs - nparam
     res = obs - pred
-    sse = np.sum(res * res.conj(), axis=-1)
+    sse = np.sum(res * res.conj(), axis=-1).real
 
     # covariance matrix
     if hess is not None:
@@ -70,7 +70,7 @@ def confint(obs, pred, jac, hess=None, *, conflevel=0.95):
     else:
         jac2 = np.einsum("...np,...nq->...pq", jac.conj(), jac).real
         cov = np.linalg.inv(jac2)
-    cov *= sse / dof
+    cov *= sse[..., np.newaxis, np.newaxis] / dof
 
     # tvalue
     tval = get_tstat_interval(conflevel, dof)
