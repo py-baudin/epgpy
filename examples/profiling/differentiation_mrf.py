@@ -22,7 +22,6 @@ order2_rlx = [[("T1", TRs[i]), ("T2", TRs[i])] for i in range(nTR)]
 adc = epg.ADC
 spl = epg.S(1)
 
-
 def rf(i, alpha):
     return epg.T(
         alpha,
@@ -31,7 +30,6 @@ def rf(i, alpha):
         order2=order2_rf[i],  # select cross derivatives
     )
 
-
 def rlx(i, tau):
     return epg.E(
         tau,
@@ -39,14 +37,11 @@ def rlx(i, tau):
         T2,
         order1={"T1": "T1", "T2": "T2", TRs[i]: "tau"},  # use parameter aliases
         order2=sum(order2_rlx + order2_rf, start=[]),  # select cross derivatives
-        duration=True,
     )
-
 
 # MRF sequence
 def sequence(angles, times):
     return [[rf(i, angles[i]), rlx(i, times[i]), adc, spl] for i in range(nTR)]
-
 
 # random flip angle and TR values
 values_alphas = np.random.uniform(10, 60, nTR)
