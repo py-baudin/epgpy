@@ -140,13 +140,13 @@ signal, jac = seq.jacobian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 # Hessian matrix (tensor) for selected variables
 signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"])(b1=0.8, tau=5, T2=30)
 
-# CRLB (sequence optimization objective function)
+# CRLB for selected target variables (sequence optimization objective function)
 crlb = seq.crlb(['T2', 'b1'])(b1=0.9, tau=5, T2=30)
 assert crlb.shape == (1,) # 1x dimension
 
-# Confidence intervals
+# Confidence intervals for selected variables
 confint = seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
-assert confint.shape == (1,) # 1x dimension
+assert confint.shape == (2,) # 2x variables
 
 # Wrapper of the epgpy.function.simulate function,
 # use for more customizable simulations (cf. `simulate` documentation)
