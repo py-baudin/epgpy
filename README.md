@@ -19,7 +19,7 @@ A number of extensions are implemented:
 - Arbitrary 3D gradients
 - Isotropic and anisotropic diffusion
 - Multi-compartment exchanges, including magnetization transfer
-- [Differentiability](docs/differentiation.md) (e.g., for sequence optimization)
+- Differentiability (e.g., for sequence optimization, cf. guides: [differentiation](docs/differentiation.md) and [sequence](docs/sequence.md))
 - GPU compatible (via `cupy`)
 
 A list of all available operators is given [here](docs/operators.md).
