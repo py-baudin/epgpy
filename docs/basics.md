@@ -182,12 +182,15 @@ Operators can be directly applied on the state matrix, producing a new state mat
 sm0 = epg.StateMatrix()
 
 # rf pulse:
+excit = epg.T(90, 90)
 sm1 = excit(sm0)  # mix transverse and longitudinal states
 
 # shift
+shift = epg.S(1)
 sm2 = shift(sm1)  # shift transverse states (create new states if needed)
 
 # relaxation
+relax = epg.E(10, 1e3, 1e2)
 sm3 = relax(sm2)  # apply signal decay and precession
 ```
 
@@ -208,7 +211,7 @@ array([[[0.000000e+00, 1.000000e+00, 0.000000e+00],
 In : sm3.states.real
 Out:
 array([[[0.        , 0.90483742, 0.        ],
-        [0.        , 0.        , 0.0030349 ],
+        [0.        , 0.        , 0.00995017],
         [0.90483742, 0.        , 0.        ]]])
 
 ```
