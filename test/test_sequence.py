@@ -328,7 +328,7 @@ def test_virtual_operator():
     # ADC, RESET, etc.
     ADC = operators.ADC
     assert isinstance(ADC, sequence.VirtualOperator)
-    assert ADC.operator is epgops.ADC
+    assert ADC.OPERATOR is epgops.Adc
 
 
 def test_expression():

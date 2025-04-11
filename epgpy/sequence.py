@@ -71,7 +71,7 @@ seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2
 import abc
 import types
 import numpy as np
-from . import operators as epgops, functions as epgfuncs, stats
+from . import operators as _operators, functions as _functions, stats
 
 
 class Sequence:
@@ -180,12 +180,12 @@ class Sequence:
         """
         options = {**self.options, **kwargs}
         ops = self.build(values, order1=order1, order2=order2)
-        return epgfuncs.simulate(ops, probe=probe, **options)
+        return _functions.simulate(ops, probe=probe, **options)
 
     def adc_times(self, **values):
         """Return adc times"""
         ops = self.build(values=values)
-        return epgfuncs.get_adc_times(ops)
+        return _functions.get_adc_times(ops)
 
     def signal(self, *, options={}, **values):
         """Simulate the sequence's signal
@@ -196,7 +196,7 @@ class Sequence:
         Returns:
             signal: (... x nADC) signal ndarray
         """
-        probe = epgops.Probe("F0")
+        probe = _operators.Probe("F0")
 
         def signal(valuesdict=None, **values):
             values.update(valuesdict or {})
@@ -218,7 +218,7 @@ class Sequence:
         """
         if isinstance(variables, str):
             variables = [variables]
-        probe = [epgops.ADC, epgops.Jacobian(list(variables))]
+        probe = [_operators.ADC, _operators.Jacobian(list(variables))]
 
         def jacobian(valuesdict=None, **values):
             values.update(valuesdict or {})
@@ -251,9 +251,9 @@ class Sequence:
             variables2 = [variables2]
 
         probe = [
-            epgops.ADC,
-            epgops.Jacobian(list(variables1)),
-            epgops.Hessian(list(variables1), list(variables2)),
+            _operators.ADC,
+            _operators.Jacobian(list(variables1)),
+            _operators.Hessian(list(variables1), list(variables2)),
         ]
         pairs = [(v1, v2) for v1 in variables1 for v2 in variables2 if v1 <= v2]
 
@@ -267,7 +267,11 @@ class Sequence:
                 asarray=True,
                 **options,
             )
-            return np.moveaxis(sim, 0, -1), np.moveaxis(jac, 0, -2), np.moveaxis(hes, 0, -3)
+            return (
+                np.moveaxis(sim, 0, -1),
+                np.moveaxis(jac, 0, -2),
+                np.moveaxis(hes, 0, -3),
+            )
 
         return hessian(**values) if values else hessian
 
@@ -339,7 +343,11 @@ class Sequence:
 class VirtualOperator(abc.ABC):
     """Virtual operator base class"""
 
-    OPERATOR = None
+    @property
+    @abc.abstractmethod
+    def OPERATOR(self):
+        pass
+
     POSITIONALS = []
     KEYWORDS = []
     OPTIONS = []
@@ -374,16 +382,22 @@ class VirtualOperator(abc.ABC):
         self.options = options
 
     def __getattr__(self, attr):
-        try:
+        if attr.startswith("__") and attr.endswith("__"):
+            # prevent lookup for dunders ("__...__")
+            raise AttributeError
+        try:  # get positionals
             idx = self.POSITIONALS.index(attr)
             return self.positionals[idx]
         except ValueError:
             pass
         if attr in self.keywords:
+            # get keywords
             return self.keywords[attr]
         elif attr in self.options:
+            # get options
             return self.options[attr]
-        return getattr(super(), attr)
+        # not found
+        raise AttributeError
 
     def __call__(self, /, **values):
         return self.fix(values)
@@ -403,7 +417,9 @@ class VirtualOperator(abc.ABC):
         kwargs = {**keywords, **self.options}
 
         # build operator
-        if not (order1 or order2) or not issubclass(self.OPERATOR, epgops.DiffOperator):
+        if not (order1 or order2) or not issubclass(
+            self.OPERATOR, _operators.DiffOperator
+        ):
             return self.OPERATOR(*args, **kwargs)
 
         # build order1 and order2 dicts
@@ -412,7 +428,10 @@ class VirtualOperator(abc.ABC):
         hesvars = {var for pair in order2 for var in pair}
 
         exprs = list(zip(self.POSITIONALS, self.positionals))
-        exprs += [(name, self.keywords[name]) for name in set(self.KEYWORDS) & set(self.keywords)]
+        exprs += [
+            (name, self.keywords[name])
+            for name in set(self.KEYWORDS) & set(self.keywords)
+        ]
         _order1, _order2 = {}, {}
         for param, expr in exprs:
             # get argument's variables
@@ -443,48 +462,34 @@ class VirtualOperator(abc.ABC):
         return f"{self.OPERATOR.__name__}({args})"
 
 
-class VirtualOperatorInstance(VirtualOperator):
-    """wrapper for ADC, SPOILER, etc."""
-
-    OPERATOR = None
-    VARIABLES = []
-    KEYWORDS = []
-    OPTIONS = None
-
-    def __init__(self, operator, positionals=None, options=None):
-        self.operator = operator
-        self.positionals = [getattr(operator, attr) for attr in positionals] or []
-        self.keywords = {}
-        self.options = {opt: getattr(operator, opt) for opt in options}
-
-    def fix(self, *args):
-        raise NotImplementedError(f"Nothing to fix in {self}")
-
-    def build(self, *args, **kwargs):
-        return self.operator
-
-    def __repr__(self):
-        return repr(self.operator)
-
-
 def virtual_operator(op, pos=[], kw=[], opt=[]):
     """make virtual operator"""
-    if isinstance(op, epgops.Operator):
-        return VirtualOperatorInstance(op, positionals=pos, options=opt)
+    if not issubclass(op, _operators.Operator):
+        raise ValueError(f"Expecting Operator type, not: {type(op)}")
 
-    class Op(VirtualOperator):
-        OPERATOR = op
-        POSITIONALS = pos
-        KEYWORDS = kw
-        OPTIONS = opt
+    # create VirtualOperator subclass
+    clsname = "Virtual" + op.__name__
 
-        def __init__(self, *args, **kwargs):
-            """place holder for docstring"""
-            super().__init__(*args, **kwargs)
+    # clsname = op.__name__
+    def __init__(self, *args, **kwargs):
+        VirtualOperator.__init__(self, *args, **kwargs)
 
-    Op.__name__ = op.__name__
-    Op.__doc__ = op.__doc__
-    Op.__init__.__doc__ = op.__init__.__doc__
+    __init__.__doc__ = op.__init__.__doc__
+    Op = type(
+        clsname,
+        (VirtualOperator,),
+        {
+            "OPERATOR": op,
+            "POSITIONALS": pos,
+            "KEYWORDS": kw,
+            "OPTIONS": opt,
+            "__doc__": op.__doc__,
+            "__init__": __init__,
+            "__module__": __name__,
+        },
+    )
+    # store into globals for pickling
+    globals()[clsname] = Op
     return Op
 
 
@@ -494,30 +499,31 @@ class operators(types.SimpleNamespace):
     _std = ["name", "duration"]
     _diff = ["order1", "order2"]
 
-    E = virtual_operator(epgops.E, ["tau", "T1", "T2", "g"], [], _diff + _std)
-    P = virtual_operator(epgops.P, ["g"], [], _diff + _std)
-    R = virtual_operator(epgops.P, ["rT", "rL", "r0"], [], _diff + _std)
-    T = virtual_operator(epgops.T, ["alpha", "phi"], [], _diff + _std)
-    Phi = virtual_operator(epgops.Phi, ["phi"], [], _diff + _std)
-    S = virtual_operator(epgops.S, ["k"], [], _std)
-    D = virtual_operator(epgops.D, ["tau", "D", "k"], [], _std)
-    X = virtual_operator(epgops.X, ["tau", "khi"], ["T1", "T2", "g"], _std)
+    E = virtual_operator(_operators.E, ["tau", "T1", "T2", "g"], [], _diff + _std)
+    P = virtual_operator(_operators.P, ["g"], [], _diff + _std)
+    R = virtual_operator(_operators.P, ["rT", "rL", "r0"], [], _diff + _std)
+    T = virtual_operator(_operators.T, ["alpha", "phi"], [], _diff + _std)
+    Phi = virtual_operator(_operators.Phi, ["phi"], [], _diff + _std)
+    S = virtual_operator(_operators.S, ["k"], [], _std)
+    D = virtual_operator(_operators.D, ["tau", "D", "k"], [], _std)
+    X = virtual_operator(_operators.X, ["tau", "khi"], ["T1", "T2", "g"], _std)
 
     # utilities
     Adc = virtual_operator(
-        epgops.Adc, [], ["phase", 'weights'], ["attr", "reduce"] + _std
+        _operators.Adc, [], ["phase", "weights"], ["attr", "reduce"] + _std
     )
-    Wait = virtual_operator(epgops.Wait, ["duration"], [], ["name"])
-    Offset = virtual_operator(epgops.Offset, ["duration"], [], ["name"])
-    Spoiler = virtual_operator(epgops.Spoiler, [], [], _std)
-    Reset = virtual_operator(epgops.Reset, [], [], _std)
-    System = virtual_operator(epgops.System, [], [], _std + [None])
+    Wait = virtual_operator(_operators.Wait, ["duration"], [], ["name"])
+    Offset = virtual_operator(_operators.Offset, ["duration"], [], ["name"])
+    Spoiler = virtual_operator(_operators.Spoiler, [], [], _std)
+    Reset = virtual_operator(_operators.Reset, [], [], _std)
+    System = virtual_operator(_operators.System, [], [], _std + [None])
+    _Null = virtual_operator(_operators.EmptyOperator, [], [], _std)
 
     # default operators
-    ADC = virtual_operator(epgops.ADC, [], [], _std)
-    NULL = virtual_operator(epgops.NULL, [], [], _std)
-    SPOILER = virtual_operator(epgops.SPOILER, [], [], _std)
-    RESET = virtual_operator(epgops.RESET, [], [], _std)
+    ADC = Adc()
+    NULL = _Null()
+    SPOILER = Spoiler()
+    RESET = Reset()
 
     # string operators
     STR_OPS = {
@@ -526,12 +532,6 @@ class operators(types.SimpleNamespace):
         "SPOILER": SPOILER,
         "RESET": RESET,
     }
-
-
-#
-# order1/order2 keywords
-def parse_order12(seq, order1=None, order2=None):
-    """parse order1/order2 keywords"""
 
 
 #
@@ -705,6 +705,7 @@ class Constant(Expression):
 class Variable(Expression):
     """A scalar variable"""
 
+    name = None
     function = None
     arguments = []
     variables = set()
@@ -809,7 +810,7 @@ class Function:
 
 
 # helpers
-def tofunction(derivatives=None, fmt=None):
+def to_function(derivatives=None, fmt=None):
     def wrapper(func):
         f = Function(func, derivatives=derivatives, fmt=fmt)
         return f
@@ -823,66 +824,66 @@ class functions(types.SimpleNamespace):
     p1, p2 = Proxy(1), Proxy(2)
 
     # left and right
-    @tofunction([Constant(1), Constant(0)], fmt="{arg1}")
+    @to_function([Constant(1), Constant(0)], fmt="{arg1}")
     def left(v1, v2):
         return v1
 
-    @tofunction([Constant(0), Constant(1)], fmt="{arg2}")
+    @to_function([Constant(0), Constant(1)], fmt="{arg2}")
     def right(v1, v2):
         return v2
 
     # abs
-    @tofunction()
+    @to_function()
     def sign(value):
         return np.sign(value)
 
     # neg
-    @tofunction([Constant(-1)], fmt="(-{arg1})")
+    @to_function([Constant(-1)], fmt="(-{arg1})")
     def neg(value):
         return -value
 
     # abs
-    @tofunction()
+    @to_function()
     def abs(value):
         return np.abs(value)
 
     # add
-    @tofunction([Constant(1), Constant(1)], fmt="({arg1}+{arg2})")
+    @to_function([Constant(1), Constant(1)], fmt="({arg1}+{arg2})")
     def add(v1, v2):
         return v1 + v2
 
     # sub
-    @tofunction([Constant(1), Constant(-1)], fmt="({arg1}-{arg2})")
+    @to_function([Constant(1), Constant(-1)], fmt="({arg1}-{arg2})")
     def sub(v1, v2):
         return v1 - v2
 
     # mul
-    @tofunction([right(p1, p2), left(p1, p2)], fmt="({arg1}*{arg2})")
+    @to_function([right(p1, p2), left(p1, p2)], fmt="({arg1}*{arg2})")
     def mul(v1, v2):
         return v1 * v2
 
     # inv
-    @tofunction(fmt="(1/{arg1})")
+    @to_function(fmt="(1/{arg1})")
     def inv(value):
         return 1.0 / value
 
     # div
-    @tofunction(fmt="({arg1}/{arg2})")
+    @to_function(fmt="({arg1}/{arg2})")
     def div(v1, v2):
         return v1 / v2
 
     # pow
-    @tofunction(fmt="({arg1}**{arg2})")
+    @to_function(fmt="({arg1}**{arg2})")
     def pow(v1, v2):
         return v1**v2
 
     # log
-    @tofunction()
+    @to_function()
     def log(value):
         return np.log(value)
 
     # exp
-    @tofunction()
+    @to_function()
     def exp(value):
         return np.exp(value)
 

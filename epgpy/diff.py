@@ -413,7 +413,7 @@ class Jacobian(probe.Probe):
             index = self.variables.index("magnitude")
             arrays.insert(index, getattr(sm, self.probe))
         # copy
-        return common.asnumpy(xp.stack(arrays, axis=-1))  
+        return common.asnumpy(xp.stack(arrays, axis=-1))
 
 
 class Hessian(probe.Probe):
@@ -473,7 +473,7 @@ class Hessian(probe.Probe):
                 arrays[-1].append(hess)
             arrays[-1] = xp.stack(arrays[-1], axis=-1)
         # copy
-        return common.asnumpy(xp.stack(arrays, axis=-2))  
+        return common.asnumpy(xp.stack(arrays, axis=-2))
 
 
 class PartialsPruner:

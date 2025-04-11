@@ -44,7 +44,7 @@ def crlb_split(J, W=None, sigma2=1, log=False):
     is_singular = np.linalg.cond(I) > 1e30
     I[is_singular] = np.nan
     lb = xp.linalg.inv(I)
-    
+
     idiag = xp.arange(lb.shape[-1])
     crb = lb[..., idiag, idiag]
     if W is not None:  # apply weights
