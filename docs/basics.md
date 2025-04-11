@@ -4,7 +4,7 @@ In this file, we will cover the basics of `epgpy`,
 i.e. the main EPG operators, the `StatesMatrix` object and simulation helper functions.
 
 
-## Introduction: how to build a sequence with `epgpy`
+## Introduction
 
 The `epgpy` library offers functions and objects for simulating nuclear magnetic resonance (NMR) phenomena according to the Extended Phase Graph (EPG) formalism. 
 
@@ -86,7 +86,7 @@ wait = epg.Wait(1.0) # do nothing for some time (ms)
 
 ### Sequence definition and functions
 
-Sequences are normally defined as (nested) python lists, and passed to the simulation functions:
+Sequences are normally defined as (optionally nested) python lists, and passed to the simulation functions:
 
 ```python
 # define a sequence
@@ -95,14 +95,14 @@ spinecho = [excit, shift, relax, inversion, shift, relax, adc]
 # simulate signal
 signal = epg.simulate(spinecho)
 
-# get ADC timing, **based on the `duration` attribute**
+# get ADC timing, **based on the operators' `duration` attribute**
 echo_time = epg.get_adc_times(spinecho)
 ```
 
 
 ### Examples
 
-In the following examples, we simulate typical sequence with the above operators and plot the signals' magnitude and phase.
+In the following examples, we simulate typical MRI sequences with the above operators and plot the signals' magnitude and phase.
 
 The plotting code is given in `examples/basics/tutorial.py`.
 
@@ -166,13 +166,13 @@ sm.F # (ndarray) all F states
 sm.Z # (ndarray) all Z states
 
 # phase state coordinates
-# Note: only used with non trivial phase state shifts (e.g. 3d gradients, T2*)
+# Note: these are only used with non trivial phase state shifts (e.g. 3d gradients, T2*)
 sm.k  # (ndarray) wavenumber (rad/m, phase state coordinates, used in 3d gradient simulation)
 sm.t  # (ndarray) accumulated time (ms, temporal phase coordinate, used in T2* simulation)
 
 # initialization options
-epg.StateMatrix([1, 1, 0])  # initial state != equilibrium
-epg.StateMatrix(equilibrium=[0, 0, 10])  # different equilibrium
+epg.StateMatrix([1, 1, 0])  # set a custom initial state (not at equilibrium)
+epg.StateMatrix(equilibrium=[0, 0, 10])  # set a different proton density equilibrium
 ```
 
 Operators can be directly applied on the state matrix, producing a new state matrix:
