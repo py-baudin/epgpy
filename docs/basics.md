@@ -22,7 +22,7 @@ EPG sequences are built by chaining various combinations of these operators,
 and the signal is simulated by applying the operators sequentially, starting from an initial state matrix.
 
 Beyond these three operators, in `egppy` you will also find:
-- advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the echange operator `X`, for simulating the echange phenomena between compartments (e.g. in magnetization transfer), and others;
+- advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the exchange operator `X`, for simulating the exchange phenomena between compartments (e.g. in magnetization transfer), and others;
 - utility operators, such as the `ADC` operator, which has no effect on the state matrix and is only needed to tell the program to store the magnetization.
 
 A complete list of the operators provided in `epgpy` is available [here](operators.md).
