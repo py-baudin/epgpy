@@ -136,9 +136,11 @@ assert signal.shape == (1, 10) # 1x dimension, 10x ADC
 
 # Jacobian matrix for selected variables
 signal, jac = seq.jacobian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
+assert jac.shape == (1, 10, 2) # 1x dimension, 10x ADC, 2x column variables
 
 # Hessian matrix (tensor) for selected variables
 signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"])(b1=0.8, tau=5, T2=30)
+assert hess.shape == (1, 10, 3, 3) # 1x dimension, 10x ADC, 3x row & column variables
 
 # CRLB for selected target variables (sequence optimization objective function)
 crlb = seq.crlb(['T2', 'b1'])(b1=0.9, tau=5, T2=30)
@@ -173,7 +175,7 @@ seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 # Calling `Sequence.signal`, `.jacobian`, `.hessian`, `.crlb` or `.confint`
 # without passing the variable's values returns a function
 # with arguments: (values_dict=None, **values). For instance:
-seq.signal(**options)({var1: value1}, var2=value2)
+seq.signal()({var1: value1}, var2=value2)
 ```
 
 
@@ -268,8 +270,7 @@ by passing different variables for the "rows" (axis=-2) and the "columns" (axis=
 
 ```python
 signal, grad, hess = seq.hessian(["magnitude", "T2"], ["tau"])(b1=0.8, tau=5, T2=30)
-# 2 row variables, 1 column variable
-assert hess.shape == (1, 10, 2, 1)
+assert hess.shape == (1, 10, 2, 1) # 2x row variables, 1x column variable
 ```
 
 The Cramer-Rao lower bound (CRLB) of the signal and its gradient are also available:
