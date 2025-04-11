@@ -268,8 +268,8 @@ Output shape: (18, 50, 100)
 
 ### Environment variables
 
-- LOG_LEVEL: show logging information with environment variable `LOG_LEVEL`, eg.: `export LOG_LEVEL=INFO`
-- ARRAY_MODULE: use `cupy` instead of `numpy` with environment variable `ARRAY_MODULE`, eg.: `export ARRAY_MODULE=cupy`
+- LOG_LEVEL: set logging level: `export LOG_LEVEL=INFO`
+- ARRAY_MODULE: select `cupy` instead of `numpy` for calculations: `export ARRAY_MODULE=cupy`
 
 
 
