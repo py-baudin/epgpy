@@ -515,6 +515,7 @@ class operators(types.SimpleNamespace):
     Wait = virtual_operator(_operators.Wait, ["duration"], [], ["name"])
     Offset = virtual_operator(_operators.Offset, ["duration"], [], ["name"])
     Spoiler = virtual_operator(_operators.Spoiler, [], [], _std)
+    PD = virtual_operator(_operators.PD, ["pd"], [], ["reset"] + _std)
     Reset = virtual_operator(_operators.Reset, [], [], _std)
     System = virtual_operator(_operators.System, [], [], _std + [None])
     _Null = virtual_operator(_operators.EmptyOperator, [], [], _std)

@@ -95,7 +95,6 @@ class Adc(Probe):
         if not attr in self.SM_LOCALS:
             raise ValueError(f"Invalid StateMatrix attribute: {attr}")
         self.attr = attr
-        fmts = {"tau": ".1f", "T1": ".1f", "T2": ".1f", "g": ".3f"}
 
         # multiplier
         self._mult = 1

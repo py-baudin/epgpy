@@ -313,9 +313,15 @@ RESET = Reset(name="Reset")
 
 
 class PD(Operator):
-    """set or update proton density"""
+    """Proton density operator"""
 
     def __init__(self, pd, *, reset=True, name=None, **kwargs):
+        """set or update proton density
+
+        Arguments:
+            pd: proton density
+            reset: [True]/False, reset state matrix to new equilibrium
+        """
         self.pd = common.map_arrays(pd=pd)["pd"]
         self.reset = reset
         if name is None:
