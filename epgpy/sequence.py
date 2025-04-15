@@ -196,11 +196,10 @@ class Sequence:
         Returns:
             signal: (... x nADC) signal ndarray
         """
-        probe = _operators.Probe("F0")
 
         def signal(valuesdict=None, **values):
             values.update(valuesdict or {})
-            sim = self.simulate(values, probe=probe, asarray=True, **options)
+            sim = self.simulate(values, asarray=True, **options)
             return np.moveaxis(sim, 0, -1)
 
         return signal(**values) if values else signal

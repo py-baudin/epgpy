@@ -26,29 +26,21 @@ assert signal.shape == (necho, 5, 3)
 # reduce with Adc
 
 # signal is reduced (summed) on selected axis/axes
-adc = epg.Adc(reduce=0)
-seq = [exc] + [[rlx, spl, inv, spl, rlx, adc]] * 20
-signal_reduced = epg.simulate(seq)
+signal_reduced = epg.simulate(seq, probe=epg.Adc(reduce=0))
 assert signal_reduced.shape == (20, 3)
 assert np.allclose(signal_reduced, signal.sum(axis=1))
 
-adc = epg.Adc(reduce=(0, 1))
-seq = [exc] + [[rlx, spl, inv, spl, rlx, adc]] * 20
-signal_reduced = epg.simulate(seq)
+signal_reduced = epg.simulate(seq, probe=epg.Adc(reduce=(0, 1)))
 assert signal_reduced.shape == (20,)
 assert np.allclose(signal_reduced, signal.sum(axis=(1, 2)))
 
 # set weights (w/ automatic reduce)
 weights = [i / 10 for i in range(5)]
-adc = epg.Adc(weights=weights)
-seq = [exc] + [[rlx, spl, inv, spl, rlx, adc]] * 20
-signal_weights = epg.simulate(seq)
+signal_weights = epg.simulate(seq, probe=epg.Adc(weights=weights))
 assert signal_weights.shape == (20, 3)
 assert np.allclose(signal_weights, np.vecdot(weights, signal, axes=[0, 1]))
 
 # set weigths with operator PD
 pd = epg.PD(weights)
-adc = epg.Adc(reduce=0)
-seq = [pd, exc] + [[rlx, spl, inv, spl, rlx, adc]] * 20
-signal_pd = epg.simulate(seq)
+signal_pd = epg.simulate([pd] + seq, probe=epg.Adc(reduce=0))
 assert np.allclose(signal_pd, signal_weights)

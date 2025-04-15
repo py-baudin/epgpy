@@ -23,9 +23,6 @@ class Probe(operator.EmptyOperator):
         "t0",
     ]
 
-    # phase compensation value, used by the simulate function
-    phase = 0
-
     def __init__(self, obj, *args, post=None, **kwargs):
         """Init Probe operator with callable or eval expression.
 
@@ -88,56 +85,82 @@ class Adc(Probe):
         """Init ADC operator
 
         Args:
-            attr: StateMatrix attribute to probe (F0, F, Z0, etc.)
-            phase: phase compensation *in degrees*
-                Used by `simulate` function *if ADC object inserted the sequence*
+            attr: str, StateMatrix attribute to probe (F0, F, Z0, etc.)
+            phase: [None]/ndarray, ADC phase compensation *in degrees*
+                Note: this is applied *after* reduction (cf. `reduce` below)
+            reduce: [None]/True/False/int/tuple[int], add output array along given axis/axes
+                If True: add along all axes; if False: do not reduce
+            weights: [None]/ndarray, array of weights to apply
+                If `reduce` is None, it is automatically set to all `weights` axes 
         """
         if not attr in self.SM_LOCALS:
             raise ValueError(f"Invalid StateMatrix attribute: {attr}")
         self.attr = attr
 
-        # multiplier
-        self._mult = 1
-
         # phase compensation
-        self.phase = np.asarray(phase)
         if phase is not None:
             phrepr = common.repr_value(phase, ".1f")
             self._repr = f"'{attr}', {phrepr}"
-            self._mult = np.exp(1j * self.phase / 180 * np.pi)
+            phase = np.asarray(phase)
+            self.phasor = np.exp(1j * phase / 180 * np.pi)
         else:
             self._repr = attr
+        self.phase = phase
+
+        # reduce axes
+        if reduce is not None:
+            if reduce is True:
+                pass
+            elif reduce:
+                reduce = (reduce,) if isinstance(reduce, int) else tuple(reduce)
+                if not all(isinstance(ax, int) for ax in reduce):
+                    raise ValueError(f'Expected (tuple of) int, got: {reduce}')
+        self.reduce = reduce
 
         # reduction weights
-        ndim = max(len(np.shape(weights)), 1)
         if weights is not None:
-            self._mult = self._mult * np.asarray(weights)
+            weights = np.asarray(weights)
+            ndim = max(weights.ndim, 1)
             if reduce is None:
                 # reduce along all weights axes
-                reduce = tuple(range(ndim))
-            elif reduce is not Ellipsis:
-                reduce = (reduce,) if np.isscalar(reduce) else tuple(reduce)
+                self.reduce = tuple(range(ndim))
+            elif reduce is True:
+                # reduce all axes
+                pass
+            elif reduce:
+                # check reduce axes
                 if not set(reduce) <= set(range(ndim)):
                     raise ValueError(f"Invalid reduce dimension(s): {reduce}")
         self.weights = weights
-        self.reduce = reduce
         operator.Operator.__init__(self, name=name)
 
     def _acquire(self, sm):
-        return getattr(sm, self.attr)
-
+        arr = getattr(sm, self.attr)
+        # weights
+        if self.weights is not None:
+            weights = self.weights
+            if weights.size > 1 and weights.ndim < arr.ndim:
+                dims = tuple(range(weights.ndim, arr.ndim))
+                weights = np.expand_dims(weights, dims)
+            arr = arr * weights
+        # reduce
+        if self.reduce is None or self.reduce is False:
+            return arr
+        elif self.reduce is True:
+            return arr.sum()
+        # else:
+        return arr.sum(axis=self.reduce)
+        
     def _post(self, obj):
         """apply phase compensation, weights and reduction"""
         arr = np.asarray(obj)
-        mult = self._mult
-        if not np.isscalar(mult):
-            dims = [i for i in range(arr.ndim) if i >= mult.ndim]
-            mult = np.expand_dims(mult, dims)
-        arr = obj * mult
-        if self.reduce is True:
-            arr = np.sum(arr)
-        elif self.reduce not in [None, Ellipsis]:
-            arr = np.sum(arr, axis=self.reduce)
+        # phase
+        if self.phase is not None:
+            phasor = self.phasor
+            if phasor.size > 1 and phasor.ndim < arr.ndim:
+                dims = tuple(range(phasor.ndim, arr.ndim))
+                phasor = np.expand_dims(phasor, dims)
+            arr = arr * phasor
         return arr
 
 

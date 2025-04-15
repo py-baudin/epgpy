@@ -57,7 +57,7 @@ def test_adc_class():
     adc = Adc(phase=90, weights=1)  # reduce (implicit)
     assert np.allclose(adc.acquire(sm), 0)
 
-    adc = Adc(phase=90, weights=[2, 0.5], reduce=...)  # no reducing
+    adc = Adc(phase=90, weights=[2, 0.5], reduce=False)  # no reducing
     assert np.allclose(adc.acquire(sm), [-2, 0.5])
 
     with pytest.raises(ValueError):
