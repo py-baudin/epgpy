@@ -4,7 +4,7 @@ In this file, we will cover the basics of `epgpy`,
 i.e. the main EPG operators, the `StatesMatrix` object and simulation helper functions.
 
 
-## Introduction: how to build a sequence with `epgpy`
+## Introduction
 
 The `epgpy` library offers functions and objects for simulating nuclear magnetic resonance (NMR) phenomena according to the Extended Phase Graph (EPG) formalism. 
 
@@ -22,7 +22,7 @@ EPG sequences are built by chaining various combinations of these operators,
 and the signal is simulated by applying the operators sequentially, starting from an initial state matrix.
 
 Beyond these three operators, in `egppy` you will also find:
-- advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the echange operator `X`, for simulating the echange phenomena between compartments (e.g. in magnetization transfer), and others;
+- advanced operators, such as the diffusion operator `D`, for simulating the effect of diffusion, the exchange operator `X`, for simulating the exchange phenomena between compartments (e.g. in magnetization transfer), and others;
 - utility operators, such as the `ADC` operator, which has no effect on the state matrix and is only needed to tell the program to store the magnetization.
 
 A complete list of the operators provided in `epgpy` is available [here](operators.md).
@@ -86,7 +86,7 @@ wait = epg.Wait(1.0) # do nothing for some time (ms)
 
 ### Sequence definition and functions
 
-Sequences are normally defined as (nested) python lists, and passed to the simulation functions:
+Sequences are normally defined as (optionally nested) python lists, and passed to the simulation functions:
 
 ```python
 # define a sequence
@@ -95,14 +95,14 @@ spinecho = [excit, shift, relax, inversion, shift, relax, adc]
 # simulate signal
 signal = epg.simulate(spinecho)
 
-# get ADC timing, **based on the `duration` attribute**
+# get ADC timing, **based on the operators' `duration` attribute**
 echo_time = epg.get_adc_times(spinecho)
 ```
 
 
 ### Examples
 
-In the following examples, we simulate typical sequence with the above operators and plot the signals' magnitude and phase.
+In the following examples, we simulate typical MRI sequences with the above operators and plot the signals' magnitude and phase.
 
 The plotting code is given in `examples/basics/tutorial.py`.
 
@@ -166,13 +166,13 @@ sm.F # (ndarray) all F states
 sm.Z # (ndarray) all Z states
 
 # phase state coordinates
-# Note: only used with non trivial phase state shifts (e.g. 3d gradients, T2*)
+# Note: these are only used with non trivial phase state shifts (e.g. 3d gradients, T2*)
 sm.k  # (ndarray) wavenumber (rad/m, phase state coordinates, used in 3d gradient simulation)
 sm.t  # (ndarray) accumulated time (ms, temporal phase coordinate, used in T2* simulation)
 
 # initialization options
-epg.StateMatrix([1, 1, 0])  # initial state != equilibrium
-epg.StateMatrix(equilibrium=[0, 0, 10])  # different equilibrium
+epg.StateMatrix([1, 1, 0])  # set a custom initial state (not at equilibrium)
+epg.StateMatrix(equilibrium=[0, 0, 10])  # set a different proton density equilibrium
 ```
 
 Operators can be directly applied on the state matrix, producing a new state matrix:
@@ -182,12 +182,15 @@ Operators can be directly applied on the state matrix, producing a new state mat
 sm0 = epg.StateMatrix()
 
 # rf pulse:
+excit = epg.T(90, 90)
 sm1 = excit(sm0)  # mix transverse and longitudinal states
 
 # shift
+shift = epg.S(1)
 sm2 = shift(sm1)  # shift transverse states (create new states if needed)
 
 # relaxation
+relax = epg.E(10, 1e3, 1e2)
 sm3 = relax(sm2)  # apply signal decay and precession
 ```
 
@@ -208,7 +211,7 @@ array([[[0.000000e+00, 1.000000e+00, 0.000000e+00],
 In : sm3.states.real
 Out:
 array([[[0.        , 0.90483742, 0.        ],
-        [0.        , 0.        , 0.0030349 ],
+        [0.        , 0.        , 0.00995017],
         [0.90483742, 0.        , 0.        ]]])
 
 ```
@@ -265,8 +268,8 @@ Output shape: (18, 50, 100)
 
 ### Environment variables
 
-- logging: show logging information with environment variable `LOG_LEVEL`, eg.: `export LOG_LEVEL=INFO`
-- array module: use `cupy` instead of `numpy` with environment variable `ARRAY_MODULE`, eg.: `export ARRAY_MODULE=cupy`
+- LOG_LEVEL: set logging level: `export LOG_LEVEL=INFO`
+- ARRAY_MODULE: select `cupy` instead of `numpy` for calculations: `export ARRAY_MODULE=cupy`
 
 
 

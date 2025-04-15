@@ -467,14 +467,16 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
     if not issubclass(op, _operators.Operator):
         raise ValueError(f"Expecting Operator type, not: {type(op)}")
 
-    # create VirtualOperator subclass
+    # class name is Virtual + <op-name>
     clsname = "Virtual" + op.__name__
-
-    # clsname = op.__name__
+    
+    # __init__ method
     def __init__(self, *args, **kwargs):
         VirtualOperator.__init__(self, *args, **kwargs)
 
     __init__.__doc__ = op.__init__.__doc__
+    
+    # create VirtualOperator subclass
     Op = type(
         clsname,
         (VirtualOperator,),
@@ -494,7 +496,7 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
 
 
 class operators(types.SimpleNamespace):
-    """availabel virtual operators"""
+    """Namespace of available virtual operators"""
 
     _std = ["name", "duration"]
     _diff = ["order1", "order2"]
@@ -518,11 +520,11 @@ class operators(types.SimpleNamespace):
     PD = virtual_operator(_operators.PD, ["pd"], [], ["reset"] + _std)
     Reset = virtual_operator(_operators.Reset, [], [], _std)
     System = virtual_operator(_operators.System, [], [], _std + [None])
-    _Null = virtual_operator(_operators.EmptyOperator, [], [], _std)
+    Null = virtual_operator(_operators.EmptyOperator, [], [], _std)
 
     # default operators
     ADC = Adc()
-    NULL = _Null()
+    NULL = Null()
     SPOILER = Spoiler()
     RESET = Reset()
 
