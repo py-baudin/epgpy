@@ -64,8 +64,9 @@ rewind = operators.S(-npoint // 2)
 seq = [[t, rlx, shift] for t in rf.operators]
 
 pos = FOV * np.linspace(-0.5, 0.5, 301)
-adc = operators.Imaging(pos)
+adc = operators.DFT(pos)
 sim2 = functions.simulate(seq + [rewind, adc], kvalue=kvalue)
+sim2 = sim2[0]
 
 plt.figure()
 plt.plot(offres, np.abs(sim[0]), label="With E operator")
