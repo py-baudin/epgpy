@@ -340,7 +340,7 @@ class Sequence:
 
 
 def repeat(ops, nrep=None, **mapping):
-    """build repetition of an operator's sequence"""
+    """Repeat list operators and map variables to other variables/constants/expressions """
     if not isinstance(ops, list):
         raise ValueError(f"Expecting operator list, got: {type(ops)}")
 
