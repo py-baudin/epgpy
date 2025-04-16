@@ -5,8 +5,7 @@ Same as `differentiation_mrf.py`, but using the `epg.sequence` module
 
 import time
 import numpy as np
-from epgpy.sequence import Sequence, Variable, operators
-from epgpy import stats
+from epgpy.sequence import Sequence, operators, repeat
 
 # define MRF sequence
 nTR = 400
@@ -19,11 +18,11 @@ TRs = [f"TR_{i:03d}" for i in range(nTR)]
 # operators
 adc = operators.ADC
 spl = operators.S(1)
-rf = {i: operators.T(alphas[i], 90) for i in range(nTR)}
-rlx = {i: operators.E(TRs[i], "T1", "T2") for i in range(nTR)}
+rf = operators.T("alpha", 90)
+rlx = operators.E("TR", "T1", "T2")
 
 # MRF sequence
-seq = Sequence([[rf[i], rlx[i], adc, spl] for i in range(nTR)])
+seq = Sequence(repeat([rf, rlx, adc, spl], alpha=alphas, TR=TRs))
 
 # random flip angle and TR values
 values_alphas = dict(zip(alphas, np.random.uniform(10, 60, nTR)))

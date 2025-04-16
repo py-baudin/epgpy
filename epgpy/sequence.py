@@ -144,7 +144,7 @@ class Sequence:
         """Copy sequence"""
         ops = ops or self.operators
         name = kwargs.get("name", self.name)
-        return Sequence(ops, name=name)
+        return Sequence(ops, name=name, options=self.options)
 
     def build(self, values=None, *, order1=None, order2=None):
         """build EPG operators"""
@@ -339,6 +339,51 @@ class Sequence:
         return confint
 
 
+def repeat(ops, nrep=None, **mapping):
+    """build repetition of an operator's sequence"""
+    if not isinstance(ops, list):
+        raise ValueError(f"Expecting operator list, got: {type(ops)}")
+
+    if nrep:
+        # explicit number of repetitions
+        implicit = False
+        nrep = [nrep] if isinstance(nrep, int) else list(nrep)
+    else:
+        # implicit number of repetitions
+        nvals = {len(value) for value in mapping.values() if isinstance(value, list)}
+        if len(nvals) > 1:
+            raise ValueError(f"Inconsistent lengths in mapping values: {nvals}")
+        elif not nvals:
+            raise ValueError("Unknown number of repetition")
+        implicit = True
+        nrep = (nvals.pop(),)
+
+    nrep0, nnext = nrep[0], nrep[1:]
+    repetition = []
+    for n in range(nrep0):
+        # values for current n
+        _mapping = {}
+        for name, value in mapping.items():
+            if isinstance(value, list):
+                value = value[n]
+            elif isinstance(value, str):
+                value = value.format(n + 1, *["{}"] * 10)
+            _mapping[name] = value
+
+        has_list = any(isinstance(item, list) for item in _mapping.values())
+        if nnext or (implicit and has_list):
+            # nested repetition
+            repetition.append(repeat(ops, nnext, **_mapping))
+        else:
+            # map expressions
+            repetition.append([])
+            for op in ops:
+                if isinstance(op, VirtualOperator):
+                    op = op.map(_mapping)
+                repetition[-1].append(op)
+    return repetition
+
+
 class VirtualOperator(abc.ABC):
     """Virtual operator base class"""
 
@@ -399,14 +444,15 @@ class VirtualOperator(abc.ABC):
         raise AttributeError
 
     def __call__(self, /, **values):
-        return self.fix(values)
+        return self.map(values)
 
-    def fix(self, values):
-        """fix some values"""
-        args = [arg.fix(**values) for arg in self.positionals]
-        keywords = {key: value.fix(**values) for key, value in self.keywords.items()}
-        kwargs = {**keywords, **self.options}
-        return type(self)(*args, **kwargs)
+    def map(self, values=None, **kwargs):
+        """map variables to other variables/expressions/constants"""
+        values = {**(values or {}), **kwargs}
+        args = [arg.map(values) for arg in self.positionals]
+        keywords = {key: value.map(values) for key, value in self.keywords.items()}
+        keywords.update(self.options)
+        return type(self)(*args, **keywords)
 
     def build(self, values={}, *, order1=None, order2=None):
         """build (non-virtual) EPG operator"""
@@ -468,13 +514,13 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
 
     # class name is Virtual + <op-name>
     clsname = "Virtual" + op.__name__
-    
+
     # __init__ method
     def __init__(self, *args, **kwargs):
         VirtualOperator.__init__(self, *args, **kwargs)
 
     __init__.__doc__ = op.__init__.__doc__
-    
+
     # create VirtualOperator subclass
     Op = type(
         clsname,
@@ -489,7 +535,7 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
             "__module__": __name__,
         },
     )
-    # store into globals for pickling
+    # store operator into globals for pickling
     globals()[clsname] = Op
     return Op
 
@@ -541,7 +587,7 @@ class operators(types.SimpleNamespace):
 
 
 def to_expression(obj):
-    """return Expression"""
+    """Convert object to Expression"""
     if isinstance(obj, Expression):
         return obj
     elif isinstance(obj, str):
@@ -551,7 +597,7 @@ def to_expression(obj):
 
 
 class Expression:
-    """Mathematical expression"""
+    """A mathematical expression"""
 
     def __init__(self, function, arguments):
         self.function = function
@@ -568,24 +614,13 @@ class Expression:
         # execute function
         return self.function.execute(*values)
 
-    def fix(self, /, **values):
-        """transform variables into constants"""
-        arguments = [arg.fix(**values) for arg in self.arguments]
-        return Expression(self.function, arguments)
-
-    def map(self, mapping):
+    def map(self, mapping=None, **kwargs):
         """map expression variables"""
+        mapping = {**(mapping or {}), **kwargs}
         if not mapping or not self.arguments:
             return self
         mapping = {str(key): value for key, value in mapping.items()}
-        args = []
-        for arg in self.arguments:
-            if isinstance(arg, Variable):
-                args.append(mapping.get(str(arg), arg))
-            elif arg.arguments:
-                args.append(arg.map(mapping))
-            else:
-                args.append(arg)
+        args = [arg.map(mapping) for arg in self.arguments]
         return Expression(self.function, args)
 
     def derive(self, variable, /, **kwargs):
@@ -623,54 +658,54 @@ class Expression:
 
     # standard operators
     def __neg__(self):
-        return Expression(functions.neg, [self])
+        return Expression(math.neg, [self])
 
     def __abs__(self):
-        return Expression(functions.abs, [self])
+        return Expression(math.abs, [self])
 
     def __add__(self, other):
         other = to_expression(other)
-        return Expression(functions.add, [self, other])
+        return Expression(math.add, [self, other])
 
     def __radd__(self, other):
         other = to_expression(other)
-        return Expression(functions.add, [other, self])
+        return Expression(math.add, [other, self])
 
     def __sub__(self, other):
         other = to_expression(other)
-        return Expression(functions.sub, [self, other])
+        return Expression(math.sub, [self, other])
 
     def __rsub__(self, other):
         other = to_expression(other)
-        return Expression(functions.sub, [other, self])
+        return Expression(math.sub, [other, self])
 
     def __mul__(self, other):
         other = to_expression(other)
-        return Expression(functions.mul, [self, other])
+        return Expression(math.mul, [self, other])
 
     def __rmul__(self, other):
         other = to_expression(other)
-        return Expression(functions.mul, [other, self])
+        return Expression(math.mul, [other, self])
 
     def __truediv__(self, other):
         other = to_expression(other)
-        return Expression(functions.div, [self, other])
+        return Expression(math.div, [self, other])
 
     def __rtruediv__(self, other):
         other = to_expression(other)
-        return Expression(functions.div, [other, self])
+        return Expression(math.div, [other, self])
 
     def __pow__(self, other):
         other = to_expression(other)
-        return Expression(functions.pow, [self, other])
+        return Expression(math.pow, [self, other])
 
     def __rpow__(self, other):
         other = to_expression(other)
-        return Expression(functions.pow, [other, self])
+        return Expression(math.pow, [other, self])
 
 
 class Constant(Expression):
-    """A scalar constant"""
+    """A constant"""
 
     function = None
     arguments = []
@@ -696,7 +731,7 @@ class Constant(Expression):
     def __call__(self, /, **kwargs):
         return self.value
 
-    def fix(self, /, **kwargs):
+    def map(self, *args, **kwargs):
         return self
 
     def derive(self, variable, /, **kwargs):
@@ -705,7 +740,7 @@ class Constant(Expression):
 
 
 class Variable(Expression):
-    """A scalar variable"""
+    """A variable"""
 
     name = None
     function = None
@@ -736,9 +771,10 @@ class Variable(Expression):
             return np.asarray(value)
         return value
 
-    def fix(self, /, **kwargs):
-        if self.name in kwargs:
-            return Constant(kwargs[self.name])
+    def map(self, mapping=None, **kwargs):
+        mapping = {**(mapping or {}), **kwargs}
+        if self.name in mapping:
+            return to_expression(mapping[self.name])
         return self
 
     def derive(self, variable, /, **kwargs):
@@ -747,7 +783,7 @@ class Variable(Expression):
 
 
 class Proxy(Variable):
-    """proxy scalar argument"""
+    """A proxy variable"""
 
     def __init__(self, position):
         if not isinstance(position, int):
@@ -765,6 +801,9 @@ class Proxy(Variable):
 
 class Function:
     """Function wrapper including derivatives"""
+
+    function = None
+    derivatives = None
 
     def __init__(self, function, *, derivatives=None, name=None, fmt=None, kwargs=None):
         if not callable(function):
@@ -811,83 +850,88 @@ class Function:
         return expr
 
 
-# helpers
-def to_function(derivatives=None, fmt=None):
-    def wrapper(func):
-        f = Function(func, derivatives=derivatives, fmt=fmt)
-        return f
-
-    return wrapper
-
-
-class functions(types.SimpleNamespace):
-    """available functions"""
+class math(types.SimpleNamespace):
+    """available mathematical functions"""
 
     p1, p2 = Proxy(1), Proxy(2)
 
     # left and right
-    @to_function([Constant(1), Constant(0)], fmt="{arg1}")
-    def left(v1, v2):
+    def _left(v1, v2):
         return v1
 
-    @to_function([Constant(0), Constant(1)], fmt="{arg2}")
-    def right(v1, v2):
+    def _right(v1, v2):
         return v2
 
+    left = Function(_left, derivatives=[Constant(1), Constant(0)], fmt="{arg1}")
+    right = Function(_right, derivatives=[Constant(0), Constant(1)], fmt="{arg2}")
+
     # abs
-    @to_function()
-    def sign(value):
+    def _sign(value):
         return np.sign(value)
 
+    sign = Function(_sign)
+
     # neg
-    @to_function([Constant(-1)], fmt="(-{arg1})")
-    def neg(value):
+    def _neg(value):
         return -value
 
+    neg = Function(_neg, derivatives=[Constant(-1)], fmt="(-{arg1})")
+
     # abs
-    @to_function()
-    def abs(value):
+    def _abs(value):
         return np.abs(value)
 
+    abs = Function(_abs)
+
     # add
-    @to_function([Constant(1), Constant(1)], fmt="({arg1}+{arg2})")
-    def add(v1, v2):
+    def _add(v1, v2):
         return v1 + v2
 
+    add = Function(_add, derivatives=[Constant(1), Constant(1)], fmt="({arg1}+{arg2})")
+
     # sub
-    @to_function([Constant(1), Constant(-1)], fmt="({arg1}-{arg2})")
-    def sub(v1, v2):
+    def _sub(v1, v2):
         return v1 - v2
 
+    sub = Function(_sub, derivatives=[Constant(1), Constant(-1)], fmt="({arg1}-{arg2})")
+
     # mul
-    @to_function([right(p1, p2), left(p1, p2)], fmt="({arg1}*{arg2})")
-    def mul(v1, v2):
+    def _mul(v1, v2):
         return v1 * v2
 
+    mul = Function(
+        _mul, derivatives=[right(p1, p2), left(p1, p2)], fmt="({arg1}*{arg2})"
+    )
+
     # inv
-    @to_function(fmt="(1/{arg1})")
-    def inv(value):
+    def _inv(value):
         return 1.0 / value
 
+    inv = Function(_inv, fmt="(1/{arg1})")
+
     # div
-    @to_function(fmt="({arg1}/{arg2})")
-    def div(v1, v2):
+    def _div(v1, v2):
         return v1 / v2
 
+    div = Function(_div, fmt="({arg1}/{arg2})")
+
     # pow
-    @to_function(fmt="({arg1}**{arg2})")
-    def pow(v1, v2):
+    def _pow(v1, v2):
         return v1**v2
 
+    pow = Function(_pow, fmt="({arg1}**{arg2})")
+
     # log
-    @to_function()
-    def log(value):
+    def _log(value):
         return np.log(value)
 
+    log = Function(_log)
+
     # exp
-    @to_function()
-    def exp(value):
+    def _exp(value):
         return np.exp(value)
+
+    exp = Function(_exp)
 
     # set missing derivatives
     abs.derivatives = [sign(p1)]

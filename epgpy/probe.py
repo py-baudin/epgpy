@@ -52,7 +52,7 @@ class Probe(operator.EmptyOperator):
 
     def _acquire_expr(self, sm):
         # expose StateMatrix attributes only if accessed
-        locals = utils.DeferredGetter(sm, self.SM_LOCALS)
+        locals = common.DeferredGetter(sm, self.SM_LOCALS)
         locals.update(self._kwargs)
         return eval(self._expr, vars(np), locals)
 
@@ -91,7 +91,7 @@ class Adc(Probe):
             reduce: [None]/True/False/int/tuple[int], add output array along given axis/axes
                 If True: add along all axes; if False: do not reduce
             weights: [None]/ndarray, array of weights to apply
-                If `reduce` is None, it is automatically set to all `weights` axes 
+                If `reduce` is None, it is automatically set to all `weights` axes
         """
         if not attr in self.SM_LOCALS:
             raise ValueError(f"Invalid StateMatrix attribute: {attr}")
@@ -114,7 +114,7 @@ class Adc(Probe):
             elif reduce:
                 reduce = (reduce,) if isinstance(reduce, int) else tuple(reduce)
                 if not all(isinstance(ax, int) for ax in reduce):
-                    raise ValueError(f'Expected (tuple of) int, got: {reduce}')
+                    raise ValueError(f"Expected (tuple of) int, got: {reduce}")
         self.reduce = reduce
 
         # reduction weights
@@ -150,7 +150,7 @@ class Adc(Probe):
             return arr.sum()
         # else:
         return arr.sum(axis=self.reduce)
-        
+
     def _post(self, obj):
         """apply phase compensation, weights and reduction"""
         arr = np.asarray(obj)

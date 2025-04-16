@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from epgpy import sequence, operators as epgops
+from epgpy import sequence, operators as _operators
 
 
 def test_sequence_class():
@@ -36,7 +36,7 @@ def test_sequence_class():
 
     # build
     ops = seq.build({"T2": 3, "B1": 1.0})
-    assert all(isinstance(op, epgops.Operator) for op in ops)
+    assert all(isinstance(op, _operators.Operator) for op in ops)
     # check operators are not duplicated
     assert all(ops[3] is ops[3 + i * 6] for i in range(necho))
     assert all(ops[1] is ops[1 + i * 6] is ops[4 + i * 6] for i in range(necho))
@@ -298,7 +298,7 @@ def test_virtual_operator():
     assert T.duration == 10
 
     rf = T.build({"alpha": 90})
-    assert isinstance(rf, epgops.T)
+    assert isinstance(rf, _operators.T)
     assert rf.alpha == 90
     assert rf.phi == 90
     assert rf.name == "T"
@@ -310,7 +310,7 @@ def test_virtual_operator():
     with pytest.raises(ValueError):
         rlx = E.build({"tau": 10, "T1": 1e3, "T2": 1e2})
     rlx = E.build({"tau": 10, "T1": 1e3, "T2": 1e2, "freq": 5})
-    assert isinstance(rlx, epgops.E)
+    assert isinstance(rlx, _operators.E)
     assert rlx.tau == 10
     assert rlx.T1 == 1e3
     assert rlx.T2 == 1e2
@@ -321,14 +321,121 @@ def test_virtual_operator():
     assert set(Adc.variables) == {"phi"}
     assert Adc.attr == "Z0"
     adc = Adc(phi=15).build()
-    assert isinstance(adc, epgops.Adc)
+    assert isinstance(adc, _operators.Adc)
     assert adc.phase == 15
     assert adc.attr == "Z0"
 
     # ADC, RESET, etc.
     ADC = operators.ADC
     assert isinstance(ADC, sequence.VirtualOperator)
-    assert ADC.OPERATOR is epgops.Adc
+    assert ADC.OPERATOR is _operators.Adc
+
+    # operators functions
+    E = operators.E("tau", "T1", "T2")
+    assert E.map(tau="tau1", T1=1400).variables == {"tau1", "T2"}
+
+
+def test_repeat():
+    from epgpy.sequence import operators, Sequence, Variable, repeat
+
+    att = Variable("att")
+    rf = operators.T(30 * att, 0)
+    rlx = operators.E("tau", 1e3, 1e2)
+
+    # explicit
+    seq = Sequence(repeat([rf, rlx, "ADC"], 2))
+    assert len(seq) == 6
+    assert seq.variables == {"att", "tau"}
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], 2, tau="tau_{}"))
+    assert len(seq) == 6
+    assert seq.variables == {"att", "tau_1", "tau_2"}
+    assert seq[1].tau.name == "tau_1"
+    assert seq[4].tau.name == "tau_2"
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], 2, tau=[4, 5]))
+    assert len(seq) == 6
+    assert seq.variables == {"att"}
+    assert seq[1].tau == 4
+    assert seq[4].tau == 5
+
+    # implicit
+    seq = Sequence(repeat([rf, rlx, "ADC"], tau=[4, 5]))
+    assert len(seq) == 6
+    assert seq.variables == {"att"}
+    assert seq[1].tau == 4
+    assert seq[4].tau == 5
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], tau=["tau_A", "tau_B"]))
+    assert len(seq) == 6
+    assert seq.variables == {"att", "tau_A", "tau_B"}
+    assert seq[1].variables == {"tau_A"}
+    assert seq[4].variables == {"tau_B"}
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], tau=[4, 5], att="att_{}"))
+    assert len(seq) == 6
+    assert seq.variables == {"att_1", "att_2"}
+    assert seq[0].variables == {"att_1"}
+    assert seq[3].variables == {"att_2"}
+
+    with pytest.raises(ValueError):
+        # length mismatch
+        repeat([rf, rlx, "ADC"], tau=[4, 5], att=[0.1, 0.4, 0.5])
+
+    # nested repeat
+    seq = Sequence(repeat([rf, rlx, "ADC"], (2, 3), att="att_{}"))
+    assert len(seq) == 18
+    assert all(
+        seq[i * 3 * 3 + j * 3].variables == {f"att_{i + 1}"}
+        for i in range(2)
+        for j in range(3)
+    )
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], tau=[[1, 2], [4, 5]], att="att_{}_{}"))
+    assert len(seq) == 12
+    assert seq[0].variables == {"att_1_1"}
+    assert seq[3].variables == {"att_1_2"}
+    assert seq[6].variables == {"att_2_1"}
+    assert seq[9].variables == {"att_2_2"}
+    assert seq[1].tau == 1
+    assert seq[4].tau == 2
+    assert seq[7].tau == 4
+    assert seq[10].tau == 5
+
+    with pytest.raises(ValueError):
+        # length mismatch
+        repeat([rf, rlx, "ADC"], tau=[1], att=[0.1, 0.4, 0.5])
+
+    # misc
+    seq = Sequence(repeat([rf, rlx, "ADC"], tau=["tau_1", 2]))
+    assert len(seq) == 6
+    assert seq[1].variables == {"tau_1"}
+    assert seq[4].tau == 2
+
+    seq = Sequence(repeat([rf, rlx, "ADC"], 2, tau=[[1, 2], [3, 4]]))
+    assert len(seq) == 6
+    assert seq[1].tau == np.array([1, 2])
+    assert seq[4].tau == np.array([3, 4])
+
+
+def test_pickling(tmpdir):
+    from epgpy.sequence import operators, Sequence, Variable
+    import pickle
+
+    nRF = 10
+    rf = operators.T(Variable("att") * 30, 0)
+    rlx = operators.E("TR", 1e3, 1e2)
+    seq = Sequence([rf, rlx, "ADC"] * nRF)
+    with open(tmpdir / "seq.pickle", "wb") as fp:
+        pickle.dump(seq, fp)
+
+    signal = seq.signal(att=0.9, TR=5)
+
+    with open(tmpdir / "seq.pickle", "rb") as fp:
+        seq2 = pickle.load(fp)
+
+    signal2 = seq2.signal(att=0.9, TR=5)
+    assert np.allclose(signal, signal2)
 
 
 def test_expression():
@@ -336,7 +443,7 @@ def test_expression():
         Constant,
         Variable,
         Proxy,
-        functions,
+        math,
         Expression,
         Function,
     )
@@ -369,6 +476,12 @@ def test_expression():
         expr(var2=3.0)  # wrong variable
     assert expr(var=3.0) == 5.0
 
+    # map
+    expr = Variable("var")
+    assert expr.map(var="var2").variables == {"var2"}
+    assert expr.map(var=3) == Constant(3)
+    assert expr.map(var=3 * expr).variables == {"var"}
+
     # proxy expression
     expr = Proxy(1) * cst
     assert expr.variables == {Proxy(1)}
@@ -386,8 +499,8 @@ def test_expression():
     assert (cst * var)(var=3) == cst.value * 3
     assert (cst / var)(var=3) == cst.value / 3
     assert (cst**var)(var=3) == cst.value**3
-    assert functions.log(var)(var=3) == np.log(3)
-    assert functions.exp(var)(var=3) == np.exp(3)
+    assert math.log(var)(var=3) == np.log(3)
+    assert math.exp(var)(var=3) == np.exp(3)
 
     # derive
     expr = cst * var
@@ -406,15 +519,15 @@ def test_expression():
     assert (cst / var).derive("var", var=3) == cst.value * (-1 / 3**2)
     assert (var**cst).derive("var", var=3) == cst.value * 3 ** (cst.value - 1)
     assert (cst**var).derive("var", var=3) == np.log(cst.value) * cst.value**3
-    assert functions.log(var).derive("var", var=3) == 1 / 3
-    assert functions.exp(var).derive("var", var=3) == np.exp(3)
+    assert math.log(var).derive("var", var=3) == 1 / 3
+    assert math.exp(var).derive("var", var=3) == np.exp(3)
 
     # composed expression
     v1 = Variable("v1")
     v2 = Variable("v2")
     c1 = Constant(3)
 
-    expr = functions.log(v1 / v2 - c1)
+    expr = math.log(v1 / v2 - c1)
     assert expr(v1=12, v2=3) == 0.0
     assert expr.derive(v1)(v1=12, v2=3) == 1 / 3
     assert expr.derive(v2)(v1=12, v2=3) == -4 / 3
@@ -423,14 +536,14 @@ def test_expression():
     assert expr.derive("v3") == Constant(0)
     assert expr.derive("v3")(v1=1, v2=1) == 0
 
-    # fix
-    expr2 = expr.fix(v2=3)
+    # map
+    expr2 = expr.map(v2=3)
     assert expr2.variables == {v1}
     assert expr(v1=12, v2=3) == expr2(v1=12)
 
     # ndarray
     c1 = Constant(np.linspace(-1, 1, 6).reshape(3, 2))
-    expr = functions.exp(v1 / v2) + c1
+    expr = math.exp(v1 / v2) + c1
     arr = np.arange(1, 7).reshape(3, 2)
     assert np.allclose(expr(v1=1, v2=arr), np.exp(1 / arr) + c1.value)
     assert np.allclose(expr.derive("v1", v1=1, v2=arr), 1 / arr * np.exp(1 / arr))

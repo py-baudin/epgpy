@@ -196,7 +196,7 @@ def freq_to_space(grad, frequencies, *, gamma=gamma_1H):
     return frequencies / grad / gamma * 1e6
 
 
-# misc
+# progressbar
 
 
 def progressbar(it, prefix="", size=60, out=sys.stdout):
@@ -217,23 +217,3 @@ def progressbar(it, prefix="", size=60, out=sys.stdout):
         yield item
         show(i + 1)
     print("\n", flush=True, file=out)
-
-
-class DeferredGetter(dict):
-    """dict for lazy evaluating object getters"""
-
-    def __init__(self, obj, getters):
-        self._obj = obj
-        self._getters = getters
-        for getter in getters:
-            self[getter] = None
-
-    def __getitem__(self, item):
-        if item in self._getters:
-            return getattr(self._obj, item)
-        return dict.__getitem__(self, item)
-
-    def __getattr__(self, item):
-        if item in self._getters:
-            return self[item]
-        super().__getattr__(item)

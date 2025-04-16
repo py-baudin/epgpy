@@ -390,3 +390,26 @@ def repr_value(value, fmt):
     else:
         shape = get_shape(value)
         return f'({"x".join(map(str, shape))})'
+
+
+#
+
+
+class DeferredGetter(dict):
+    """dict for lazy evaluating object getters"""
+
+    def __init__(self, obj, getters):
+        self._obj = obj
+        self._getters = getters
+        for getter in getters:
+            self[getter] = None
+
+    def __getitem__(self, item):
+        if item in self._getters:
+            return getattr(self._obj, item)
+        return dict.__getitem__(self, item)
+
+    def __getattr__(self, item):
+        if item in self._getters:
+            return self[item]
+        super().__getattr__(item)

@@ -160,3 +160,22 @@ def test_array_module_cupy():
 
     # revert to current module
     common.set_array_module(xp)
+
+
+def test_deferredgetter():
+    class Obj:
+        a = "foo"
+
+        @property
+        def b(self):
+            return np.arange(len(self.a))
+
+    obj = Obj()
+
+    getter = common.DeferredGetter(obj, ["a", "b"])
+    # setup obj
+    assert getter["a"] == "foo"
+    assert np.all(getter["b"] == np.arange(3))
+    obj.a = "foobar"
+    assert getter["a"] == "foobar"
+    assert np.all(getter["b"] == np.arange(6))
