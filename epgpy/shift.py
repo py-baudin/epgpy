@@ -1,16 +1,17 @@
 """Shift functions"""
 
+import logging
 import numpy as np
 from . import common, diff, utils
 
+LOGGER = logging.getLogger(__name__)
 _S = slice(None)
+
+METHODS = ["shift-1d", "shift-nd", "shift-merge", "shift-prune"]
 
 
 class S(diff.DiffOperator):
-    """Shift operator
-
-    Methods: 'int-1d', 'int-nd', 'float-nd'
-    """
+    """Shift operator"""
 
     def __init__(
         self,
@@ -83,7 +84,7 @@ class S(diff.DiffOperator):
         method, shift = get_shift_method(self.k, sm.coords)
         nmax = sm.options.get("max_nstate") or self.nmax or np.inf
 
-        if method == "int-1d":
+        if method == "shift-1d":
             # basic 1d shift
             if sm.coords is not None:
                 raise RuntimeError("Cannot use int-1d method on this state-matrix")
@@ -94,7 +95,7 @@ class S(diff.DiffOperator):
             # shift states (inplace)
             sm.states = shift1d(sm.states, shift, inplace=True)
 
-        elif method == "int-nd":
+        elif method == "shift-nd":
             # int nd-shift
             kdim = shift.shape[-1]
             if sm.coords is None or sm.kdim < kdim:
@@ -115,7 +116,7 @@ class S(diff.DiffOperator):
             sm.resize(nstate)
             sm.states, sm.coords = states, coords
 
-        elif method == "float-nd":
+        elif method in ("shift-merge", "shift-prune"):
             # float nd-shift-merge
             kdim = shift.shape[-1]
             if sm.coords is None or sm.kdim < kdim:
@@ -134,8 +135,12 @@ class S(diff.DiffOperator):
             coords = sm.coords * ktvalue
             shift = shift * ktvalue
             prune = sm.options.get("prune") or self.prune
-            opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
-            states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
+            if method == "shift-merge":
+                opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
+                states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
+            elif method == "shift-prune":
+                opts = {"tol": prune, "grid": kgrid}
+                states, wavenums = shiftprune(sm.states, coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
             sm.resize(nstate)
             sm.states = states
@@ -206,36 +211,40 @@ def get_shift_method(k, coords):
     if coords is None:
         shift = k
         if isinstance(k, int):
-            method = "int-1d"
+            method = "shift-1d"
         elif isinstance(k.flat[0], np.integer):
-            method = "int-nd"
+            method = "shift-nd"
         elif isinstance(k.flat[0], np.floating):
-            method = "float-nd"
+            method = "shift-merge"
 
     elif np.issubdtype(coords.dtype, np.integer):
         # coords is int
         kdim = coords.shape[-1]
         if isinstance(k, int):
             shift = np.array([[int(k)] + [0] * (kdim - 1)])
-            method = "int-nd"
-        elif isinstance(k.flat[0], np.integer):
+            method = "shift-nd"
+        elif np.issubdtype(k.dtype, np.integer):
             shift = k
-            method = "int-nd"
-        elif isinstance(k.flat[0], np.floating):
+            method = "shift-nd"
+        elif np.issubdtype(k.dtype, np.floating):
             shift = k
-            method = "float-nd"
+            method = "shift-merge"
 
     elif np.issubdtype(coords.dtype, np.floating):
         # coords is float
-        method = "float-nd"
         kdim = coords.shape[-1]
+        method = "shift-merge"
+        shift = k
         if isinstance(k, int):
             shift = np.array([[int(k)] + [0] * (kdim - 1)])
-        else:
-            shift = k
+
+    if np.sum(np.shape(k)[:-1]) > 1:
+        # n-dimensional shift
+        method = "shift-prune"
 
     if not method:
         raise ValueError("Unknown shift method")
+    LOGGER.debug(f"Setting shift method: {method}")
     return method, shift
 
 
@@ -497,3 +506,61 @@ def _unique_1d(values, axis=0):
     inverse = xp.argsort(order)[inverse]
 
     return unique, inverse
+
+
+def shiftprune(states, wavenums, shift, *, grid=1e-5, tol=1e-8):
+    """nd shift for arbitrary wavenumbers with pruning"""
+    xp = common.get_array_module()
+
+    sm = xp.asarray(states)
+    wavenums = xp.asarray(wavenums)
+    shift = common.expand_dims(xp.asarray(shift), -2)
+    grid = grid * xp.ones(wavenums.shape[-1])
+
+    # initial number of states
+    n1 = sm.shape[-2]
+
+    # add shift
+    kL = wavenums + 0 * shift
+    k1T = kL + shift
+    k2T = kL - shift
+
+    # quantize and take unique wavenumber indices
+    # make sure q2 is symmetrical
+    qL = round(0.5 * (kL - kL[..., ::-1, :]) / grid).astype(int)
+    q1T = round(k1T / grid).astype(int)
+    q2T = -q1T[..., ::-1, :]
+
+    q2, idx = unique_1d(xp.concatenate([qL, q1T, q2T], axis=-2), axis=-2)
+    idxL, idx1T = idx[:n1], idx[n1 : 2 * n1]
+
+    # init new state matrix
+    n2 = q2.shape[-2]
+    sm2 = xp.zeros(sm.shape[:-2] + (n2, 3), dtype=sm.dtype)
+
+    # update L and T states:
+    add_at(sm2, (..., idxL, 2), sm[..., 2])
+    add_at(sm2, (..., idx1T, 0), sm[..., 0])
+    sm2[..., 1] = sm2[..., ::-1, 0].conj()
+
+    # wavenumbers
+    k2 = (q2 * grid).astype(float)
+
+    # keep only non-zero phase states
+    nonzero = xp.linalg.norm(sm2, axis=tuple(range(sm.ndim - 2)) + (-1,)) > tol
+    nonzero &= nonzero[::-1]  # symmeterize
+
+    # prune empty phase-states
+    nonzero[(n2 - 1) // 2] = True  # keep F0
+    sm2 = sm2[..., nonzero, :]
+    k2 = k2[..., nonzero, :]
+
+    if k2.shape[-2] % 2 == 0:
+        # should not happen
+        raise ValueError(f"Asymmetrical state matrix")
+
+    return sm2, k2
+
+
+def round(arr):
+    return arr - 0.5 + (arr > 0)

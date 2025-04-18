@@ -138,6 +138,34 @@ def test_shiftmerge():
     assert np.allclose(k, [[0, 0, 0]])
 
 
+def test_shiftprune():
+
+    # initial conditions
+    sm0 = 1.0 * np.asarray([[[1, 1, 0]]])
+    k0 = np.array([[[0, 0, 0]]])
+
+    # random shifts
+    shifts = [np.random.uniform(-1, 1, 3) for _ in range(9)]
+    shifts.extend(-shifts[i] for i in np.random.permutation(9))
+
+    sm, k = sm0, k0
+    for sh in shifts:
+        sm, k = shift.shiftprune(sm, k, sh, grid=1e-8)
+    assert np.allclose(sm, sm0)
+
+    # nd shift
+    sm0 = 1.0 * np.asarray([[[1, 1, 0]]] * 5)
+    k0 = np.array([[[0, 0, 0]]] * 5)
+
+    shifts = [np.random.uniform(-1, 1, (5, 3)) for _ in range(9)]
+    shifts.extend(-shifts[i] for i in np.random.permutation(9))
+
+    sm, k = sm0, k0
+    for sh in shifts:
+        sm, k = shift.shiftprune(sm, k, sh)
+    assert np.allclose(sm, sm0)
+
+
 def test_S_class():
     S, C = shift.S, shift.C
     SM = statematrix.StateMatrix
@@ -276,5 +304,19 @@ def test_hyperecho():
     sm = SM(kgrid=1)
     for op in seq:
         sm = op(sm)
+    assert np.allclose(sm.states[:, sm.nstate], [1, 1, 0])
+    assert np.allclose(sm.states[:, : sm.nstate], 0)
+
+    # shift-prune
+    grad = S([[1.11, -2.29, 0.41], [-3.1, 1.92, 1.16]])
+    seq = [exc] + sum([[grad, T(a, 0)] for a in alphas], start=[])
+    seq += (
+        [grad, ref] + sum([[grad, T(-a, 0)] for a in alphas[::-1]], start=[]) + [grad]
+    )
+
+    sm = SM(kgrid=1e-8)
+    for op in seq:
+        sm = op(sm)
+
     assert np.allclose(sm.states[:, sm.nstate], [1, 1, 0])
     assert np.allclose(sm.states[:, : sm.nstate], 0)
