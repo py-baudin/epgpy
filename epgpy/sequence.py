@@ -1,6 +1,7 @@
-"""Sequence building tools
+"""Classes and functions for simple sequence building
 
-from epg.sequence import Variable, Sequence, operators
+```python
+from epg.sequence import *
 
 # Define variables
 T1 = Variable("T1")
@@ -17,7 +18,7 @@ ops = [T(90 * b1, 90), S(1), E(9.5, T1, T2), ...]
 seq = Sequence(ops)
 
 # Basic functions
-seq.variables --> {"b1", "T1", "T2"} # sequence's variables
+seq.variables # --> {"b1", "T1", "T2"} # sequence's variables
 
 # Simulate signal, Jacobian and Hessian matrix (tensor)
 signal = seq.signal(b1=0.9, T1=1000, T2=30)
@@ -29,10 +30,10 @@ sig, grad, hess = seq.hessian(['T2', 'b1'], b1=0.9, T1=1000, T2=30)
 
 # Only build (non-virtual) EPG operators, without simulation
 seq.build({b1: 0.9, T1: 1000, T2: 30})
-    --> [epg.T(0.9*90, 90), epg.S(1), epg.E(0.5, 1000, 30), ...]
+# --> [epg.T(0.9*90, 90), epg.S(1), epg.E(0.5, 1000, 30), ...]
 
 # Run epg.functions.simulate (more flexible than seq.signal)
-seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0') --> value
+seq.simulate({b1: 0.9, T1: 1000, T2: 30}, probe='Z0')
 
 # CRLB (sequence optimization objective function)
 seq.crlb(['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
@@ -47,7 +48,7 @@ seq.confint(obs, ['T2', 'b1'])(b1=0.9, T1=1000, T2=30)
 seq = Sequence([E('tau', T1, T2), T('alpha', phi), ...])
 
 # ADC, SPOILER, RESET operators can be passed as string
-`Sequence([op1, op2, ..., 'ADC', 'SPOILER'])
+seq = Sequence([op1, op2, ..., 'ADC', 'SPOILER'])
 
 # Avoid computing unnecessary partial derivatives in the Hessian tensor
 # by passing different variables in rows (axis=-2) and columns (axis=-1)
@@ -64,12 +65,12 @@ seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 # without passing the variable's values returns a function
 # with arguments: (values_dict=None, **values). For instance:
 seq.crlb(variables1, gradient=variables2, **options)({var1: value1}, var2=value2)
-
+```
 
 """
 
 import abc
-import types
+import inspect
 import numpy as np
 from . import operators as _operators, functions as _functions, stats
 
@@ -84,7 +85,7 @@ class Sequence:
             ops: list of virtual operators
             name: sequence's name
         """
-        ops = flatten(ops)
+        ops = _flatten(ops)
         ops = self.check(ops)
         self.operators = ops  # operator list
         self.name = name  # display name
@@ -133,7 +134,7 @@ class Sequence:
     def check(self, ops):
         """Check and convert provided operators"""
         # replace string objects with virtual operators
-        ops = [operators.STR_OPS.get(op, op) for op in ops]
+        ops = [STR_OPERATORS.get(op, op) for op in ops]
         # check operator type
         invalid = {op for op in ops if not isinstance(op, VirtualOperator)}
         if invalid:
@@ -512,14 +513,17 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
     if not issubclass(op, _operators.Operator):
         raise ValueError(f"Expecting Operator type, not: {type(op)}")
 
-    # class name is Virtual + <op-name>
-    clsname = "Virtual" + op.__name__
+    # class name is <op-name>
+    clsname = op.__name__
 
     # __init__ method
     def __init__(self, *args, **kwargs):
         VirtualOperator.__init__(self, *args, **kwargs)
 
     __init__.__doc__ = op.__init__.__doc__
+
+    # copy signature
+    __init__.__signature__ = inspect.signature(op.__init__)
 
     # create VirtualOperator subclass
     Op = type(
@@ -535,13 +539,17 @@ def virtual_operator(op, pos=[], kw=[], opt=[]):
             "__module__": __name__,
         },
     )
-    # store operator into globals for pickling
-    globals()[clsname] = Op
     return Op
 
 
-class operators(types.SimpleNamespace):
+# virtual operators
+
+
+class operators:
     """Namespace of available virtual operators"""
+
+    def __new__(cls, *args, **kwargs):
+        raise RuntimeError("This namespace is not to be instanciated")
 
     _std = ["name", "duration"]
     _diff = ["order1", "order2"]
@@ -573,13 +581,14 @@ class operators(types.SimpleNamespace):
     SPOILER = Spoiler()
     RESET = Reset()
 
-    # string operators
-    STR_OPS = {
-        "ADC": ADC,
-        "NULL": NULL,
-        "SPOILER": SPOILER,
-        "RESET": RESET,
-    }
+
+# string operators placeholders
+STR_OPERATORS = {
+    "ADC": operators.ADC,
+    "NULL": operators.NULL,
+    "SPOILER": operators.SPOILER,
+    "RESET": operators.RESET,
+}
 
 
 #
@@ -850,7 +859,7 @@ class Function:
         return expr
 
 
-class math(types.SimpleNamespace):
+class math:
     """available mathematical functions"""
 
     p1, p2 = Proxy(1), Proxy(2)
@@ -949,8 +958,28 @@ class math(types.SimpleNamespace):
 # utilities
 
 
-def flatten(seq):
+def _flatten(seq):
     """flatten nested list"""
     if not isinstance(seq, (list, tuple)):
         return [seq]
-    return sum([flatten(item) for item in seq], start=[])
+    return sum([_flatten(item) for item in seq], start=[])
+
+
+#
+# module namespace and attributes
+
+# operator's list
+OPERATORS = [name for name in dir(operators) if not name.startswith("_")]
+
+# store operators into globals
+for op in OPERATORS:
+    globals()[op] = getattr(operators, op)
+
+# define public attributes
+__all__ = ["Sequence", "Variable", "Constant", "repeat", "math", "operators"]
+__all__ += OPERATORS
+
+
+def __dir__():
+    """Only show public attributes"""
+    return __all__
