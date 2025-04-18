@@ -56,7 +56,7 @@ class S(diff.DiffOperator):
         if common.isscalar(self.k):
             return np.abs(self.k)
         # else
-        return 1  # temp
+        return np.round(np.max(abs(self.k))).astype(int)
 
     @property
     def shape(self):

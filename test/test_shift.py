@@ -256,7 +256,7 @@ def test_hyperecho():
     exc, ref = T(90, 90), T(180, 0)
     alphas = np.linspace(10, 80, necho)
 
-    # 1d shift
+    # shift-1d
     grad = S(1)
     seq = [exc] + sum([[grad, T(a, 0)] for a in alphas], start=[])
     seq += (
@@ -269,7 +269,7 @@ def test_hyperecho():
     assert np.allclose(sm.states[:, sm.nstate], [1, 1, 0])
     assert np.allclose(sm.states[:, : sm.nstate], 0)
 
-    # nd shift
+    # shift-nd
     grad = S([1, -2, 0])
     seq = [exc] + sum([[grad, T(a, 0)] for a in alphas], start=[])
     seq += (
@@ -281,8 +281,9 @@ def test_hyperecho():
         sm = op(sm)
     assert np.allclose(sm.states[:, sm.nstate], [1, 1, 0])
     assert np.allclose(sm.states[:, : sm.nstate], 0)
-    # nd shift
-    grad = S([1, -2, 0])
+
+    # nd shift-nd
+    grad = S([[1, -2, 0], [-3, 0, 2]])
     seq = [exc] + sum([[grad, T(a, 0)] for a in alphas], start=[])
     seq += (
         [grad, ref] + sum([[grad, T(-a, 0)] for a in alphas[::-1]], start=[]) + [grad]
