@@ -238,7 +238,7 @@ def get_shift_method(k, coords):
         if isinstance(k, int):
             shift = np.array([[int(k)] + [0] * (kdim - 1)])
 
-    if np.sum(np.shape(k)[:-1]) > 1:
+    if method == 'shift-merge' and np.sum(np.shape(k)[:-1]) > 1:
         # n-dimensional shift
         method = "shift-prune"
 
