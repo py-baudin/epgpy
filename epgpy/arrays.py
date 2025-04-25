@@ -2,9 +2,9 @@
 
 states = SectionArray('_', init, ['section1', 'section2'])
 
-# main name
-np.asarray(states) # -> init[np.newaxis]
+# main section
 states['_'] # -> init
+np.asarray(states) # -> init[np.newaxis]
 
 # add name
 states.add('group1', 'first', value)
@@ -31,7 +31,7 @@ import numpy as np
 # Section 
 Item = namedtuple('Item', ['section', 'name'])
 
-class StatesArray:
+class SectionArray:
     
     def __init__(self, name, init, sections):
         self.array = np.asarray(init)[np.newaxis]
@@ -130,7 +130,7 @@ class StatesArray:
     del _setop, OPERATORS
 
 if __name__ == '__main__':
-    states = StatesArray('main', [[[0, 0, 0]]], ['A', 'B'])
+    states = SectionArray('main', [[[0, 0, 0]]], ['A', 'B'])
     states.add('A', 'A2', [[[1, 1, 0]]])
     states[..., -1] = 1
     states *= -1
