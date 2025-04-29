@@ -1,6 +1,9 @@
 """
+TODO
+- simplify: only keep index mapping + section mapping
+- apply diff op using NamedArray?
 
-states = SectionArray('_', init, ['section1', 'section2'])
+states = NamedArray('_', init, ['section1', 'section2'])
 
 # main section
 states['_'] # -> init
@@ -19,122 +22,200 @@ states *= value
 # get/set specific names
 states['_'][:] = value
 states.group1[:] = value
-states[''first'][:] = value
+states['first'][:] = value
 
 """
-
-import functools
-from collections import namedtuple
+import operator
 import numpy as np
 
 
-# Section 
-Item = namedtuple('Item', ['section', 'name'])
+class NamedArray:
+    _xp = None
+    _array = None
+    _indices = None
+    _groups = None
 
-class SectionArray:
-    
-    def __init__(self, name, init, sections):
-        self.array = np.asarray(init)[np.newaxis]
-        self._items = [Item("", name)]
-        self._names = {name: 0}
-        self._sections = {section: slice(1,1) for section in sections}
+    def __init__(self, array=None, names=None, groups=None, *, copy=False):#, sections):
+        # self._sections = {section: [] for section in sections}
+        self._xp = np # tmp
+        if array is None:
+            self._array = self._xp.array([])
+            self._indices = {}
+        else:
+            self._array = self._xp.asarray(array, copy=copy)
+            self._indices = {name: i for i, name in enumerate(names)}
+        self._groups = {key: set(value) for key, value in (groups or {}).items()}
 
-    def add(self, section, name, array):
-        array = np.asarray(array)
-        assert array.shape == self.array.shape[1:]
-        if not section in self._sections:
-            raise ValueError(f'Section "{section}" doest not exist')
-        if name in self._names:
-            raise ValueError(f'Name: "{section}:{name}" already exists')
-        # sort items
-        self._items = sorted(self._items + [Item(section, name)])
-        # reset indices and slices
-        first, num = 1, 0
-        for i, item in enumerate(self._items[1:]):
-            self._names[item.name] = i + 1
-            if item.section != self._items[first].section:
-                first, num = i + 1, 0
-            num += 1
-            self._sections[item.section] = slice(first, first + num)
-        # store
-        index = self._names[name]
-        self.array = np.r_[self.array[:index], array[np.newaxis], self.array[index:]]
+    @property
+    def names(self):
+        return set(self._indices)
 
-    def new(self, array=None):
-        """ array wrapper"""
-        array = self.array if array is None else np.asarray(array)
-        assert array.shape == self.array.shape
-        obj = self.__new__(type(self))
-        obj.array = array
-        obj._items = self._items
-        obj._names = self._names
-        obj._sections = self._sections
-        return obj
-          
-    def __repr__(self):
-        return repr(self.array) + f'(sections: {list(self._sections)}, names: {list(self._names)}'
+    @property
+    def groups(self):
+        return set(self._groups)
 
-    def __array__(self):
-        return self.array
-    
     def __len__(self):
-        return len(self.array)
+        return len(self._array)
+    
+    def __iter__(self):
+        return iter(self._indices)
+    
+    def __contains__(self, name):
+        return name in self._indices
+    
+    def __repr__(self):
+        prefix = type(self).__name__ + '('
+        suffix = f', names={self.names}, groups={set(self._groups)})'
+        arrstr = self._xp.array2string(self._array, prefix=prefix, suffix=suffix)
+        return prefix + arrstr + suffix
+    
+    def __array__(self):
+        return self._array
     
     def __getitem__(self, item):
-        if isinstance(item, str):
-            return self.array[self._names[item]]
-        return self.array[item]
+        try:
+            indices = self._map(item)
+            if isinstance(indices, int):
+                return self._array[indices]
+            # wrap
+            names = set(item)
+            groups = {gp: names & _names for gp, _names in self._groups.items()}
+            return type(self)(self._array[indices], names, groups)
+        except (KeyError, TypeError):
+            return self._array[item]
     
     def __setitem__(self, item, value):
-        if isinstance(item, str):
-            self.array[self._names[item]] = value
-            return
-        self.array[item] = value
+        try:
+            self._array[self._map(item)] = value
+        except (KeyError, TypeError):
+            self._array[item] = value
     
     def __getattr__(self, attr):
         try:
-            return getattr(self.array, attr)
+            return getattr(self._array, attr)
         except AttributeError:
             pass
         try:
-            return self.array[self._sections[attr]]
+            return self[self._groups[attr]]
         except KeyError:
             raise AttributeError
 
-    # numeric and comparison operators 
+    def __setattr__(self, attr, value):
+        try:
+            self[self._groups[attr]] = value
+        except (KeyError, AttributeError, TypeError):
+            super().__setattr__(attr, value)
 
-    OPERATORS = (
-        '__add__', '__iadd__', '__radd__',
-        '__sub__', '__isub__', '__rsub__',
-        '__mul__', '__imul__', '__rmul__',
-        '__pow__', '__ipow__', '__rpow__',
-        # '__matmul__', '__imatmul__', '__rmatmul__',
-        '__truediv__', '__itruediv__', '__rtruediv__',
-        '__floordiv__', '__ifloordiv__', '__rfloordiv__',
-        '__mod__', '__imod__', '__rmod__',
-        '__divmod__', '__rdivmod__',
-        '__eq__', '__ne__', '__ge__', '__gt__', '__le__', '__lt__',
-        '__neg__',
-    )
+    def insert(self, name, value, group=None):
+        value = self._xp.asarray(value)
+        if isinstance(name, str):
+            names, values = [name], value[np.newaxis]
+        else:
+            names, values = list(name), value
+        # check names
+        duplicates = set(names) & set(self._indices)
+        if duplicates:
+            raise ValueError(f'Name(s) already exist(s): {duplicates}')
+        # store values
+        newsize = len(self) + len(names)
+        indices = range(len(self), newsize)
+        self._indices.update(dict(zip(names, indices)))
+        if not len(self):
+            self._array = values.copy()
+        else:
+            self._array.resize((newsize,) + self._array.shape[1:], refcheck=False)
+            self._array[indices] = values
+        # group
+        if group:
+            self._groups.setdefault(group, set()).add(name)
 
-    def _setop(locals_, op):
-        def wrapper(self, *args):
-            return self.new(getattr(self.array, op)(*args))
-        wrapper.__name__ = op
-        wrapper.__qualname__ = op
-        locals_[op] = wrapper
+    def _map(self, name):
+        if isinstance(name, str):
+            return self._indices[name]
+        return [self._indices[_name] for _name in name]
+
+    def _wrap(self, array=None, *, copy=False):
+        """ wrap array """
+        array = self._array if array is None else array
+        return type(self)(array, self._indices, self._groups, copy=copy)
     
-    for op in OPERATORS:
-        _setop(locals(), op)
+    def _apply(self, ufunc, other, init, inplace=False):
+        out = self._array if inplace else None
+        if not isinstance(other, NamedArray):
+            return self._wrap(ufunc(self._array, other, out=out))
+        # merge 
+        inter = set(self._indices) & set(other._indices)
+        if len(inter) == len(self):
+            # same indices
+            return self._wrap(ufunc(self._array, other[inter], out=out))
+        # different indices
+        new = self._wrap(copy=not inplace)
+        diff = set(other._indices) - set(new._indices)
+        if diff:
+            new.add(diff, init)
+        ufunc.at(new._array, new._map(inter), other[inter])
+        return new
+    
+    def __add__(self, other):
+        return self._apply(self._xp.add, other, 0)
+    
+    def __radd__(self, other):
+        return self.__add__(other)
+    
+    def __iadd__(self, other):
+        return self._apply(self._xp.add, other, 0, inplace=True)
 
-    del _setop, OPERATORS
+    def __sub__(self, other):
+        return self._apply(self._xp.subtract, other, 0)
+    
+    def __mul__(self, other):
+        return self._apply(self._xp.multiply, other, 0)
+    
+    def __rmul__(self, other):
+        return self.__mul__(other)
+    
+    def __imul__(self, other):
+        return self._apply(self._xp.multiply, other, 0, inplace=True)
+    
+    def __neg__(self):
+        return self._wrap(-self._array)
+    
 
 if __name__ == '__main__':
-    states = SectionArray('main', [[[0, 0, 0]]], ['A', 'B'])
-    states.add('A', 'A2', [[[1, 1, 0]]])
-    states[..., -1] = 1
-    states *= -1
+    arr1 = NamedArray()
+    assert arr1.shape == (0,)
+    assert arr1.names == set()
 
-    states.add('A', 'A1', [[[1, 1, 0]]])
-    states.add('B', 'B1', [[[2, 2, 0]]])
+    arr1.insert('A', [[1, 1, 0]])
+    assert arr1.shape == (1, 1, 3)
+    assert arr1.names == {'A'}
+    assert np.all(arr1[:] == [[[1, 1, 0]]])
+    assert np.all(arr1['A'] == [[1, 1, 0]])
 
+    arr1[..., -1] = 1
+    assert np.all(arr1[:] == [[[1, 1, 1]]])
+    arr1 *= -1
+    assert np.all(arr1[:] == [[[-1, -1, -1]]])
+
+    arr1.insert('B', [[[1, 1, 0]]], group='G')
+    assert arr1.names == {'A', 'B'}
+    assert arr1.shape == (2, 1, 3)
+    assert np.all(arr1[:] == [[[-1, -1, -1]], [[1, 1, 0]]])
+    assert np.all(arr1['B'] == [[1, 1, 0]])
+
+    assert np.all((arr1 + 1)[:] == [[[0, 0, 0]], [[2, 2, 1]]])
+    arr1 += 1
+    assert np.all(arr1[:] == [[[0, 0, 0]], [[2, 2, 1]]])
+    arr1['B'] -= 1
+    assert np.all(arr1[:] == [[[0, 0, 0]], [[1, 1, 0]]])
+
+    arr2 = arr1[['B']]
+    assert arr2.names == {'B'}
+    assert np.all(arr2[:] == [[[1, 1, 0]]])
+    assert np.all((arr1 - arr2)[:] == [[[0, 0, 0]], [[0, 0, 0]]])
+
+    arr1.G += 3
+    assert np.all(arr1[:] == [[[0, 0, 0]], [[4, 4, 3]]])
+
+    arr1.G += arr2.G
+    assert np.all(arr1[:] == [[[0, 0, 0]], [[5, 5, 3]]])
