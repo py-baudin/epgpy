@@ -30,6 +30,7 @@ class NamedArray:
     _array = None
     _indices = None
     _groups = None
+    _PROPS = ('shape', 'ndim', 'size', 'data', 'dtype', 'device', 'nbytes', 'flags')
 
     def __init__(self, array=None, names=None, groups=None, *, copy=False):
         self._xp = np # tmp
@@ -81,13 +82,15 @@ class NamedArray:
     
     def __setitem__(self, item, value):
         try:
-            self._array[self._map(item)] = value
+            self._array[self._map(item)] = self._xp.asarray(value)
         except (KeyError, TypeError):
             self._array[item] = value
     
     def __getattr__(self, attr):
-        try:
+        if attr in self._PROPS:
             return getattr(self._array, attr)
+        try:
+            return super().__getattr__(self, attr)
         except AttributeError:
             pass
         try:
