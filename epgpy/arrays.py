@@ -1,31 +1,27 @@
 """
-TODO
-- simplify: only keep index mapping + section mapping
-- apply diff op using NamedArray?
+states = NamedArray()
 
-states = NamedArray('_', init, ['section1', 'section2'])
-
-# main section
-states['_'] # -> init
+# add array
+states['main'] = init
+states['main] # -> init
 np.asarray(states) # -> init[np.newaxis]
 
-# add name
-states.add('group1', 'first', value)
-states['first'] # -> value 
-states.group1 -> value[np.newaxis] # all names from group1
+# add another array in a group
+states.insert('T2', value, group='order1')
+states['T2'] # -> value 
+states.order1 -> value[np.newaxis] # all names from `order1` group
 
 # get/set all names
 states[:] = value
 states[..., 0] = value
 states *= value
 
-# get/set specific names
-states['_'][:] = value
-states.group1[:] = value
-states['first'][:] = value
+# get/set specific arrays
+states['main'] = value
+states.order1 = value
+states['T2'] = value
 
 """
-import operator
 import numpy as np
 
 
@@ -35,8 +31,7 @@ class NamedArray:
     _indices = None
     _groups = None
 
-    def __init__(self, array=None, names=None, groups=None, *, copy=False):#, sections):
-        # self._sections = {section: [] for section in sections}
+    def __init__(self, array=None, names=None, groups=None, *, copy=False):
         self._xp = np # tmp
         if array is None:
             self._array = self._xp.array([])
@@ -104,6 +99,8 @@ class NamedArray:
         try:
             self[self._groups[attr]] = value
         except (KeyError, AttributeError, TypeError):
+            if not attr in dir(type(self)):
+                raise AttributeError(f'Cannot set attribute: {attr}')
             super().__setattr__(attr, value)
 
     def insert(self, name, value, group=None):
