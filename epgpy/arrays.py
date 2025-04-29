@@ -120,7 +120,7 @@ class NamedArray:
         if not len(self):
             self._array = values.copy()
         else:
-            self._array.resize((newsize,) + self._array.shape[1:], refcheck=False)
+            self._array.resize((newsize,) + self._array.shape[1:])#, refcheck=False)
             self._array[indices] = values
         # group
         if group:
