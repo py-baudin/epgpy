@@ -83,15 +83,15 @@ class S(diff.DiffOperator):
         """Shift states"""
         # check shift method
         method, shift = get_shift_method(self.k, sm.coords)
-        nmax = sm.options.get("max_nstate") or self.nmax or np.inf
+        nmax = sm.options.get("max_nstate") or self.nmax or None #np.inf
 
         if method == "shift-1d":
             # basic 1d shift
             if sm.coords is not None:
                 raise RuntimeError("Cannot use int-1d method on this state-matrix")
 
-            # first add new state (if max_nstate not reached)
-            sm.resize(min(sm.nstate + abs(shift), nmax))
+            # add new state (if max_nstate not reached)
+            sm.resize(min(sm.nstate + abs(shift), nmax or np.inf))
 
             # shift states (inplace)
             sm.states = shift1d(sm.states, shift, inplace=True)
@@ -140,7 +140,7 @@ class S(diff.DiffOperator):
                 opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
                 states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
             elif method == "shift-prune":
-                opts = {"tol": prune, "grid": kgrid}
+                opts = {"tol": prune, "grid": kgrid, 'nmax': nmax}
                 states, wavenums = shiftprune(sm.states, coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
             sm.resize(nstate)
@@ -239,6 +239,7 @@ def get_shift_method(k, coords):
         if isinstance(k, int):
             shift = np.array([[int(k)] + [0] * (kdim - 1)])
 
+    # if method == "shift-merge" and np.ndim(shift) > 1:
     if method == "shift-merge" and np.sum(np.shape(k)[:-1]) > 1:
         # n-dimensional shift
         method = "shift-prune"
@@ -452,7 +453,6 @@ def add_at(dest, indices, source):
     else:
         xp.add.at(dest, indices, source)
 
-
 def unique_1d(values, axis=0):
     """faster unique"""
     xp = common.get_array_module()
@@ -470,46 +470,8 @@ def unique_1d(values, axis=0):
     return unique, inverse
 
 
-# def _unique_1d(values, axis=0):
-#     """faster unique, using python dictionary"""
 
-#     if not np.issubdtype(values.dtype, np.integer):
-#         raise ValueError("This function only works with integer arrays")
-
-#     xp = common.get_array_module()
-#     values = xp.moveaxis(values, axis, 0)
-#     shape = values.shape[1:]
-#     values = values.reshape(len(values), -1)
-
-#     # keep unique rows
-#     unique_set = {}
-
-#     # make rows into tuples
-#     # inverse = [unique_set.setdefault(tuple(row), len(unique_set)) for row in values.tolist()]
-
-#     # "hash" rows (faster)
-#     vrange = xp.ptp(values) + 1
-#     hash = xp.dot(
-#         values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])])
-#     )
-#     # inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
-#     inverse = [unique_set.setdefault(row.tobytes(), len(unique_set)) for row in hash]
-
-#     # build `unique`array from inverse
-#     inverse = xp.array(inverse)
-#     unique = xp.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
-#     unique[inverse] = values
-
-#     # sort and return
-#     order = xp.lexsort(unique.T[::-1])
-#     unique = unique[order]
-#     unique = xp.moveaxis(unique.reshape((-1,) + shape), 0, axis)
-#     inverse = xp.argsort(order)[inverse]
-
-#     return unique, inverse
-
-
-def shiftprune(states, wavenums, shift, *, grid=1e-5, tol=1e-8):
+def shiftprune(states, wavenums, shift, *, grid=1e-5, nmax=None, tol=1e-8):
     """nd shift for arbitrary wavenumbers with pruning"""
     xp = common.get_array_module(states)
 
@@ -526,6 +488,7 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, tol=1e-8):
     # add shift
     kL = wavenums + 0 * shift
     k1T = kL + shift
+    k2T = kL - shift
 
     # quantize and take unique wavenumber indices
     # make sure q2 is symmetrical
@@ -534,7 +497,7 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, tol=1e-8):
     q2T = -q1T[..., ::-1, :]
 
     q2, idx = unique_wnums(xp.concatenate([qL, q1T, q2T], axis=-2))
-    idxL, idx1T = idx[..., :n1], idx[..., n1 : 2 * n1]
+    idxL, idx1T, idx2T = idx[..., :n1], idx[..., n1 : 2 * n1], idx[..., 2 * n1:]
 
     # init new state matrix
     n2 = q2.shape[-2]
@@ -547,24 +510,51 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, tol=1e-8):
     add_at(sm2, sel[:-1] + (idx1T, 0), sm[..., 0])
     sm2[..., 1] = sm2[..., ::-1, 0].conj()
 
-    # update wavenumbers
-    k2 = (q2 * grid).astype(float)
+    # merge wavenumbers
+    w = xp.abs(sm)
+    weights = xp.zeros(sm2.shape[:-1])
+    add_at(weights, sel[:-1] + (idxL,), w[..., 2])
+    add_at(weights, sel[:-1] + (idx1T,), w[..., 0])
+    add_at(weights, sel[:-1] + (idx2T,), w[..., 1])
 
-    # print(f'sm:\n{sm}\nsm2:\n{sm2}')
-    # breakpoint()
+    k2 = xp.zeros(sm2.shape[:-1] + q2.shape[-1:], dtype=kL.dtype)
+    add_at(k2, sel[:-1] + (idxL, slice(None)), kL * w[..., 2:3])
+    add_at(k2, sel[:-1] + (idx1T, slice(None)), k1T * w[..., 0:1])
+    add_at(k2, sel[:-1] + (idx2T, slice(None)), k2T * w[..., 1:2])
+
+    k2 /= (weights + (weights < 1e-12))[..., NAX]
 
     # prune empty phase-states
-    sm2, k2 = prune_states(sm2, k2, tol=tol)
+    if nmax is not None:
+        sm2, k2 = trim_states(sm2, k2, nmax=nmax)
+    else:
+        sm2, k2 = prune_states(sm2, k2, tol=tol)
+
 
     if k2.shape[-2] % 2 == 0:
         # should not happen
         raise ValueError(f"Asymmetrical state matrix")
+
     return sm2, k2
 
 
 def round(states):
     return states - 0.5 + (states > 0)
 
+def trim_states(states, wnums, nmax):
+    nstate = (states.shape[-2] - 1) // 2
+    if nstate <= nmax:
+        return states, wnums
+    xp = common.get_array_module(states)
+    mag = xp.sum(states.real**2 + states.imag**2, axis=-1)[..., nstate:]
+    mag[..., 0] = xp.inf # always keep 0
+    indices = xp.argsort(mag, axis=-1, kind='stable')
+    # trim states
+    indices = xp.sort(indices[..., -nmax - 1:])
+    indices = xp.concatenate([nstate - indices[..., ::-1], nstate + indices[..., 1:]], axis=-1)
+    states = xp.take_along_axis(states, indices[..., NAX], axis=-2)
+    wnums = xp.take_along_axis(wnums, indices[..., NAX], axis=-2)
+    return states, wnums
 
 def prune_states(states, wnums, tol=1e-8):
     """prune vanishing phase states (inplace)"""
@@ -611,7 +601,52 @@ def unique_wnums(wnums):
     indices2 = xp.argsort(duplicates, kind="stable", axis=-1)
     indices = xp.take_along_axis(indices1, indices2, axis=-1)
     # remove excess rows
-    ndupl = xp.min(xp.sum(duplicates[..., nstate + 1 :], axis=-1))
-    indices = indices[..., ndupl : (-ndupl or None)]
+    ndupl = xp.sum(duplicates[..., nstate + 1 :], axis=-1)
+    mindupl = xp.min(ndupl)
+    indices = indices[..., mindupl : (-mindupl or None)]
     sorted = xp.take_along_axis(wnums, indices[..., NAX], axis=-2)
+    # fix indices in inverse
+    inverse += (ndupl[..., NAX] - mindupl)
+    inverse[flat[..., -1] == 0] = nstate
     return sorted, inverse
+
+
+
+
+# def _unique_1d(values, axis=0):
+#     """faster unique, using python dictionary"""
+
+#     if not np.issubdtype(values.dtype, np.integer):
+#         raise ValueError("This function only works with integer arrays")
+
+#     xp = common.get_array_module()
+#     values = xp.moveaxis(values, axis, 0)
+#     shape = values.shape[1:]
+#     values = values.reshape(len(values), -1)
+
+#     # keep unique rows
+#     unique_set = {}
+
+#     # make rows into tuples
+#     # inverse = [unique_set.setdefault(tuple(row), len(unique_set)) for row in values.tolist()]
+
+#     # "hash" rows (faster)
+#     vrange = xp.ptp(values) + 1
+#     hash = xp.dot(
+#         values - values.min(), xp.asarray([vrange**i for i in range(values.shape[1])])
+#     )
+#     # inverse = [unique_set.setdefault(row, len(unique_set)) for row in hash]
+#     inverse = [unique_set.setdefault(row.tobytes(), len(unique_set)) for row in hash]
+
+#     # build `unique`array from inverse
+#     inverse = xp.array(inverse)
+#     unique = xp.empty((len(unique_set), values.shape[1]), dtype=values.dtype)
+#     unique[inverse] = values
+
+#     # sort and return
+#     order = xp.lexsort(unique.T[::-1])
+#     unique = unique[order]
+#     unique = xp.moveaxis(unique.reshape((-1,) + shape), 0, axis)
+#     inverse = xp.argsort(order)[inverse]
+
+#     return unique, inverse
