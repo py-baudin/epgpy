@@ -35,16 +35,10 @@ def imaging(
     """
     xp = common.get_array_module()
 
-    def cexp(arr):
-        # complex modulation
-        ret = np.empty_like(arr, dtype="complex")
-        xp.cos(arr, out=ret.real)
-        xp.sin(arr, out=ret.imag)
-        return ret
-
     F = xp.asarray(states)
     k = xp.asarray(wavenumbers)
     t = xp.asarray(acctime) if acctime is not None else None
+
     pos = xp.asarray(positions)
     pos = pos if pos.ndim > 1 else pos[..., NAX]
     if expand:
@@ -88,7 +82,7 @@ def imaging(
     # DFT
     kdim = pos.shape[-1]
     kpos = xp.einsum("...ni,...i->...n", k[..., :kdim], pos)
-    im = (voxel * mod * F) * xp.exp(1j * kpos)
+    im = (voxel * mod * F) * cexp(kpos)
 
     # weights
     if weights is not None:
@@ -112,6 +106,13 @@ def check_states(states):
     xp = common.get_array_module(states)
     return xp.allclose(states, states[..., ::-1, [1, 0, 2]].conj())
 
+def cexp(arr):
+    # complex modulation
+    xp = common.get_array_module(arr)
+    ret = xp.empty_like(arr, dtype="complex")
+    xp.cos(arr, out=ret.real)
+    xp.sin(arr, out=ret.imag)
+    return ret
 
 # axes
 def Axes(*names):
