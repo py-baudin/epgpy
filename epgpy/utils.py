@@ -81,19 +81,30 @@ def imaging(
 
     # DFT
     kdim = pos.shape[-1]
-    kpos = xp.einsum("...ni,...i->...n", k[..., :kdim], pos)
-    im = (voxel * mod * F) * cexp(kpos)
+    im = _dft(voxel * mod * F, k[..., :kdim], pos)
 
     # weights
     if weights is not None:
-        im *= xp.asarray(weights)[..., NAX]
+        im *= xp.asarray(weights)  # [..., NAX]
 
     # add up axes
     if reduce is True:
         return im.sum()
     elif reduce is not False:
-        return im.sum(-1).sum(axis=reduce)
-    return im.sum(-1)
+        return im.sum(axis=reduce)
+        # return im.sum(-1).sum(axis=reduce)
+    return im
+
+
+def _dft(f, k, p):
+    """inverse DFT on phase states"""
+    xp = common.get_array_module(f)
+    kp = xp.einsum("...ni,...i->...n", k, p)
+    return (f * cexp(kp)).sum(axis=-1)
+    # out = xp.zeros(f.shape[:-2] + p.shape[:-1], dtype=f.dtype)
+    # for i in range(f.shape[-1]):
+    #     out += f[..., i] * cexp(xp.vecdot(p, k[..., i, :], axes=[-1, -1]))
+    # return out
 
 
 def dft(coords, states, wavenumbers, *, reduce=False):
@@ -106,13 +117,15 @@ def check_states(states):
     xp = common.get_array_module(states)
     return xp.allclose(states, states[..., ::-1, [1, 0, 2]].conj())
 
+
 def cexp(arr):
-    # complex modulation
+    """complex modulation: exp(1j * arr)"""
     xp = common.get_array_module(arr)
     ret = xp.empty_like(arr, dtype="complex")
     xp.cos(arr, out=ret.real)
     xp.sin(arr, out=ret.imag)
     return ret
+
 
 # axes
 def Axes(*names):
