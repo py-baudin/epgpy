@@ -134,7 +134,7 @@ class S(diff.DiffOperator):
             # apply (not inplace)
             ktvalue = sm.ktvalue
             coords = sm.coords * ktvalue
-            shift = shift * ktvalue
+            shift = common.asarray(shift) * ktvalue
             prune = sm.options.get("prune") or self.prune
             if method == "shift-merge":
                 opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
@@ -505,7 +505,8 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, nmax=None, tol=1e-8):
     sm2 = xp.zeros(shape + (n2, 3), dtype=sm.dtype)
 
     # update L and T states:
-    sel = xp.indices(sm2.shape[:-2] + (1,), sparse=True)
+    # sel = xp.indices(sm2.shape[:-2] + (1,), sparse=True)
+    sel = sparse_indices(sm.shape[:-2] + (1,))
     add_at(sm2, sel[:-1] + (idxL, 2), sm[..., 2])
     add_at(sm2, sel[:-1] + (idx1T, 0), sm[..., 0])
     sm2[..., 1] = sm2[..., ::-1, 0].conj()
@@ -537,6 +538,14 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, nmax=None, tol=1e-8):
 
     return sm2, k2
 
+
+def sparse_indices(shape):
+    xp = common.get_array_module()
+    ndim = len(shape)
+    return tuple(
+        xp.arange(shape[ax]).reshape(*[-1 if i == ax else 1 for i in range(ndim)]) 
+        for ax in range(ndim)
+    )
 
 def round(states):
     return states - 0.5 + (states > 0)
