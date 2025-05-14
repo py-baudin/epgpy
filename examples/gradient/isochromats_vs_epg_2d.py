@@ -85,6 +85,7 @@ for tol in [1e-1, 1e-2, 1e-8]:
     nstate = max(nstates)
     sig_epg[nstate] = sig
     time_epg[nstate] = duration
+    print(f"duration={duration:.0f}s")
 
 
 # isochromats
@@ -134,6 +135,7 @@ for niso in [10, 100, 1000]:
     # store
     sig_iso[niso] = sig
     time_iso[niso] = duration
+    print(f"duration={duration:.0f}s")
 
 #
 # plot
