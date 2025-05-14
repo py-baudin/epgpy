@@ -1,3 +1,7 @@
+""" vectorized version
+=> much slower due to the DFT in imaging
+"""
+
 import pathlib
 import time
 import numpy as np
@@ -43,21 +47,24 @@ PD = [0.8, 0.7, 1.0]  # a.u.
 T1 = [1.55e3, 0.83e3, 4.16e3]  # ms
 T2 = [0.09e3, 0.07e3, 1.65e3]  # ms
 T2p = [0.322e3, 0.183e3, 0.0591e3]  # ms
-pds = np.stack([gm * PD[0], wm * PD[1], csf * PD[2]]).reshape(1, 3, -1)[..., mask.flat]
+pds = np.stack([gm * PD[0], wm * PD[1], csf * PD[2]]).reshape(3, -1)[..., mask.flat]
 
 # EPG
 print("EPG")
 # set proton density and T2* decay
-init = epg.System(weights=pds, modulation=-1 / np.array([T2p]))
+init = epg.System(weights=pds[NAX], modulation=-1 / np.array([T2p]))
 # rf pulse and ADC with phase offset
 rf = [epg.T(FA, 0)] * nphase
 # rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)] # rf spoiling
-adc = [epg.Imaging(pixels, voxel_size=pixsize, phase=-rf[i].phi, reduce=(1, 2)) for i in range(nphase)]
+adc = [
+    epg.Imaging(pixels, voxel_size=pixsize, phase=-rf[i].phi, reduce=(1, 2))
+    for i in range(nphase)
+]
 # T1/T2 and time accumulation (for T2* and B0)
 rlx1 = epg.E([i * TR / nread for i in range(nread)], [T1], [T2])
-# rlx1 *= epg.C(rlx1.tau)  # time accumulation
+rlx1 *= epg.C(rlx1.tau)  # time accumulation
 rlx2 = epg.E([TR * (nread - 1 - i) / nread for i in range(nread)], [T1], [T2])
-# rlx2 *= epg.C(rlx2.tau)  # time accumulation
+rlx2 *= epg.C(rlx2.tau)  # time accumulation
 # readout gradient
 kx = np.array([2 * np.pi / FOV, 0])  # rad/m
 gx1 = epg.S([kx * (i - nread / 2) for i in range(nread)])
@@ -69,26 +76,30 @@ gp1 = [epg.S(kp * i) if i != 0 else epg.NULL for i in range(-nphase // 2, nphase
 gp2 = [epg.S(-kp * i) if i != 0 else epg.NULL for i in range(-nphase // 2, nphase // 2)]
 # build sequence
 seq = [init] + [
-    [rf[i], gx1, gp1[i], rlx1, adc[i], rlx2, gx2, gxspl, gp2[i]]
-    for i in range(nphase)
+    [rf[i], gx1, gp1[i], rlx1, adc[i], rlx2, gx2, gxspl, gp2[i]] for i in range(nphase)
 ]
 # simulate
 sig_epg, time_epg = {}, {}
-for tol in [1e-1]: #, [1e-1, 1e-2, 1e-8]:
+for tol in [1e-1, 1e-2, 1e-8]:
     print(f"EPG with tol={tol}")
     tic = time.time()
     # also return number of phase states
     kspace, nstates = epg.simulate(
-        seq, max_nstate=10, kgrid=1e-8, disp=True, probe=(None, "nstate"),
+        # seq, max_nstate=5, kgrid=1e-8, disp=True, probe=(None, "nstate"),
+        seq,
+        prune=tol,
+        kgrid=1e-8,
+        disp=True,
+        probe=(None, "nstate"),
     )
     duration = time.time() - tic
     # FFT
     sig = np.fft.fftshift(np.fft.fft2(np.asarray(kspace))) / nread
     # store
-    print(nstates)
     nstate = np.max(nstates)
     sig_epg[nstate] = sig
     time_epg[nstate] = duration
+    print(f"duration={duration:.1f}")
 
 # isochromats
 sig_iso, time_iso = {}, {}
@@ -137,6 +148,7 @@ for niso in [10, 100, 1000]:
     # store
     sig_iso[niso] = sig
     time_iso[niso] = duration
+    print(f"duration={duration:.1f}")
 
 #
 # plot
