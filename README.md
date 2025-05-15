@@ -44,9 +44,9 @@ T2 = [30, 40, 50] # ms
 
 # operators
 exc = epg.T(90, 90) # excitation
-rfc = epg.T(FA, 0) # refocussing
+rfc = epg.T(FA, 0) # refocusing
 rlx = epg.E(ESP/2, T1, T2) # relaxation
-shift = epg.S(1, duration=ESP / 2) # spoiler gradients
+shift = epg.S(1, duration=ESP / 2) # spoiler
 adc = epg.ADC # reading flag
 
 # concatenate operators (in nested lists)
