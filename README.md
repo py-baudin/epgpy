@@ -70,14 +70,24 @@ plt.show()
 ```
 ![plot](docs/images/readme_mse_example.png)
 
+## Publications
+
+About `epgpy`:
+
+- [ESMRMb 2025 poster (pdf)](docs/pdf/2025-10-10_esmrmb_poster_epgpy.pdf)
+
+In use:
+
+- [Vermeulen et al. « Quantitative Muscle Water  T2  Mapping Using RF Phase‐modulated 3D Gradient Echo Imaging ». Magnetic Resonance in Medicine 94 (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30545)
+
 ## References
 
 These references were used for the implementation:
 
-- Weigel, Matthias. « Extended Phase Graphs: Dephasing, RF Pulses, and Echoes - Pure and Simple: Extended Phase Graphs ». Journal of Magnetic Resonance Imaging 41, nᵒ 2 (février 2015): 266‑95. https://doi.org/10.1002/jmri.24619.
-- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, et J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance 205, nᵒ 2 (août 2010): 276‑85. https://doi.org/10.1016/j.jmr.2010.05.011.
-- Gao, Xiang, Valerij G. Kiselev, Thomas Lange, Jürgen Hennig, et Maxim Zaitsev. « Three‐dimensional Spatially Resolved Phase Graph Framework ». Magnetic Resonance in Medicine 86, nᵒ 1 (juillet 2021): 551‑60. https://doi.org/10.1002/mrm.28732.
-- Malik, Shaihan J., Rui Pedro A.G. Teixeira, et Joseph V. Hajnal. « Extended Phase Graph Formalism for Systems with Magnetization Transfer and Exchange: EPG-X: Extended Phase Graphs With Exchange ». Magnetic Resonance in Medicine 80, nᵒ 2 (août 2018): 767‑79. https://doi.org/10.1002/mrm.27040.
+- Weigel, Matthias. « Extended Phase Graphs: Dephasing, RF Pulses, and Echoes - Pure and Simple: Extended Phase Graphs ». Journal of Magnetic Resonance Imaging (2015). https://doi.org/10.1002/jmri.24619.
+- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, et J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance (2010). https://doi.org/10.1016/j.jmr.2010.05.011.
+- Gao, Xiang, Valerij G. Kiselev, Thomas Lange, Jürgen Hennig, et Maxim Zaitsev. « Three‐dimensional Spatially Resolved Phase Graph Framework ». Magnetic Resonance in Medicine (2021). https://doi.org/10.1002/mrm.28732.
+- Malik, Shaihan J., Rui Pedro A.G. Teixeira, et Joseph V. Hajnal. « Extended Phase Graph Formalism for Systems with Magnetization Transfer and Exchange: EPG-X: Extended Phase Graphs With Exchange ». Magnetic Resonance in Medicine (2018). https://doi.org/10.1002/mrm.27040.
 - Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, et Moritz Zaiss. « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. https://doi.org/10.1002/mrm.30055.
 
 
