@@ -78,7 +78,9 @@ About `epgpy`:
 
 In use:
 
-- [Vermeulen et al. « Quantitative Muscle Water  T2  Mapping Using RF Phase‐modulated 3D Gradient Echo Imaging ». Magnetic Resonance in Medicine 94 (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30545)
+- [Vermeulen et al. « Quantitative Muscle Water  T2  Mapping Using RF Phase‐modulated 3D Gradient Echo Imaging ». Magnetic Resonance in Medicine (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30545)
+- [Slioussarenko et al. « A Steady‐state MR Fingerprinting Sequence Optimization Framework Applied to the Fast 3D Quantification of Fat Fraction and Water T1 in the Thigh Muscles ». Magnetic Resonance in Medicine (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30490)
+- [Slioussarenko et al. « Bi‐component Dictionary Matching for MR Fingerprinting for Efficient Quantification of Fat Fraction and Water  T1  in Skeletal Muscle ». Magnetic Resonance in Medicine (2024)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.29901)
 
 ## References
 
