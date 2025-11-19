@@ -72,24 +72,29 @@ plt.show()
 
 ## Publications
 
+Cite this work:
+
+Baudin, Pierre-Yves. « Epgpy: an easy-to-use python library for MRI simulations ». Book of abstracts ESMRMB 2025, MAGMA (2025): 101-103. https://doi.org/10.1007/s10334-025-01278-8
+
+
 About `epgpy`:
 
 - [ESMRMb 2025 poster (pdf)](docs/pdf/2025-10-10_esmrmb_poster_epgpy.pdf)
 
 In use:
 
-- [Vermeulen et al. « Quantitative Muscle Water  T2  Mapping Using RF Phase‐modulated 3D Gradient Echo Imaging ». Magnetic Resonance in Medicine (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30545)
-- [Slioussarenko et al. « A Steady‐state MR Fingerprinting Sequence Optimization Framework Applied to the Fast 3D Quantification of Fat Fraction and Water T1 in the Thigh Muscles ». Magnetic Resonance in Medicine (2025)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.30490)
-- [Slioussarenko et al. « Bi‐component Dictionary Matching for MR Fingerprinting for Efficient Quantification of Fat Fraction and Water  T1  in Skeletal Muscle ». Magnetic Resonance in Medicine (2024)](https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.29901)
+- Vermeulen, Eléonore, et al. « Quantitative Muscle Water T2  Mapping Using RF Phase‐modulated 3D Gradient Echo Imaging ». Magnetic Resonance in Medicine (2025). https://doi.org/10.1002/mrm.30545
+- Slioussarenko, Constantin, et al. « A Steady‐state MR Fingerprinting Sequence Optimization Framework Applied to the Fast 3D Quantification of Fat Fraction and Water T1 in the Thigh Muscles ». Magnetic Resonance in Medicine (2025). https://doi.org/10.1002/mrm.30490
+- Slioussarenko, Constantin, et al. « Bi‐component Dictionary Matching for MR Fingerprinting for Efficient Quantification of Fat Fraction and Water  T1  in Skeletal Muscle ». Magnetic Resonance in Medicine (2024). https://doi.org/10.1002/mrm.29901
 
 ## References
 
 These references were used for the implementation:
 
 - Weigel, Matthias. « Extended Phase Graphs: Dephasing, RF Pulses, and Echoes - Pure and Simple: Extended Phase Graphs ». Journal of Magnetic Resonance Imaging (2015). https://doi.org/10.1002/jmri.24619.
-- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, et J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance (2010). https://doi.org/10.1016/j.jmr.2010.05.011.
-- Gao, Xiang, Valerij G. Kiselev, Thomas Lange, Jürgen Hennig, et Maxim Zaitsev. « Three‐dimensional Spatially Resolved Phase Graph Framework ». Magnetic Resonance in Medicine (2021). https://doi.org/10.1002/mrm.28732.
-- Malik, Shaihan J., Rui Pedro A.G. Teixeira, et Joseph V. Hajnal. « Extended Phase Graph Formalism for Systems with Magnetization Transfer and Exchange: EPG-X: Extended Phase Graphs With Exchange ». Magnetic Resonance in Medicine (2018). https://doi.org/10.1002/mrm.27040.
-- Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, et Moritz Zaiss. « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». Magnetic Resonance in Medicine 92, nᵒ 3 (2024): 1189‑1204. https://doi.org/10.1002/mrm.30055.
+- Weigel, M., S. Schwenk, V.G. Kiselev, K. Scheffler, J. Hennig. « Extended Phase Graphs with Anisotropic Diffusion ». Journal of Magnetic Resonance (2010). https://doi.org/10.1016/j.jmr.2010.05.011.
+- Gao, Xiang, Valerij G. Kiselev, Thomas Lange, Jürgen Hennig, Maxim Zaitsev. « Three‐dimensional Spatially Resolved Phase Graph Framework ». Magnetic Resonance in Medicine (2021). https://doi.org/10.1002/mrm.28732.
+- Malik, Shaihan J., Rui Pedro A.G. Teixeira, Joseph V. Hajnal. « Extended Phase Graph Formalism for Systems with Magnetization Transfer and Exchange: EPG-X: Extended Phase Graphs With Exchange ». Magnetic Resonance in Medicine (2018). https://doi.org/10.1002/mrm.27040.
+- Endres, Jonathan, Simon Weinmüller, Hoai Nam Dang, Moritz Zaiss. « Phase Distribution Graphs for Fast, Differentiable, and Spatially Encoded Bloch Simulations of Arbitrary MRI Sequences ». Magnetic Resonance in Medicine (2024). https://doi.org/10.1002/mrm.30055.
 
 
