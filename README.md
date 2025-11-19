@@ -27,6 +27,24 @@ Please look into the `docs/` and `examples/` folders for tutorials and usage exa
 
 Disclaimer: this is a research project, and the authors give no guaranty on the validity of the generated results. 
 
+## Installation
+
+``` shell 
+# clone (or download) this repository
+git clone git@github.com:py-baudin/epgpy.git epgpy
+
+# optionally: create and activate a dedicated virtual environment:
+conda create -n epgpy python=3.12 numpy
+conda activate epgpy
+
+# pip install epgpy (installation options: [full,gpu,test])
+cd epgpy
+pip install -e .[full]
+
+# test example
+python examples/basics/hyperecho.py
+```
+
 ## Example usage
 
 Simulate a multi-spin-echo NMR sequence using EPG operators:
