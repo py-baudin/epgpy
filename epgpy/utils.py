@@ -2,7 +2,6 @@ import enum
 import sys
 import numpy as np
 from . import common
-
 NAX = np.newaxis
 
 # constants
@@ -99,8 +98,12 @@ def imaging(
 def _dft(f, k, p):
     """inverse DFT on phase states"""
     xp = common.get_array_module(f)
-    kp = xp.einsum("...ni,...i->...n", k, p)
-    return (f * cexp(kp)).sum(axis=-1)
+    # kp = xp.einsum("...ni,...i->...n", k, p)
+    # sol = (f * cexp(kp)).sum(axis=-1)
+    kp = xp.matmul(k, p[..., NAX])[..., 0]
+    a = cexp(kp)
+    sol = xp.matmul(f[..., NAX, :], a[..., NAX])[..., 0, 0]
+    return sol
     # out = xp.zeros(f.shape[:-2] + p.shape[:-1], dtype=f.dtype)
     # for i in range(f.shape[-1]):
     #     out += f[..., i] * cexp(xp.vecdot(p, k[..., i, :], axes=[-1, -1]))

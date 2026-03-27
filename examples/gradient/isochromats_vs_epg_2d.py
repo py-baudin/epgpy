@@ -144,12 +144,12 @@ vmin, vmax = [func(np.abs(max_epg)) for func in (np.min, np.max)]
 fig, axes = plt.subplots(nrows=2, ncols=3, num="iso-vs-epg-2d", figsize=(8, 7))
 for i, nstate in enumerate(sig_epg):
     plt.sca(axes[0, i])
-    plt.imshow(np.abs(sig_epg[nstate]), cmap="gray", vmin=vmin, vmax=vmax)
+    plt.imshow(np.abs(sig_epg[nstate]), cmap="gray", vmin=vmin, vmax=vmax, origin='lower')
     plt.title(f"EPG\n(n.states: {nstate}, dur.: {time_epg[nstate]/60:.1f}min)")
     plt.axis("off")
 for i, niso in enumerate(sig_iso):
     plt.sca(axes[1, i])
-    plt.imshow(np.abs(sig_iso[niso]), cmap="gray", vmin=vmin, vmax=vmax)
+    plt.imshow(np.abs(sig_iso[niso]), cmap="gray", vmin=vmin, vmax=vmax, origin='lower')
     plt.title(f"Isochromats\n(n.iso: {niso}, dur.: {time_iso[niso]/60:.1f}min)")
     plt.axis("off")
 plt.suptitle(f"Isochromats vs EPG")
