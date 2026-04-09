@@ -139,7 +139,7 @@ signal, jac = seq.jacobian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 assert jac.shape == (1, 10, 2) # 1x dimension, 10x ADC, 2x column variables
 
 # Hessian matrix (tensor) for selected variables
-signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"])(b1=0.8, tau=5, T2=30)
+signal, jac, hess = seq.hessian(["magnitude", "T2", "b1"])(b1=0.8, tau=5, T2=30)
 assert hess.shape == (1, 10, 3, 3) # 1x dimension, 10x ADC, 3x row & column variables
 
 # CRLB for selected target variables (sequence optimization objective function)
@@ -249,18 +249,18 @@ signal = seq.signal(T2=70)
 In some situations, one may need to compute the derivatives of the signal with respect to some of the variables.
 Examples: sequence optimization, confidence interval calculation.
 
-This is done using the `gradient` and `hessian` functions of the sequence object.
+This is done using the `jacobian` and `hessian` functions of the sequence object.
 
 ```python
 signal = seq.signal(b1=0.8, tau=5, T2=30)
 assert signal.shape == (1, 10)
-signal, jac = seq.gradient(["T2", "b1"])(b1=0.8, tau=5, T2=30)
+signal, jac = seq.jacobian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 assert jac.shape == (1, 10, 2)
 signal, grad, hess = seq.hessian(["T2", "b1"])(b1=0.8, tau=5, T2=30)
 assert hess.shape == (1, 10, 2, 2)
 
 # to obtain the partial derivatives of the signal with respect to the magnitude, `magnitude` can be added to the variable list:
-# `magnitude` is available for seq.gradient, seq.hessian and seq.crlb
+# `magnitude` is available for seq.jacobian, seq.hessian and seq.crlb
 signal, grad, hess = seq.hessian(["magnitude", "T2", "b1"], b1=0.8, tau=5, T2=30)
 assert hess.shape == (1, 10, 3, 3)
 ```
@@ -273,15 +273,15 @@ signal, grad, hess = seq.hessian(["magnitude", "T2"], ["tau"])(b1=0.8, tau=5, T2
 assert hess.shape == (1, 10, 2, 1) # 2x row variables, 1x column variable
 ```
 
-The Cramer-Rao lower bound (CRLB) of the signal and its gradient are also available:
+The Cramer-Rao lower bound (CRLB) of the signal and its derivative are also available:
 
 ```python
-# compute the CRLB for some target variables (internally calling seq.gradient)
+# compute the CRLB for some target variables (internally calling seq.jacobian)
 crlb = seq.crlb(["T2", "b1"])(b1=0.8, tau=5, T2=[30, 40, 50])
 assert crlb.shape == (3,) # 3x T2 values
 
-# compute the CRLB and its gradient (internally calling seq.hessian)
+# compute the CRLB and its derivative (internally calling seq.hessian)
 crlb, d_crlb = seq.crlb(["T2", "b1"], gradient=["tau"])(b1=0.8, tau=5, T2=[30, 40, 50])
-assert d_crlb.shape == (3, 1) # 3x T2 values, 1x gradient variable
+assert d_crlb.shape == (3, 1) # 3x T2 values, 1x jacobian variable
 ```
 
