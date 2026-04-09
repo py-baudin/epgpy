@@ -178,7 +178,10 @@ seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 seq.signal()({var1: value1}, var2=value2)
 ```
 
-### repeat function
+### `repeat` function
+
+Simply build sequences by repeating the same sequence block with varying parameters.
+
 ```python
 from epgpy.sequence import operators, Sequence, repeat
 
