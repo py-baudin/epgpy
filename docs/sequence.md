@@ -178,6 +178,28 @@ seq.signal(options={'max_nstate': 10, 'disp': True})(...)
 seq.signal()({var1: value1}, var2=value2)
 ```
 
+### repeat function
+```python
+from epgpy.sequence import operators, Sequence, repeat
+
+# flip angles and TRs
+FAs = [f'FA_{i}' for i in range(10)]
+TRs = [f'TR_{i}' for i in range(10)]
+
+# define single operators (not lists)
+rf = operators.T('FA', 0)
+rlx = operators.E('TR', 'T1', 'T2')
+
+# use the `repeat` function to map the FAs and TRs
+seq = Sequence(repeat([rf, rlx, 'ADC'], FA=FAs, TR=TRs))
+```
+
+Which gives:
+
+```shell
+> seq.variables
+{FA_0, FA_1, FA_2, FA_3, FA_4, FA_5, FA_6, FA_7, FA_8, FA_9, T1, T2, TR_0, TR_1, TR_2, TR_3, TR_4, TR_5, TR_6, TR_7, TR_8, TR_9}
+```
 
 ## Examples
 
