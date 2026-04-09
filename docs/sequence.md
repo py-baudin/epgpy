@@ -189,11 +189,11 @@ from epgpy.sequence import operators, Sequence, repeat
 FAs = [f'FA_{i}' for i in range(10)]
 TRs = [f'TR_{i}' for i in range(10)]
 
-# define single operators (not lists)
+# building block as single operators
 rf = operators.T('FA', 0)
 rlx = operators.E('TR', 'T1', 'T2')
 
-# use the `repeat` function to map the FAs and TRs
+# map the FAs and TRs variables to other names or values
 seq = Sequence(repeat([rf, rlx, 'ADC'], FA=FAs, TR=TRs))
 ```
 
