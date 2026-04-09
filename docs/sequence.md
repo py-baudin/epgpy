@@ -180,7 +180,7 @@ seq.signal()({var1: value1}, var2=value2)
 
 ### `repeat` function
 
-Simply build sequences by repeating the same sequence block with varying parameters.
+Build MRF-type sequences with many variables from a single sequence block by mapping its variables to other variable names or values.
 
 ```python
 from epgpy.sequence import operators, Sequence, repeat
