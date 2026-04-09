@@ -193,7 +193,7 @@ TRs = [f'TR_{i}' for i in range(10)]
 rf = operators.T('FA', 0)
 rlx = operators.E('TR', 'T1', 'T2')
 
-# map the FAs and TRs variables to other names or values
+# map the FA and TR variables to separate variables for each TR
 seq = Sequence(repeat([rf, rlx, 'ADC'], FA=FAs, TR=TRs))
 ```
 
