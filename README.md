@@ -90,11 +90,6 @@ plt.show()
 
 ## Publications
 
-Cite this work:
-
-Baudin, Pierre-Yves. « Epgpy: an easy-to-use python library for MRI simulations ». Book of abstracts ESMRMB 2025, MAGMA (2025): 101-103. https://doi.org/10.1007/s10334-025-01278-8
-
-
 About `epgpy`:
 
 - [ESMRMb 2025 poster (pdf)](docs/pdf/2025-10-10_esmrmb_poster_epgpy.pdf)
