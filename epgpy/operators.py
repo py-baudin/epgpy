@@ -13,7 +13,7 @@ from .probe import Probe, Adc, Imaging, DFT
 from .diff import DiffOperator, Jacobian, Hessian
 from .evolution import E, P, R
 from .transition import T, Phi
-from .shift import S, G, C, A
+from .shift import S, G, C
 from .diffusion import D
 from .exchange import X
 

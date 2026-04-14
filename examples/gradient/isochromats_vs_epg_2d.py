@@ -57,7 +57,7 @@ adc = [epg.Imaging(pixels, voxel_size=pixsize, phase=-rf[i].phi) for i in range(
 # T1/T2 and time accumulation (for T2* and B0)
 rlx = epg.E(TR / nread, T1, T2)
 # rlx *= epg.C(TR / nread)  # time accumulation
-rlx *= epg.A(TR / nread, R2=R2p)  # R2 prime
+rlx *= epg.C(TR / nread, R2=R2p)  # time accumulation for R2 prime
 # readout gradient
 kx = np.array([2 * np.pi / FOV, 0])  # rad/m
 gxpre = epg.S(-kx * nread / 2)
@@ -81,9 +81,8 @@ for nstate in [5, 10, 100]:
     tic = time.time()
     # also return number of phase states
     kspace, nstates = epg.simulate(
-        seq, prune=tol, kgrid=0.1, disp=True, probe=(None, "nstate")
-        # seq, prune=tol, max_nstate=nstate, kgrid=0.1, disp=True, probe=(None, "nstate")
-        # seq, prune=tol, max_nstate=20, kgrid=0.1, disp=True, probe=(None, "nstate")
+        # seq, prune=tol, kgrid=0.1, disp=True, probe=(None, "nstate")
+        seq, prune=tol, max_nstate=nstate, kgrid=0.1, disp=True, probe=(None, "nstate")
     )
     duration = time.time() - tic
     # FFT

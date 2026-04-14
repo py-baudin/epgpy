@@ -33,7 +33,7 @@ seq_iso = [rf] + [[wait, adc]] * N
 sim_iso = epg.simulate(seq_iso).sum(-1) / niso
 
 # EPG
-wait = epg.A(delta, 1 / t2p)  # R2*
+wait = epg.C(delta, 1 / t2p)  # R2*
 seq_epg = [rf] + [[wait, adc]] * N
 sim_epg = epg.simulate(seq_epg, kgrid=0.1)
 

@@ -186,30 +186,9 @@ class G(S):
 
 
 class C(S):
-    """Time-accumulation operator"""
+    """Time-accumulation operator for temporal dephasing"""
 
-    def __init__(self, tau, *, duration=None, **kwargs):
-        """ Setup time accumulation operator """
-        tau, *_ = common.map_arrays([tau])
-
-        if np.any(tau < 0):
-            raise ValueError("Cannot have negative time")
-
-        # put time on fourth dimension
-        k = np.stack([0 * tau] * 3 + [tau], axis=-1)
-
-        # duration
-        duration = tau if duration is True else duration
-
-        self.tau = tau
-
-        super().__init__(k, duration=duration, **kwargs)
-
-
-class A(S):
-    """ temporal dephasing operator """
-
-    def __init__(self, tau, R2, *, duration=None, **kwargs):
+    def __init__(self, tau, R2=1, *, duration=None, **kwargs):
         """ Setup operator with relaxation R2*"""
         tau, R2 = common.map_arrays([tau, R2])
 
@@ -217,7 +196,7 @@ class A(S):
             raise ValueError("Cannot have negative time")
 
         # put time on fourth dimension
-        evol = - tau * R2
+        evol = tau * R2
         k = np.stack([0 * evol] * 3 + [evol], axis=-1)
 
         # duration

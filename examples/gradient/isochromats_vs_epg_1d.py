@@ -28,7 +28,7 @@ adc = epg.Imaging(pixels, voxel_size=pixsize)
 init = epg.System(weights=pd)
 rf = epg.T(FA, 90)
 rlx = epg.E(TR, T1, T2)
-rlx *= epg.A(TR, R2=1/T2p)  # time accumulation
+rlx *= epg.C(TR, R2=1/T2p)  # time accumulation
 # readout gradient
 k = 2 * np.pi / FOV  # rad/m
 gxpre = epg.S(-k * nread / 2)
