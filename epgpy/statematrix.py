@@ -149,6 +149,16 @@ class StateMatrix:
     def F0(self):
         if self.kdim < 4:
             return self.states[..., self.nstate, 0]
+        # sum states with k==0
+        xp = common.get_array_module()
+        evol = xp.exp(-abs(self.t))
+        return (self.states[..., 0] * self.i0 * evol).sum(axis=-1)
+    
+    @property
+    def F0t(self):
+        """ return separate F0 for each t"""
+        if self.kdim < 4:
+            return self.states[..., self.nstate, 0]
         # select states with k==0
         return self.states[..., 0] * self.i0
 

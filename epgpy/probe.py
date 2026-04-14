@@ -16,6 +16,7 @@ class Probe(operator.EmptyOperator):
         "coords",
         "F",
         "F0",
+        "F0t",
         "Z",
         "Z0",
         "k",

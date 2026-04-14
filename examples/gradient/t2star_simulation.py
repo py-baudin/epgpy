@@ -33,11 +33,9 @@ seq_iso = [rf] + [[wait, adc]] * N
 sim_iso = epg.simulate(seq_iso).sum(-1) / niso
 
 # EPG
-wait = epg.C(delta)  # time accumulation
+wait = epg.A(delta, 1 / t2p)  # R2*
 seq_epg = [rf] + [[wait, adc]] * N
-sim_epg, tau = epg.simulate(seq_epg, kgrid=0.1, probe=("F0", "t"))
-# combine F0 states and time accumulation to obtain the T2* effect
-sim_epg = (sim_epg * np.exp(-np.abs(tau) / t2p)).sum((-2, -1))
+sim_epg = epg.simulate(seq_epg, kgrid=0.1)
 
 # with an uniform distribution, the decay is not exponential:
 # sim_epg = (sim_epg * np.sinc(-np.abs(tau)/t2p)).sum((-2, -1))

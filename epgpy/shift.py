@@ -85,6 +85,10 @@ class S(diff.DiffOperator):
         method, shift = get_shift_method(self.k, sm.coords)
         nmax = sm.options.get("max_nstate") or self.nmax or None
 
+        prune = sm.options.get("prune") or self.prune
+        tol = 1e-8 if prune in {True, False} else float(prune)
+        prune = bool(prune)
+
         if method == "shift-1d":
             # basic 1d shift
             if sm.coords is not None:
@@ -107,11 +111,7 @@ class S(diff.DiffOperator):
                 shift = np.pad(shift, [(0, 0)] * self.ndim + [(0, diff)])
 
             # apply (not inplace)
-            opts = {
-                "prune": bool(self.prune),
-                "tol": self.prune,
-                "nmax": nmax,
-            }
+            opts = {"prune": prune, "tol": tol, "nmax": nmax}
             states, coords = shiftnd(sm.states, sm.coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
             sm.resize(nstate)
@@ -135,12 +135,12 @@ class S(diff.DiffOperator):
             ktvalue = sm.ktvalue
             coords = sm.coords * ktvalue
             shift = common.asarray(shift) * ktvalue
-            prune = sm.options.get("prune") or self.prune
+            # print(f'{self}: {method}, tol={tol}, nmax={nmax}')
             if method == "shift-merge":
-                opts = {"prune": bool(prune), "tol": prune, "grid": kgrid}
+                opts = {"prune": prune, "tol": tol, "grid": kgrid}
                 states, wavenums = shiftmerge(sm.states, coords, shift, **opts)
             elif method == "shift-prune":
-                opts = {'prune': bool(prune), "tol": prune, "grid": kgrid, "nmax": nmax}
+                opts = {'prune': prune, "tol": tol, "grid": kgrid, "nmax": nmax}
                 states, wavenums = shiftprune(sm.states, coords, shift, **opts)
             nstate = (states.shape[-2] - 1) // 2
             sm.resize(nstate)
@@ -186,10 +186,11 @@ class G(S):
 
 
 class C(S):
-    """Time-coherence operator"""
+    """Time-accumulation operator"""
 
     def __init__(self, tau, *, duration=None, **kwargs):
-        tau = common.map_arrays(tau)
+        """ Setup time accumulation operator """
+        tau, *_ = common.map_arrays([tau])
 
         if np.any(tau < 0):
             raise ValueError("Cannot have negative time")
@@ -204,6 +205,29 @@ class C(S):
 
         super().__init__(k, duration=duration, **kwargs)
 
+
+class A(S):
+    """ temporal dephasing operator """
+
+    def __init__(self, tau, R2, *, duration=None, **kwargs):
+        """ Setup operator with relaxation R2*"""
+        tau, R2 = common.map_arrays([tau, R2])
+
+        if np.any(tau < 0):
+            raise ValueError("Cannot have negative time")
+
+        # put time on fourth dimension
+        evol = - tau * R2
+        k = np.stack([0 * evol] * 3 + [evol], axis=-1)
+
+        # duration
+        duration = tau if duration is True else duration
+
+        self.tau = tau
+        self.R2 = R2
+        
+        super().__init__(k, duration=duration, **kwargs)
+    
 
 #
 # functions
@@ -227,6 +251,7 @@ def get_shift_method(k, coords):
         elif np.issubdtype(k.dtype, np.integer):
             shift = k
             method = "shift-nd"
+        # elif np.issubdtype(k.dtype, np.floating):
         elif np.issubdtype(k.dtype, np.floating):
             shift = k
             method = "shift-merge"
@@ -527,11 +552,11 @@ def shiftprune(states, wavenums, shift, *, grid=1e-5, nmax=None, prune=True, tol
 
     # prune empty phase-states
     if nmax is not None:
-        print(f"trim to {nmax}")
+        # print(f"trim to {nmax}")
         sm2, k2 = trim_states(sm2, k2, nmax=nmax)
     if prune:
         sm2, k2 = prune_states(sm2, k2, tol=tol)
-
+    
     if k2.shape[-2] % 2 == 0:
         # should not happen
         raise ValueError(f"Asymmetrical state matrix")
@@ -620,7 +645,8 @@ def unique_wnums(wnums):
     sorted = xp.take_along_axis(wnums, indices[..., NAX], axis=-2)
     # fix indices in inverse
     inverse += ndupl[..., NAX] - mindupl
-    inverse[flat[..., -1] == 0] = nstate
+    # inverse[flat[..., -1] == 0] = nstate
+    inverse[flat[..., -1] == 0] = (sorted.shape[-2] - 1)//2
     return sorted, inverse
 
 

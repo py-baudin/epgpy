@@ -20,15 +20,15 @@ pixels = np.arange(-nread // 2, nread // 2) / nread * FOV
 pd = random.uniform(0.5, 1, size=nread)
 # relaxation
 T1, T2 = 830, 70  # ms
-T2p = 30  # ms (T2 prime)
+T2p = 100 #30  # ms (T2 prime)
 
 # EPG
 print("EPG")
 adc = epg.Imaging(pixels, voxel_size=pixsize)
-init = epg.System(weights=pd, modulation=-1 / T2p)
+init = epg.System(weights=pd)
 rf = epg.T(FA, 90)
 rlx = epg.E(TR, T1, T2)
-rlx *= epg.C(TR)  # time accumulation
+rlx *= epg.A(TR, R2=1/T2p)  # time accumulation
 # readout gradient
 k = 2 * np.pi / FOV  # rad/m
 gxpre = epg.S(-k * nread / 2)

@@ -61,9 +61,9 @@ def imaging(
         raise ValueError(f"Unknown voxel shape: {voxel_shape}")
 
     # modulation (e.g. T2', B0)
-    if t is not None and modulation is not None:
-        modulation = xp.asarray(modulation)
-        mod = xp.exp(xp.abs(t) * modulation.real[..., NAX])
+    if t is not None:
+        modulation = xp.asarray(modulation if modulation is not None else 1.0)
+        mod = xp.exp(-xp.abs(t) * modulation.real[..., NAX])
         mmask = xp.any(mod > tol, axis=tuple(range(F.ndim - 1)))
         F, k, mod = F[..., mmask], k[..., mmask, :], mod[..., mmask]
         if getattr(voxel, "shape", None):

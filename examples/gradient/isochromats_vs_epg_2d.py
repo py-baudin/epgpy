@@ -42,19 +42,22 @@ PD = [0.8, 0.7, 1.0]  # a.u.
 T1 = [1.55e3, 0.83e3, 4.16e3]  # ms
 T2 = [0.09e3, 0.07e3, 1.65e3]  # ms
 T2p = [0.322e3, 0.183e3, 0.0591e3]  # ms
+R2p = 1 / np.array(T2p)
 pds = np.stack([gm * PD[0], wm * PD[1], csf * PD[2]]).reshape(3, -1)[:, mask.flat]
 
 # EPG
 print("EPG")
 # set proton density and T2* decay
-init = epg.System(weights=pds, modulation=-1 / np.array(T2p))
+# init = epg.System(weights=pds, modulation=-1 / np.array(T2p))
+init = epg.System(weights=pds)
 # rf pulse and ADC with phase offset
 rf = [epg.T(FA, 0)] * nphase
 # rf = [epg.T(FA, 117 * i * (i + 1)/2) for i in range(nphase)] # rf spoiling
 adc = [epg.Imaging(pixels, voxel_size=pixsize, phase=-rf[i].phi) for i in range(nphase)]
 # T1/T2 and time accumulation (for T2* and B0)
 rlx = epg.E(TR / nread, T1, T2)
-rlx *= epg.C(TR / nread)  # time accumulation
+# rlx *= epg.C(TR / nread)  # time accumulation
+rlx *= epg.A(TR / nread, R2=R2p)  # R2 prime
 # readout gradient
 kx = np.array([2 * np.pi / FOV, 0])  # rad/m
 gxpre = epg.S(-kx * nread / 2)
@@ -71,12 +74,16 @@ seq = [init] + [
 ]
 # simulate
 sig_epg, time_epg = {}, {}
-for tol in [1e-1, 1e-2, 1e-8]:
-    print(f"EPG with tol={tol}")
+nstate, tol = 100, 1e-2
+# for tol in [1e-1, 1e-2, 1e-3]:
+for nstate in [5, 10, 100]:
+    print(f"EPG with tol={tol}, nmax={nstate}")
     tic = time.time()
     # also return number of phase states
     kspace, nstates = epg.simulate(
         seq, prune=tol, kgrid=0.1, disp=True, probe=(None, "nstate")
+        # seq, prune=tol, max_nstate=nstate, kgrid=0.1, disp=True, probe=(None, "nstate")
+        # seq, prune=tol, max_nstate=20, kgrid=0.1, disp=True, probe=(None, "nstate")
     )
     duration = time.time() - tic
     # FFT
@@ -154,5 +161,6 @@ for i, niso in enumerate(sig_iso):
     plt.axis("off")
 plt.suptitle(f"Isochromats vs EPG")
 plt.tight_layout()
+
 # plt.show()
 plt.savefig(fig.get_label() + ".png", dpi=200)
