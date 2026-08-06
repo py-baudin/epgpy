@@ -103,7 +103,7 @@ def simulate(
     # squeeze
     if squeeze:
         LOGGER.info(f"Squeeze sequence")
-        sequence = squeeze_sequence(sequence)
+        sequence = squeeze_sequence(sequence, disp=disp)
 
     if not any(isinstance(op, operators.Probe) for op in sequence):
         raise ValueError(
@@ -347,9 +347,31 @@ def default_modifier(op, **kwargs):
     return op
 
 
-def squeeze_sequence(seq):
-    """merge repeated sequences of operators for speed"""
-    raise NotImplementedError("Automatic sequence squeezing not implemented yet")
+def squeeze_sequence(seq, disp=False):
+    """merge combinable operators"""
+    new = []
+    curr = seq[0]
+    seq = seq[1:]
+
+    if disp:
+        seq = utils.progressbar(seq, "Squeezing: ", end='')
+
+    chain = (curr,)
+    bag = {}
+    for op in seq:
+        if isinstance(curr, operators.CombinableOperator) and curr.combinable(op):
+            chain = chain + (op,)
+            if chain in bag:
+                curr = bag[chain]
+            else:
+                curr = curr.combine(op)
+                bag[chain] = curr
+        else:
+            new.append(curr)
+            curr = op
+            chain = (curr,)
+    new.append(curr)
+    return new
 
 
 def flatten_sequence(seq, flatten_multi=True):

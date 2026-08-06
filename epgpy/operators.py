@@ -1,6 +1,7 @@
 from .operator import (
     Operator,
     MultiOperator,
+    CombinableOperator,
     EmptyOperator,
     Spoiler,
     Wait,
