@@ -180,7 +180,6 @@ def make_pulse_sequence(transform, values, duration, rf, offset=None):
         raise ValueError("duration and values must have the same length")
 
     # series of angles to apply
-    # alphas = 360 * np.abs(values) * rf * durations
     alphas = 180 * np.abs(values) * rf
     phis = np.angle(values, deg=True)
 
@@ -191,7 +190,6 @@ def make_pulse_sequence(transform, values, duration, rf, offset=None):
     ]
 
     if offset:  # phase offset
-        # sequence = [transform(0, -offset)] + sequence + [transform(0, offset)]
         sequence = [transition.Phi(-offset)] + sequence + [transition.Phi(offset)]
 
     return sequence
@@ -242,19 +240,17 @@ def estimate_rf(values, alpha):
 
     # normalize values
     values = np.asarray(values)
-    # nvalue = len(values)
 
     if np.max(np.abs(values)) > 1:
         raise ValueError("pulse values must have a magnitude <= 1")
 
     # check if phase constant
     phase_diffs = np.diff(np.mod(np.angle(values, deg=True), 180))
-    is_const = np.all(np.isclose(phase_diffs, 0, atol=1e-5))
+    is_const = np.all(np.isclose(phase_diffs, 0, atol=1e-3))
 
     if is_const:
         # if pulse has constant phase: no need to optimize
         LOGGER.info(f"Calculate rf for alpha={alpha} (constant phase)")
-        # alphas = rf * 180 * np.abs(values)
         rf = alpha / 180 / np.abs(np.sum(values))
         return rf
 
