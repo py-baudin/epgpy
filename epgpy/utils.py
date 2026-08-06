@@ -145,6 +145,12 @@ def Axes(*names):
     return enum.IntEnum("Axes", names, start=0)
 
 
+def toaxis(arr, ax):
+    if np.isscalar(arr):
+        return arr
+    return arr[(np.newaxis,) * ax]
+
+
 #
 # conversion functions
 
@@ -216,7 +222,7 @@ def freq_to_space(grad, frequencies, *, gamma=gamma_1H):
 # progressbar
 
 
-def progressbar(it, prefix="", size=60, out=sys.stdout):
+def progressbar(it, prefix="", size=60, out=sys.stdout, end='\n'):
     """https://stackoverflow.com/questions/3160699/python-progress-bar"""
     count = len(it)
 
@@ -233,4 +239,5 @@ def progressbar(it, prefix="", size=60, out=sys.stdout):
     for i, item in enumerate(it):
         yield item
         show(i + 1)
-    print("\n", flush=True, file=out)
+    # print("\n", flush=True, file=out)
+    print(end, flush=True, file=out)

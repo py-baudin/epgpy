@@ -955,10 +955,15 @@ class math:
     log.derivatives = [inv(p1)]
     exp.derivatives = [exp(p1)]
 
-
 #
 # utilities
 
+# to axis
+def _toaxis(value, axis):
+    if np.isscalar(value):
+        return value
+    return value[(np.newaxis,)*axis]
+toaxis = Function(_toaxis)
 
 def _flatten(seq):
     """flatten nested list"""
